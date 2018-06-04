@@ -1,2 +1,2 @@
 # plague.nvim
-An experiment in rewriting plug.vim in Lua to see if it's faster
+An experimental Neovim plugin manager in Lua for speed and ease of development
