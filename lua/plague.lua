@@ -41,24 +41,8 @@ end
 
 -- Plugin specification functions
 plague.fns.configure = function (config)
-  if config.plugin_dir then
-    plague.config.plugin_dir = config.plugin_dir
-  end
-
-  if config.dependencies then
-    plague.config.dependencies = config.dependencies
-  end
-
-  if config.merge then
-    plague.config.merge = config.merge
-  end
-
-  if config.threads then
-    plague.config.threads = config.threads
-  end
-
-  if config.auto_clean then
-    plague.config.auto_clean = config.auto_clean
+  for config_var, config_val in pairs(config) do
+    plague.config[config_var] = config_val
   end
 end
 
@@ -85,6 +69,30 @@ plague.fns.check_config = function ()
     end
   end
   return true
+end
+
+plague.fns.install = function(spec)
+end
+
+plague.fns.uninstall = function(spec)
+end
+
+plague.fns.disable = function(name, spec)
+end
+
+plague.fns.check_install = function(name, spec, context)
+end
+
+plague.fns.list_packages = function()
+end
+
+plague.fns.gather_hooks = function(spec)
+end
+
+plague.fns.set_triggers = function()
+end
+
+plague.fns.guess_type = function(spec)
 end
 
 plague.fns.sync = function ()
@@ -167,3 +175,5 @@ plague.fns.use = function (spec)
 
   plague.plugins[name] = spec
 end
+
+return { use = plague.fns.use, sync = plague.fns.sync, configure = plague.fns.configure }
