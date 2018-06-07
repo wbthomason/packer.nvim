@@ -73,9 +73,24 @@ plague.fns.check_config = function ()
 end
 
 plague.fns.install = function(spec)
+  if spec.type == 'local' then
+    -- TODO: Make OS independent
+    os.execute('ln -s ' .. spec[1] .. ' ' .. p.concat(plague.config.plugin_dir, spec.name))
+  elseif spec.type == 'git' then
+
+  end
 end
 
-plague.fns.uninstall = function(spec)
+plague.fns.uninstall = function(plug_name)
+  local spec = plague.plugins[plug_name]
+  local path = p.concat(plague.config.plugin_dir, plug_name)
+  if spec.type == 'local' then os.remove(path)
+  else p.rmall(path, 'yes') end
+end
+
+plague.fns.enable = function(spec)
+  local plug_path = p.concat(plague.config.plugin_dir, spec.name)
+  local pack_path = p.concat(plague.config.package_dir, spec.name)
 end
 
 plague.fns.disable = function(spec)
