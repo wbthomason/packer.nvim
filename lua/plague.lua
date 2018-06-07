@@ -95,6 +95,29 @@ plague.fns.set_triggers = function()
 end
 
 plague.fns.guess_type = function(spec)
+  -- A series of heuristics to guess the type of a plugin
+  -- TODO: Add more plugin types later once more installation methods are supported
+  if spec.type then return end
+
+  local plugin = spec[1]
+  if string.sub(plugin, 1, 1) == '/' then
+    spec.type = 'local'
+    return
+  end
+
+  if string.sub(plugin, 1, 5) == 'https'
+    or string.sub(plugin, 1, 3) == 'ssh'
+    or string.sub(plugin, 1, 3) == 'git' then
+    spec.type = 'git'
+    return
+  end
+
+  if string.match(plugin, '/') then
+    spec.type = 'github'
+    return
+  end
+
+  spec.type = 'unknown'
 end
 
 plague.fns.sync = function ()
