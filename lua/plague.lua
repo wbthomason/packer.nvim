@@ -1,6 +1,7 @@
 -- Dependencies
 local uv = require('luv')
 local f = require('fun')
+local p = require('paths')
 
 -- Private variables and constants
 local nvim = vim.api -- luacheck: ignore
@@ -20,7 +21,8 @@ plague.config = {
   compile_viml = false,
   dependencies = true,
   merge = true,
-  plugin_dir = '~/.local/share/nvim/plugins',
+  plugin_dir = '~/.local/share/nvim/plague',
+  package_dir = '~/.local/share/nvim/pack',
   threads = nil,
   auto_clean = true,
 }
@@ -48,8 +50,8 @@ end
 
 plague.fns.check_config = function ()
   if plague.config.plugin_dir == nil then
-    if nvim_vars['plugin_dir'] then
-      plague.config.plugin_dir = nvim_vars['plugin_dir']
+    if nvim_vars.plugin_dir then
+      plague.config.plugin_dir = nvim_vars.plugin_dir
     elseif #nvim.nvim_list_runtime_paths() > 0 then
       plague.config.plugin_dir = nvim.nvim_list_runtime_paths()[1] .. '/plugins'
     else
@@ -60,8 +62,7 @@ plague.fns.check_config = function ()
 
   for idx, val in pairs(plague.config) do
     if val == nil then
-      if nvim_vars[idx] then
-        plague.config[idx] = nvim_vars[idx]
+      if nvim_vars[idx] then plague.config[idx] = nvim_vars[idx]
       else
         plague.fns.err("Please set the config variable " .. idx)
         return false
@@ -77,13 +78,14 @@ end
 plague.fns.uninstall = function(spec)
 end
 
-plague.fns.disable = function(name, spec)
+plague.fns.disable = function(spec)
 end
 
-plague.fns.check_install = function(name, spec, context)
+plague.fns.check_install = function(spec, context)
 end
 
 plague.fns.list_packages = function()
+  return p.dir(plague.config.plugin_dir)
 end
 
 plague.fns.gather_hooks = function(spec)
@@ -97,9 +99,7 @@ end
 
 plague.fns.sync = function ()
   -- Check basic config
-  if not plague.fns.check_config then
-    return false
-  end
+  if not plague.fns.check_config then return false end
 
   -- Check that there are plugins to install
   if plague.plugins == nil then
@@ -132,12 +132,14 @@ plague.fns.sync = function ()
     function(plug_name) plague.fns.echo("Uninstalled " .. plug_name) end
   )
 
+  -- TODO: Dependency sorting
+  -- TODO: Before/after config
   -- Filter out disabled and enabled plugins
   local disabled_plugins = f.filter(function(_, spec) return spec.disabled end, f.iter(plague.plugins))
   local enabled_plugins = f.filter(function(_, spec) return not spec.disabled end, f.iter(plague.plugins))
 
   -- Disable the disabled plugins
-  disabled_plugins:each(plague.fns.disable)
+  disabled_plugins:each(function (_, spec) plague.fns.disable(spec) end)
 
   -- Install enabled but missing plugins
   local function curried_install(context)
@@ -145,10 +147,12 @@ plague.fns.sync = function ()
   end
 
   enabled_plugins:filter(function (_, spec) return spec.ensure end):each(curried_install(in_ctx))
+  enabled_plugins:each(function (_, spec) plague.fns.enable(spec) end)
 
   -- Remove uninstalled plugins
   if plague.config.auto_clean then
-    f.filter(function(name) return plague.plugins[name] end, f.iter(plague.fns.list_packages))
+    f.filter(function(plug_name) return plague.plugins[plug_name] end,
+      f.iter(plague.fns.list_packages()))
       :each(function (plug_name, spec) uv.queue_work(un_ctx, plug_name, spec) end)
   end
 
@@ -169,9 +173,7 @@ plague.fns.use = function (spec)
 
   plague.fns.guess_type(spec)
 
-  if plague.plugins == nil then
-    plague.plugins = {}
-  end
+  if plague.plugins == nil then plague.plugins = {} end
 
   plague.plugins[name] = spec
 end
