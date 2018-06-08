@@ -1,6 +1,6 @@
 -- Dependencies
 local uv = require('luv')
-local f = require('fun')
+local f = require('iter')
 local p = require('paths')
 
 -- Private variables and constants
@@ -24,7 +24,7 @@ plague.config = {
   plugin_dir = '~/.local/share/nvim/plague',
   package_dir = '~/.local/share/nvim/pack',
   threads = nil,
-  auto_clean = true,
+  auto_clean = false,
 }
 
 plague.fns = {}
@@ -39,6 +39,17 @@ end
 
 plague.fns.echo = function (msg)
   nvim.nvim_out_write("[Plague] " .. msg .. "\n")
+end
+
+local concat = function(...)
+  -- TODO: Make OS independent
+  local result = ''
+  local arg = {...}
+  for _, v in ipairs(arg) do
+    result = result .. '/' .. v
+  end
+
+  return string.sub(result, 2)
 end
 
 -- Plugin specification functions
@@ -73,30 +84,70 @@ plague.fns.check_config = function ()
 end
 
 plague.fns.install = function(spec)
+  -- TODO: Failure/error checks
+  local path = concat(plague.config.plugin_dir, spec.name)
   if spec.type == 'local' then
     -- TODO: Make OS independent
-    os.execute('ln -s ' .. spec[1] .. ' ' .. p.concat(plague.config.plugin_dir, spec.name))
+    os.execute('ln -s ' .. spec[1] .. ' ' .. path)
   elseif spec.type == 'git' then
+    os.execute('git clone ' .. spec[1] .. ' ' .. path)
+    plague.fns.handle_branch_rev(spec)
+  elseif spec.type == 'github' then
+    os.execute('git clone https://github.com/' .. spec[1] .. ' ' .. path)
+    plague.fns.handle_branch_rev(spec)
+  end
+end
 
+plague.fns.handle_branch_rev = function(spec)
+  local path = concat(plague.config.plugin_dir, spec.name)
+  if spec.branch then
+    os.execute('cd ' .. path .. ' && git checkout ' .. spec.branch)
+  end
+
+  if spec.commit then
+    os.execute('cd ' .. path .. ' && git checkout ' .. spec.commit)
+  end
+
+  if spec.tag then
+    os.execute('cd ' .. path .. ' && git checkout ' .. spec.tag)
   end
 end
 
 plague.fns.uninstall = function(plug_name)
   local spec = plague.plugins[plug_name]
-  local path = p.concat(plague.config.plugin_dir, plug_name)
+  local path = concat(plague.config.plugin_dir, plug_name)
   if spec.type == 'local' then os.remove(path)
   else p.rmall(path, 'yes') end
 end
 
 plague.fns.enable = function(spec)
-  local plug_path = p.concat(plague.config.plugin_dir, spec.name)
-  local pack_path = p.concat(plague.config.package_dir, spec.name)
+  local plug_path = concat(plague.config.plugin_dir, spec.name)
+  local pack_path = concat(plague.config.package_dir, spec.name)
+  -- TODO: OS independence
+  if spec.defer then
+    os.execute('ln -s ' .. plug_path .. ' ' .. concat(pack_path, 'opt'))
+  else
+    print('ln -s ' .. plug_path .. ' ' .. concat(pack_path, 'start'))
+    os.execute('ln -s ' .. plug_path .. ' ' .. concat(pack_path, 'start'))
+  end
 end
 
 plague.fns.disable = function(spec)
+  local pack_path = concat(plague.config.package_dir, spec.name)
+  if spec.defer then
+    pack_path = concat(pack_path, 'opt')
+  else
+    pack_path = concat(pack_path, 'start')
+  end
+
+  -- TODO: OS independence
+  os.execute('rm -f ' .. pack_path)
 end
 
-plague.fns.check_install = function(spec, context)
+plague.fns.check_install = function(name, spec, context, installed_plugins)
+  if f.index(name, f.iter(installed_plugins)) == nil then
+    uv.queue_work(context, name, spec)
+  end
 end
 
 plague.fns.list_packages = function()
@@ -170,6 +221,8 @@ plague.fns.sync = function ()
     function(plug_name) plague.fns.echo("Uninstalled " .. plug_name) end
   )
 
+  local installed_plugins = plague.fns.list_packages()
+
   -- TODO: Dependency sorting
   -- TODO: Before/after config
   -- Filter out disabled and enabled plugins
@@ -180,17 +233,17 @@ plague.fns.sync = function ()
   disabled_plugins:each(function (_, spec) plague.fns.disable(spec) end)
 
   -- Install enabled but missing plugins
-  local function curried_install(context)
-    return function(name, spec) plague.fns.check_install(name, spec, context) end
+  local curried_install = function(name, spec)
+    plague.fns.check_install(name, spec, installed_plugins, in_ctx)
   end
 
-  enabled_plugins:filter(function (_, spec) return spec.ensure end):each(curried_install(in_ctx))
+  enabled_plugins:filter(function (_, spec) return spec.ensure end):each(curried_install)
   enabled_plugins:each(function (_, spec) plague.fns.enable(spec) end)
 
   -- Remove uninstalled plugins
   if plague.config.auto_clean then
     f.filter(function(plug_name) return plague.plugins[plug_name] end,
-      f.iter(plague.fns.list_packages()))
+      f.iter(installed_plugins))
       :each(function (plug_name, spec) uv.queue_work(un_ctx, plug_name, spec) end)
   end
 
