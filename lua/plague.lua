@@ -1,6 +1,5 @@
 -- Dependencies
 local uv = require('luv')
-local f = require('iter')
 local p = require('paths')
 
 -- Private variables and constants
@@ -33,6 +32,39 @@ plague.plugins = nil
 
 -- Function definitions
 -- Utility functions
+local function index(val, iter, state, key)
+  repeat
+    if state[key] == val then
+      return key
+    end
+
+    key = iter(state, key)
+  until key == nil
+
+  return nil
+end
+
+local function each(func, iter, state, key)
+  repeat
+    if key ~= nil then
+      key = func(key, iter(state, key)) or key
+    end
+  until key == nil
+end
+
+local function filter(func, iter, state, init)
+  local result = {}
+  local key = iter(state, init)
+  while key ~= nil do
+    if func(key, state[key]) then
+      table.insert(result, state[key])
+    end
+    key = iter(state, key)
+  end
+
+  return result
+end
+
 plague.fns.err = function (msg)
   nvim.nvim_err_writeln("[Plague] " .. msg)
 end
@@ -145,7 +177,7 @@ plague.fns.disable = function(spec)
 end
 
 plague.fns.check_install = function(name, spec, context, installed_plugins)
-  if f.index(name, f.iter(installed_plugins)) == nil then
+  if index(name, ipairs(installed_plugins)) == nil then
     uv.queue_work(context, name, spec)
   end
 end
@@ -226,30 +258,29 @@ plague.fns.sync = function ()
   -- TODO: Dependency sorting
   -- TODO: Before/after config
   -- Filter out disabled and enabled plugins
-  local disabled_plugins = f.filter(function(_, spec) return spec.disabled end, f.iter(plague.plugins))
-  local enabled_plugins = f.filter(function(_, spec) return not spec.disabled end, f.iter(plague.plugins))
+  local disabled_plugins = filter(function(_, spec) return spec.disabled end, pairs(plague.plugins))
+  local enabled_plugins = filter(function(_, spec) return not spec.disabled end, pairs(plague.plugins))
 
   -- Disable the disabled plugins
-  disabled_plugins:each(function (_, spec) plague.fns.disable(spec) end)
+  each(function (_, spec) plague.fns.disable(spec) end, pairs(disabled_plugins))
 
   -- Install enabled but missing plugins
   local curried_install = function(name, spec)
     plague.fns.check_install(name, spec, installed_plugins, in_ctx)
   end
 
-  enabled_plugins:filter(function (_, spec) return spec.ensure end):each(curried_install)
-  enabled_plugins:each(function (_, spec) plague.fns.enable(spec) end)
+  each(curried_install, pairs(filter(function (_, spec) return spec.ensure end, pairs(enabled_plugins))))
+  each(function (spec) plague.fns.enable(spec) end, pairs(enabled_plugins))
 
   -- Remove uninstalled plugins
   if plague.config.auto_clean then
-    f.filter(function(plug_name) return plague.plugins[plug_name] end,
-      f.iter(installed_plugins))
-      :each(function (plug_name, spec) uv.queue_work(un_ctx, plug_name, spec) end)
+    each(function (plug_name, spec) uv.queue_work(un_ctx, plug_name, spec) end,
+      pairs(filter(function(_, plug_name) return plague.plugins[plug_name] end, pairs(installed_plugins))))
   end
 
   -- Collect hooks
-  local deferred_plugins = enabled_plugins:filter(function(_, spec) return spec.defer end)
-  deferred_plugins:each(plague.fns.gather_hooks)
+  local deferred_plugins = filter(function(_, spec) return spec.defer end, pairs(enabled_plugins))
+  each(plague.fns.gather_hooks, pairs(deferred_plugins))
 
   -- Set up hooks
   plague.fns.set_triggers()
