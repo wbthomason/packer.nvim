@@ -1,7 +1,4 @@
--- Dependencies
-local uv = require('luv')
-local p = require('paths')
-
+-- TODO: Make OS independent
 -- Private variables and constants
 local nvim = vim.api -- luacheck: ignore
 
@@ -19,14 +16,16 @@ plague.src_repo = 'https://github.com/wbthomason/plague.nvim'
 plague.config = {
   compile_viml = false,
   dependencies = true,
-  merge = true,
-  plugin_dir = '~/.local/share/nvim/plague',
-  package_dir = '~/.local/share/nvim/pack',
+  source_dir = '~/.local/share/nvim/plague',
+  package_root = '~/.local/share/nvim/site/pack',
+  plugin_package = '~/.local/share/nvim/site/pack/plugins',
   threads = nil,
   auto_clean = false,
 }
 
 plague.fns = {}
+
+plague.threads = {}
 
 plague.plugins = nil
 
@@ -44,10 +43,12 @@ local function index(val, iter, state, key)
   return nil
 end
 
-local function each(func, iter, state, key)
+local function each(func, iter, state, init)
+  local key = iter(state, init)
   repeat
     if key ~= nil then
-      key = func(key, iter(state, key)) or key
+      func(key, state[key])
+      key = iter(state, key)
     end
   until key == nil
 end
@@ -57,7 +58,7 @@ local function filter(func, iter, state, init)
   local key = iter(state, init)
   while key ~= nil do
     if func(key, state[key]) then
-      table.insert(result, state[key])
+      result[key] = state[key]
     end
     key = iter(state, key)
   end
@@ -65,12 +66,37 @@ local function filter(func, iter, state, init)
   return result
 end
 
+-- Coroutine stuff
+local function schedule(work, after)
+  table.insert(plague.threads,
+    {work = coroutine.create(work), after = after, val = nil, status = true})
+end
+
+local function run_threads()
+  local thread_capacity = plague.config.threads or 8
+  local front_idx = 1
+  while front_idx <= #plague.threads do
+    for i=front_idx, math.min(front_idx + thread_capacity, #plague.threads) do
+      local thread_obj = plague.threads[i]
+      if coroutine.status(thread_obj.work) == "dead" then
+        thread_obj.after(thread_obj.val)
+        front_idx = front_idx + 1
+        thread_capacity = thread_capacity + 1
+      else
+        thread_capacity = thread_capacity - 1
+        -- TODO: Error checks
+        thread_obj.status, thread_obj.val = coroutine.resume(thread_obj.work)
+      end
+    end
+  end
+end
+
 plague.fns.err = function (msg)
-  nvim.nvim_err_writeln("[Plague] " .. msg)
+  nvim.nvim_err_writeln('[Plague] ' .. msg)
 end
 
 plague.fns.echo = function (msg)
-  nvim.nvim_out_write("[Plague] " .. msg .. "\n")
+  nvim.nvim_out_write('[Plague] ' .. msg .. '\n')
 end
 
 local concat = function(...)
@@ -84,6 +110,15 @@ local concat = function(...)
   return string.sub(result, 2)
 end
 
+local function dir(path)
+  local lines = {}
+  for s in string.gmatch(nvim.nvim_eval('globpath("' .. path .. '", "*")'), "[^\r\n]+") do
+    table.insert(lines, s)
+  end
+
+  return lines
+end
+
 -- Plugin specification functions
 plague.fns.configure = function (config)
   for config_var, config_val in pairs(config) do
@@ -92,11 +127,11 @@ plague.fns.configure = function (config)
 end
 
 plague.fns.check_config = function ()
-  if plague.config.plugin_dir == nil then
-    if nvim_vars.plugin_dir then
-      plague.config.plugin_dir = nvim_vars.plugin_dir
+  if plague.config.source_dir == nil then
+    if nvim_vars.source_dir then
+      plague.config.source_dir = nvim_vars.source_dir
     elseif #nvim.nvim_list_runtime_paths() > 0 then
-      plague.config.plugin_dir = nvim.nvim_list_runtime_paths()[1] .. '/plugins'
+      plague.config.source_dir = nvim.nvim_list_runtime_paths()[1] .. '/plague'
     else
       plague.fns.err("Please set the plugin directory!")
       return false
@@ -116,22 +151,34 @@ plague.fns.check_config = function ()
 end
 
 plague.fns.install = function(spec)
-  -- TODO: Failure/error checks
-  local path = concat(plague.config.plugin_dir, spec.name)
-  if spec.type == 'local' then
-    -- TODO: Make OS independent
-    os.execute('ln -s ' .. spec[1] .. ' ' .. path)
-  elseif spec.type == 'git' then
-    os.execute('git clone ' .. spec[1] .. ' ' .. path)
-    plague.fns.handle_branch_rev(spec)
-  elseif spec.type == 'github' then
-    os.execute('git clone https://github.com/' .. spec[1] .. ' ' .. path)
-    plague.fns.handle_branch_rev(spec)
+  return function()
+    plague.fns.echo("Installing " .. spec.name)
+    -- TODO: Failure/error checks
+    local path = concat(plague.config.source_dir, spec.name)
+    os.execute('mkdir -p ' .. path)
+    if spec.type == 'local' then
+      os.execute('ln -s ' .. spec[1] .. ' ' .. path)
+    elseif spec.type == 'git' then
+      local ph = io.popen('git clone ' .. spec[1] .. ' ' .. path .. ' 2>&1', 'r')
+      while ph:read('*a') ~= '' do
+        coroutine.yield('Cloning...')
+      end
+      ph:close()
+      plague.fns.handle_branch_rev(spec)
+    elseif spec.type == 'github' then
+      local ph = io.popen('git clone https://github.com/' .. spec[1] .. ' ' .. path .. ' 2>&1', 'r')
+      while ph:read('*a') ~= '' do
+        coroutine.yield('Cloning...')
+      end
+      ph:close()
+      plague.fns.handle_branch_rev(spec)
+    end
+    return 'Installation complete!'
   end
 end
 
 plague.fns.handle_branch_rev = function(spec)
-  local path = concat(plague.config.plugin_dir, spec.name)
+  local path = concat(plague.config.source_dir, spec.name)
   if spec.branch then
     os.execute('cd ' .. path .. ' && git checkout ' .. spec.branch)
   end
@@ -147,43 +194,53 @@ end
 
 plague.fns.uninstall = function(plug_name)
   local spec = plague.plugins[plug_name]
-  local path = concat(plague.config.plugin_dir, plug_name)
+  local path = concat(plague.config.source_dir, plug_name)
   if spec.type == 'local' then os.remove(path)
-  else p.rmall(path, 'yes') end
-end
-
-plague.fns.enable = function(spec)
-  local plug_path = concat(plague.config.plugin_dir, spec.name)
-  local pack_path = concat(plague.config.package_dir, spec.name)
-  -- TODO: OS independence
-  if spec.defer then
-    os.execute('ln -s ' .. plug_path .. ' ' .. concat(pack_path, 'opt'))
-  else
-    print('ln -s ' .. plug_path .. ' ' .. concat(pack_path, 'start'))
-    os.execute('ln -s ' .. plug_path .. ' ' .. concat(pack_path, 'start'))
-  end
+  else os.execute('rm -rf ' .. path) end
 end
 
 plague.fns.disable = function(spec)
-  local pack_path = concat(plague.config.package_dir, spec.name)
+  local pack_path = concat(plague.config.package_root, spec.name)
   if spec.defer then
     pack_path = concat(pack_path, 'opt')
   else
     pack_path = concat(pack_path, 'start')
   end
 
-  -- TODO: OS independence
   os.execute('rm -f ' .. pack_path)
 end
 
-plague.fns.check_install = function(name, spec, context, installed_plugins)
+plague.fns.enable = function(spec)
+  local pack_path = plague.config.plugin_package
+  local plug_path = concat(plague.config.source_dir, spec.name)
+  if spec.defer then
+    pack_path = concat(pack_path, 'opt')
+  else
+    pack_path = concat(pack_path, 'start')
+  end
+
+  os.execute('mkdir -p ' .. pack_path)
+  os.execute('mv ' .. plug_path .. ' ' .. pack_path)
+end
+
+plague.fns.status = function(spec)
+  return function(status)
+    plague.fns.echo(spec.name .. ': ' .. status)
+  end
+end
+
+plague.fns.check_install = function(name, spec, installed_plugins)
   if index(name, ipairs(installed_plugins)) == nil then
-    uv.queue_work(context, name, spec)
+    schedule(plague.fns.install(spec), plague.fns.status(spec))
   end
 end
 
 plague.fns.list_packages = function()
-  return p.dir(plague.config.plugin_dir)
+  local result = {}
+  for _, v in ipairs(dir(plague.config.source_dir)) do
+    table.insert(result, string.match(v, '[^/]-$'))
+  end
+  return result
 end
 
 plague.fns.gather_hooks = function(spec)
@@ -228,6 +285,10 @@ plague.fns.sync = function ()
     return false
   end
 
+  -- Ensure plugin dir and package dir
+  os.execute('mkdir -p ' .. plague.config.source_dir)
+  os.execute('mkdir -p ' .. plague.config.plugin_package)
+
   -- Setup plugin infrastructure
   plague.triggers = {
     functions = {},
@@ -235,23 +296,6 @@ plague.fns.sync = function ()
     filetypes = {},
     events = {},
   }
-
-  -- Make threadpool context
-  local in_ctx = uv.new_work(
-    function(plug_name, spec)
-      plague.fns.install(spec)
-      return plug_name
-    end,
-    function(plug_name) plague.fns.echo("Installed " .. plug_name) end
-  )
-
-  local un_ctx = uv.new_work(
-    function(plug_name, spec)
-      plague.fns.uninstall(spec)
-      return plug_name
-    end,
-    function(plug_name) plague.fns.echo("Uninstalled " .. plug_name) end
-  )
 
   local installed_plugins = plague.fns.list_packages()
 
@@ -266,15 +310,17 @@ plague.fns.sync = function ()
 
   -- Install enabled but missing plugins
   local curried_install = function(name, spec)
-    plague.fns.check_install(name, spec, installed_plugins, in_ctx)
+    plague.fns.check_install(name, spec, installed_plugins)
   end
 
-  each(curried_install, pairs(filter(function (_, spec) return spec.ensure end, pairs(enabled_plugins))))
-  each(function (spec) plague.fns.enable(spec) end, pairs(enabled_plugins))
+  -- each(curried_install, pairs(filter(function (_, spec) return spec.ensure end, pairs(enabled_plugins))))
+  each(curried_install, pairs(enabled_plugins))
+  run_threads()
+  -- each(function (_, spec) plague.fns.enable(spec) end, pairs(enabled_plugins))
 
   -- Remove uninstalled plugins
   if plague.config.auto_clean then
-    each(function (plug_name, spec) uv.queue_work(un_ctx, plug_name, spec) end,
+    each(plague.fns.uninstall,
       pairs(filter(function(_, plug_name) return plague.plugins[plug_name] end, pairs(installed_plugins))))
   end
 
@@ -295,7 +341,7 @@ plague.fns.use = function (spec)
 
   plague.fns.guess_type(spec)
 
-  if plague.plugins == nil then plague.plugins = {} end
+  plague.plugins = plague.plugins or {}
 
   plague.plugins[name] = spec
 end
