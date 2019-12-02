@@ -17,8 +17,8 @@ plague.config = {
   compile_viml = false,
   dependencies = true,
   source_dir = '~/.local/share/nvim/plague',
-  package_root = '~/.local/share/nvim/site/pack',
-  plugin_package = '~/.local/share/nvim/site/pack/plugins',
+  package_root = '~/.config/nvim/pack',
+  plugin_package = '~/.config/nvim/pack/plugins',
   threads = nil,
   auto_clean = false,
 }
