@@ -79,7 +79,7 @@ end
 local plague = {}
 plague.config = {
   dependencies = true,
-  package_root = is_windows and '~\\AppData\\Local\\nvim\\site\\pack' or '~/.local/share/nvim/site/pack',
+  package_root = is_windows and '~\\AppData\\Local\\nvim-data\\site\\pack' or '~/.local/share/nvim/site/pack',
   plugin_package = 'plugins',
   plague_package = 'plague',
   threads = nil,
