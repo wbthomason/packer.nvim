@@ -1,4 +1,5 @@
 local util = {}
+
 util.map = function(func, seq)
   local result = {}
   for _, v in ipairs(seq) do
@@ -66,20 +67,6 @@ util.slice = function(seq, start, endpoint, step)
   return result
 end
 
-util.make_pairs = function(seq)
-  return util.zip(util.slice(seq, 1, #seq, 2), util.slice(seq, 2, #seq, 2))
-end
-
-util.assoc_table = function(seq)
-  local assoc_pairs = util.make_pairs(seq)
-  local result = {}
-  for _, v in pairs(assoc_pairs) do
-    table.insert(result, v[1], v[2])
-  end
-
-  return result
-end
-
 util.filter = function(func, seq)
   local function f(acc, val)
     if func(val) then
@@ -120,9 +107,9 @@ util.get_keys = function(tbl)
   return keys
 end
 
-local is_windows = jit.os == 'Windows'
-util.get_separator = function()
-  if is_windows == 'Windows' then
+util.is_windows = jit.os == 'Windows'
+local function get_separator()
+  if util.is_windows then
     return '\\'
   end
 
@@ -132,7 +119,7 @@ end
 util.join_paths = function(...)
   local args = {...}
   local result = ''
-  local separator = util.get_separator()
+  local separator = get_separator()
   for _, segment in ipairs(args) do
     result = result .. separator .. segment
   end
