@@ -24,6 +24,9 @@ local job_mt = {
   end,
 
   run = function(self, job)
+    if job.before then
+      job.before()
+    end
 
     local stdout = nil
     local stderr = nil
@@ -68,6 +71,10 @@ local job_mt = {
 
   exit = function(self, exit_code, signal)
     local success = self.job.callbacks.exit(exit_code, signal)
+    if self.job.after then
+      self.job.after(success)
+    end
+
     if success and self.job.on_success then
       self.job = self.job.on_success
       self:run(self.job)
