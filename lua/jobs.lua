@@ -1,8 +1,7 @@
 -- Interface with Neovim job control and provide a simple job sequencing monad
 
 local jobs = {}
-
-local context_store = {}
+local loop = vim.loop
 
 local job_mt = {
   __mul = function(prev, next_job)
@@ -21,34 +20,60 @@ local job_mt = {
 
   start = function(self)
     self.job = self.first or self
-    self.run(self.job)
+    self:run(self.job)
   end,
 
-  run = function(job)
-    vim.fn.jobstart(job.task,
-      { on_stdout = 'plague#handle_callback',
-        on_stderr = 'plague#handle_callback',
-        on_exit   = 'plague#handle_callback',
-        ctx_id    = job.ctx.id,
-        ctx_job   = job.id })
+  run = function(self, job)
+
+    local stdout = nil
+    local stderr = nil
+    if job.callbacks.stdout then
+      stdout = loop.new_pipe(false)
+    end
+
+    if job.callbacks.stderr then
+      stderr = loop.new_pipe(false)
+    end
+
+    local handle = nil
+    handle = loop.spawn(job.task.cmd, {
+      args = job.task.args,
+      stdio = { stdout, stderr },
+      hide = true
+    },
+    vim.schedule_wrap(
+      function(exit_code, signal)
+        if stdout then
+          stdout:read_stop()
+          stdout:close()
+        end
+
+        if stderr then
+          stderr:read_stop()
+          stderr:close()
+        end
+
+        handle:close()
+        self:exit(exit_code, signal)
+      end))
+
+    if stdout then
+      loop.read_start(stdout, job.callbacks.stdout)
+    end
+
+    if stderr then
+      loop.read_start(stderr, job.callbacks.stderr)
+    end
   end,
 
-  stdout = function(self, job_id, data, event)
-    self.job.callbacks.stdout(job_id, data, event)
-  end,
-
-  stderr = function(self, job_id, data, event)
-    self.job.callbacks.stderr(job_id, data, event)
-  end,
-
-  exit = function(self, job_id, exit_code, event)
-    local success = self.job.callbacks.exit(job_id, exit_code, event)
+  exit = function(self, exit_code, signal)
+    local success = self.job.callbacks.exit(exit_code, signal)
     if success and self.job.on_success then
       self.job = self.job.on_success
-      self.run(self.job)
+      self:run(self.job)
     elseif not success and self.job.on_failure then
       self.job = self.job.on_failure
-      self.run(self.job)
+      self:run(self.job)
     else
       self:done()
     end
@@ -59,13 +84,7 @@ local job_mt = {
   end
 }
 
-local Context = {
-  next_id = 1
-}
-
-function Context:get_job(id)
-  return self.jobs[id]
-end
+local Context = {}
 
 function Context:new_job(job_data)
   job_data  = job_data or {}
@@ -102,24 +121,13 @@ function Context:all_done()
   end
 end
 
-function Context:deactivate()
-  context_store[self.id] = nil
-end
-
 jobs.new = function(max_jobs, after_done)
   local ctx             = setmetatable({}, { __index = Context })
   ctx.queue             = {}
   ctx.max_jobs          = max_jobs
   ctx.jobs              = {}
   ctx.after_done        = after_done
-  ctx.id                = 'ctx_' .. ctx.next_id
-  ctx.next_id           = ctx.next_id + 1
-  context_store[ctx.id] = ctx
   return ctx
-end
-
-jobs.get_context = function(id)
-  return context_store[id]
 end
 
 return jobs
