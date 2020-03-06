@@ -17,11 +17,11 @@ local function ensure_dirs(config)
 end
 
 -- Config
-local plague = {}
+local packer = {}
 local config_defaults = {
   dependencies   = true,
   package_root   = util.is_windows and '~\\AppData\\Local\\nvim-data\\site\\pack' or '~/.local/share/nvim/site/pack',
-  plugin_package = 'plague',
+  plugin_package = 'packer',
   max_jobs       = nil,
   auto_clean     = false,
   git_cmd        = 'git',
@@ -48,7 +48,7 @@ setmetatable(config, config_mt)
 local plugins = nil
 
 -- Initialize any customizations and the plugin table
-plague.init = function(user_config)
+packer.init = function(user_config)
   vim.tbl_extend('force', config, user_config)
   plugins = {}
   config.pack_dir = util.join_paths(config.package_root, config.plugin_package)
@@ -78,7 +78,7 @@ local function setup_installer(plugin)
 end
 
 -- Add a plugin to the managed set
-plague.use = function(plugin)
+packer.use = function(plugin)
   local path = plugin[1]
   local name = util.slice(path, string.find(path, '/%S$'))
   setup_installer(plugin)
@@ -94,7 +94,7 @@ local function list_installed_plugins()
 end
 
 -- Find and remove any plugins not currently configured for use
-plague.clean = function(...)
+packer.clean = function(...)
   local dirty_plugins = {}
   if ... then
     dirty_plugins = {...}
@@ -188,7 +188,7 @@ local function install_helper(missing_plugins)
   return display_win, job_ctx
 end
 
-plague.install = function(...)
+packer.install = function(...)
   local install_plugins = args_or_all(...)
   local missing_plugins = util.filter(plugin_missing, install_plugins)
   install_helper(missing_plugins)
@@ -249,7 +249,7 @@ local function update_plugin(plugin, status, display_win, job_ctx)
   end
 end
 
-plague.update = function(...)
+packer.update = function(...)
   local update_plugins = args_or_all(...)
   local missing_plugins, installed_plugins = util.partition(plugin_missing, update_plugins)
   local opt_plugins, start_plugins = list_installed_plugins()
@@ -268,7 +268,7 @@ plague.update = function(...)
   end
 end
 
-plague.sync = function(...)
+packer.sync = function(...)
   local sync_plugins         = args_or_all(...)
   local _, installed_plugins = util.partition(plugin_missing, sync_plugins)
 
@@ -276,20 +276,20 @@ plague.sync = function(...)
   fix_plugin_types(installed_plugins)
 
   -- Remove any unused plugins
-  plague.clean(unpack(sync_plugins))
+  packer.clean(unpack(sync_plugins))
 
   -- Finally, update the rest
-  return plague.update(unpack(sync_plugins))
+  return packer.update(unpack(sync_plugins))
 end
 
 local function compile_config()
 -- TODO
 end
 
-plague.save = function(output_path)
+packer.save = function(output_path)
 -- TODO
 end
 
-plague.config = config
+packer.config = config
 
-return plague
+return packer
