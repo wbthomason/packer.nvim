@@ -55,7 +55,7 @@ packer.init = function(user_config)
   config.opt_dir = util.join_paths(config.pack_dir, 'opt')
   config.start_dir = util.join_paths(config.pack_dir, 'start')
   ensure_dirs(config)
-  git.set_config(config.git_cmd, config.git_commands, config.start_dir, config.opt_dir)
+  git.set_config(config.git_cmd, config.git_commands, config.package_root, config.plugin_package)
 end
 
 local function setup_installer(plugin)
@@ -227,6 +227,7 @@ local function fix_plugin_types(plugin_names)
   -- NOTE: This function can only be run on plugins already installed
   for _, v in ipairs(plugin_names) do
     local plugin = plugins[v]
+    -- TODO: This will have to change when separate packages are implemented
     local install_dir = util.join_paths((plugin.type == 'start') and config.start_dir or config.opt_dir, plugin.name)
     if not vim.fn.isdirectory(install_dir) then
       fix_plugin_type(plugin)

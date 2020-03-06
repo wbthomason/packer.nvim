@@ -95,10 +95,8 @@ job_mt = {
       self.after(success)
     end
 
-    if success and self.on_success then
-      self.on_success:run()
-    elseif not success and self.on_failure then
-      self.job.on_failure:run()
+    if self.next then
+      self.next(success)
     else
       self:__done()
     end
