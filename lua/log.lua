@@ -1,9 +1,9 @@
-local nvim = vim.api
+local api = vim.api
 
 local function echo_special(msg, hl)
-  nvim.nvim_command('echohl ' .. hl)
-  nvim.nvim_command('echom [plague] ' .. msg)
-  nvim.nvim_command('echohl None')
+  api.nvim_command('echohl ' .. hl)
+  api.nvim_command('echom [plague] ' .. msg)
+  api.nvim_command('echohl None')
 end
 
 local log = {

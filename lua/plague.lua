@@ -1,9 +1,10 @@
--- Utilities
 local display = require('display')
 local git     = require('git')
 local jobs    = require('jobs')
 local log     = require('log')
 local util    = require('util')
+
+local api     = vim.api
 
 local function ensure_dirs(config)
   if not vim.fn.isdirectory(config.opt_dir) then
@@ -156,7 +157,7 @@ end
 local function update_helptags(plugin_dir)
   local doc_dir = util.join_paths(plugin_dir, 'doc')
   if helptags_stale(doc_dir) then
-    vim.api.nvim_command('silent! helptags ' .. vim.fn.fnameescape(doc_dir))
+    api.nvim_command('silent! helptags ' .. vim.fn.fnameescape(doc_dir))
   end
 end
 
@@ -219,7 +220,7 @@ local function fix_plugin_type(plugin)
   -- NOTE: If we stored all plugins somewhere off-package-path and used symlinks to put them in the
   -- right directories, this could be lighter-weight
   local move = util.is_windows and 'move' or 'mv'
-  vim.api.nvim_command('silent! !' .. move .. ' ' .. from .. ' ' .. to)
+  api.nvim_command('silent! !' .. move .. ' ' .. from .. ' ' .. to)
 end
 
 local function fix_plugin_types(plugin_names)
