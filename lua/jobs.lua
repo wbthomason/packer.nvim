@@ -1,92 +1,101 @@
--- Interface with Neovim job control and provide a simple job sequencing monad
+-- Interface with Neovim job control and provide a simple job sequencing structure
 
 local jobs = {}
 local loop = vim.loop
 
-local job_mt = {
+local job_mt = {}
+job_mt = {
+  and_then = function(self, next_job)
+    -- Run the next job if the previous job succeeded
+    next_job.first  = self.first or self
+    -- TODO: Need to make this a function that runs next only on success, else chains to the next
+    -- next, etc.
+    local next_success = setmetatable({}, job_mt)
+    self.on_success = next_job
+    return next_job
+  end,
+
   __mul = function(prev, next_job)
-    -- Roughly the "And" operator; runs the next job if the previous job succeeded
-    next_job.first  = prev.first or prev
-    prev.on_success = next_job
+    return prev:and_then(next_job)
+  end,
+
+  or_else = function(self, next_job)
+    -- Run the next job if the previous job failed
+    next_job.first = self.first or self
+    self.on_failure = next_job
     return next_job
   end,
 
   __add = function(prev, next_job)
-    -- Roughly the "Or" operator; runs the next job if the previous job failed
-    next_job.first = prev.first or prev
-    prev.on_failure = next_job
-    return next_job
+    return prev:or_else(next_job)
   end,
 
   start = function(self)
-    self.job = self.first or self
-    self:run(self.job)
+    local job = self.first or self
+    job:__run()
   end,
 
-  run = function(self, job)
-    if job.before then
-      job.before()
+  __run = function(self)
+    if self.before then
+      self.before()
     end
 
     local stdout = nil
     local stderr = nil
-    if job.callbacks.stdout then
+    if self.callbacks.stdout then
       stdout = loop.new_pipe(false)
     end
 
-    if job.callbacks.stderr then
+    if self.callbacks.stderr then
       stderr = loop.new_pipe(false)
     end
 
     local handle = nil
-    handle = loop.spawn(job.task.cmd, {
-      args = job.task.args,
+    handle = loop.spawn(self.task.cmd, {
+      args = self.task.args,
       stdio = { stdout, stderr },
       hide = true
     },
-    vim.schedule_wrap(
-      function(exit_code, signal)
-        if stdout then
-          stdout:read_stop()
-          stdout:close()
-        end
+    function(exit_code, signal)
+      if stdout then
+        stdout:read_stop()
+        stdout:close()
+      end
 
-        if stderr then
-          stderr:read_stop()
-          stderr:close()
-        end
+      if stderr then
+        stderr:read_stop()
+        stderr:close()
+      end
 
-        handle:close()
-        self:exit(exit_code, signal)
-      end))
+      handle:close()
+      self:__exit(exit_code, signal)
+    end)
 
     if stdout then
-      loop.read_start(stdout, job.callbacks.stdout)
+      loop.read_start(stdout, self.callbacks.stdout)
     end
 
     if stderr then
-      loop.read_start(stderr, job.callbacks.stderr)
+      loop.read_start(stderr, self.callbacks.stderr)
     end
   end,
 
-  exit = function(self, exit_code, signal)
-    local success = self.job.callbacks.exit(exit_code, signal)
-    if self.job.after then
-      self.job.after(success)
+  __exit = function(self, exit_code, signal)
+    local success = self.callbacks.exit(exit_code, signal)
+    if self.after then
+      self.after(success)
     end
 
-    if success and self.job.on_success then
-      self.job = self.job.on_success
-      self:run(self.job)
-    elseif not success and self.job.on_failure then
-      self.job = self.job.on_failure
-      self:run(self.job)
+    if success and self.on_success then
+      self.on_success:run()
+    elseif not success and self.on_failure then
+      self.job.on_failure:run()
     else
-      self:done()
+      self:__done()
     end
   end,
 
-  done = function(self)
+  __done = function(self)
     self.ctx:job_done(self)
   end
 }
