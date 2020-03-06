@@ -8,10 +8,14 @@ job_mt = {
   and_then = function(self, next_job)
     -- Run the next job if the previous job succeeded
     next_job.first  = self.first or self
-    -- TODO: Need to make this a function that runs next only on success, else chains to the next
-    -- next, etc.
-    local next_success = setmetatable({}, job_mt)
-    self.on_success = next_job
+    self.next = function(success)
+      if success then
+        next_job:__run()
+      elseif next_job.next then
+          next_job.next(success)
+      end
+    end
+
     return next_job
   end,
 
@@ -22,8 +26,13 @@ job_mt = {
   or_else = function(self, next_job)
     -- Run the next job if the previous job failed
     next_job.first = self.first or self
-    self.on_failure = next_job
-    return next_job
+    self.next = function(success)
+      if not success then
+        next_job:__run()
+      elseif next_job.next then
+          next_job.next(success)
+      end
+    end
   end,
 
   __add = function(prev, next_job)
