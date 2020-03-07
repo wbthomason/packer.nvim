@@ -25,7 +25,6 @@ local config_defaults = {
   plugin_package = 'packer',
   max_jobs       = nil,
   auto_clean     = false,
-  compile_vim    = true,
   git_cmd        = 'git',
   git_commands = {
     update        = '-C %s pull --quiet --ff-only',
@@ -37,7 +36,12 @@ local config_defaults = {
     diff_fmt      = '%h <<<<%D>>>> %s (%cr)'
   },
   depth       = 1,
-  display_cmd = '45vsplit'
+  -- This can be a function that returns a window and buffer ID pair
+  display_fn  = nil,
+  display_cmd = '45vsplit',
+  working_sym = '🔄',
+  error_sym = '❌',
+  done_sym = '✅'
 }
 
 local config    = {}
@@ -58,6 +62,7 @@ packer.init = function(user_config)
   config.start_dir = util.join_paths(config.pack_dir, 'start')
   ensure_dirs(config)
   git.set_config(config.git_cmd, config.git_commands, config.package_root, config.plugin_package)
+  display.set_config(config.working_sym, config.done_sym, config.error_sym)
 end
 
 local function setup_installer(plugin)
@@ -83,10 +88,26 @@ end
 packer.use = function(plugin)
   local path = plugin[1]
   local name = util.slice(path, string.find(path, '/%S$'))
-  setup_installer(plugin)
+  plugin.name = name
   plugin.path = path
+  -- Some config keys modify a plugin type
+  if plugin.defer or plugin.after or plugin.cmds or plugin.fts or plugin.bind or plugin.event or plugin.cond then
+    plugin.opt = true
+  end
+
+  setup_installer(plugin)
   plugins[name] = plugin
-  -- TODO: Process keys that may change plugin type or add other plugins
+
+  if plugin.requires then
+    for _, req_path in ipairs(plugin.requires) do
+      local req_name = util.slice(req_path, string.find(req_path, '/%S$'))
+      if not plugins[req_name] then
+        local requirement = { req_path, path = req_path, name = req_name }
+        setup_installer(requirement)
+        plugins[req_name] = requirement
+      end
+    end
+  end
 end
 
 local function list_installed_plugins()
@@ -129,7 +150,7 @@ end
 
 local function plugin_missing(plugin_name, start_plugins, opt_plugins)
   local plugin = plugins[plugin_name]
-  if plugin.type == 'start' then
+  if not plugin.opt then
     return vim.tbl_contains(start_plugins, util.join_paths(config.start_dir, plugin_name))
   else
     return vim.tbl_contains(opt_plugins, util.join_paths(config.opt_dir, plugin_name))
@@ -167,7 +188,7 @@ local function install_plugin(plugin, display_win, job_ctx)
     display_win:task_start(plugin_name, 'Installing')
     local installer_job = plugin.installer(display_win, job_ctx)
     -- TODO: This will have to change when multiple packages are added
-    local install_path = util.join_paths(config.pack_dir, plugin.type, plugin.name)
+    local install_path = util.join_paths(config.pack_dir, plugin.opt and 'opt' or 'start', plugin.name)
     installer_job.after = function(result) if result then update_helptags(install_path) end end
     job_ctx:start(installer_job)
   end
@@ -197,20 +218,20 @@ end
 local function get_plugin_status(plugin_name, start_plugins, opt_plugins)
   local status = {}
   local plugin = plugins[plugin_name]
-  status.wrong_type = (plugin.type == 'start' and vim.tbl_contains(opt_plugins, util.join_paths(config.opt_dir, plugin_name))) or
-    (plugin.type == 'opt' and vim.tbl_contains(start_plugins, util.join_paths(config.start_dir, plugin_name)))
+  status.wrong_type = (plugin.opt and vim.tbl_contains(start_plugins, util.join_paths(config.start_dir, plugin_name))) or
+    (vim.tbl_contains(opt_plugins, util.join_paths(config.opt_dir, plugin_name)))
   return status
 end
 
 local function fix_plugin_type(plugin)
   local from = nil
   local to = nil
-  if plugin.type == 'start' then
-    from = util.join_paths(config.opt_dir, plugin.name)
-    to   = util.join_paths(config.start_dir, plugin.name)
-  else
+  if plugin.opt then
     from = util.join_paths(config.start_dir, plugin.name)
     to   = util.join_paths(config.opt_dir, plugin.name)
+  else
+    from = util.join_paths(config.opt_dir, plugin.name)
+    to   = util.join_paths(config.start_dir, plugin.name)
   end
 
   -- NOTE: If we stored all plugins somewhere off-package-path and used symlinks to put them in the
@@ -226,7 +247,7 @@ local function fix_plugin_types(plugin_names)
   for _, v in ipairs(plugin_names) do
     local plugin = plugins[v]
     -- TODO: This will have to change when separate packages are implemented
-    local install_dir = util.join_paths((plugin.type == 'start') and config.start_dir or config.opt_dir, plugin.name)
+    local install_dir = util.join_paths(plugin.opt and config.opt_dir or config.start_dir, plugin.name)
     if not vim.fn.isdirectory(install_dir) then
       fix_plugin_type(plugin)
     end
@@ -243,7 +264,7 @@ local function update_plugin(plugin, status, display_win, job_ctx)
     if status.wrong_type then
       updater_job.before = fix_plugin_type(plugin)
     end
-    local install_path = util.join_paths(config.pack_dir, plugin.type, plugin.name)
+    local install_path = util.join_paths(config.pack_dir, plugin.opt and 'opt' or 'start', plugin.name)
     updater_job.after = function(result) if result then update_helptags(install_path) end end
     job_ctx:start(updater_job)
   end
@@ -266,6 +287,8 @@ packer.update = function(...)
     local plugin_status = get_plugin_status(v, start_plugins, opt_plugins)
     update_plugin(plugins[v], plugin_status, display_win, job_ctx)
   end
+
+  -- TODO: Record count of updated plugins when everything is done, display
 end
 
 packer.sync = function(...)
@@ -283,7 +306,7 @@ packer.sync = function(...)
 end
 
 packer.save = function(output_path)
-  local compiled_loader = config.compile_vim and compile.to_vim(plugins) or compile.to_lua(plugins)
+  local compiled_loader = compile.to_vim(plugins)
   vim.fn.mkdir(vim.fn.fnamemodify(output_path, ":h"), 'p')
   local output_file = io.open(output_path, 'w')
   output_file:write(compiled_loader)

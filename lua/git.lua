@@ -52,7 +52,7 @@ git.make_installer = function(plugin)
     base_dir = config.default_base_dir
   end
 
-  base_dir = util.join_paths(base_dir, plugin.type)
+  base_dir = util.join_paths(base_dir, plugin.opt and 'opt' or 'start')
   local install_to = util.join_paths(base_dir, plugin.name)
   local git_prefix = config.git .. ' '
   local install_cmd = git_prefix .. vim.fn.printf(config.cmds.install, plugin.url, install_to)
@@ -62,6 +62,8 @@ git.make_installer = function(plugin)
 
   plugin.installer = branch_aware_install(plugin, install_cmd, install_to, needs_checkout)
   local update_cmd = git_prefix .. vim.fn.printf(config.cmds.update, install_to)
+  -- TODO: The updater should determine if the plugin was actually updated or not and fetch the
+  -- relevant commit messages
   plugin.updater = branch_aware_install(plugin, update_cmd, install_to, needs_checkout)
 end
 
