@@ -3,6 +3,7 @@ local git     = require('git')
 local jobs    = require('jobs')
 local log     = require('log')
 local util    = require('util')
+local compile = require('compile')
 
 local api     = vim.api
 
@@ -24,6 +25,7 @@ local config_defaults = {
   plugin_package = 'packer',
   max_jobs       = nil,
   auto_clean     = false,
+  compile_vim    = true,
   git_cmd        = 'git',
   git_commands = {
     update        = '-C %s pull --quiet --ff-only',
@@ -109,10 +111,13 @@ packer.clean = function(...)
         end,
         plugin_list)
     end
-    vim.list_extend(dirty_plugins, find_unused(opt_plugins), find_unused(start_plugins))
+
+    vim.list_extend(dirty_plugins, find_unused(opt_plugins))
+    vim.list_extend(dirty_plugins, find_unused(start_plugins))
   end
 
   if #dirty_plugins > 0 then
+    -- TODO: Use a prettier display, like vim-packager, for this
     log.info(table.concat(dirty_plugins, ', '))
     if vim.fn.input('Removing the above directories. OK? [y/N]') == 'y' then
       return os.execute('rm -rf ' .. table.concat(dirty_plugins, ' '))
@@ -128,14 +133,6 @@ local function plugin_missing(plugin_name, start_plugins, opt_plugins)
     return vim.tbl_contains(start_plugins, util.join_paths(config.start_dir, plugin_name))
   else
     return vim.tbl_contains(opt_plugins, util.join_paths(config.opt_dir, plugin_name))
-  end
-end
-
-local function opposite_type(plugin_type)
-  if plugin_type == 'start' then
-    return 'opt'
-  else
-    return 'start'
   end
 end
 
@@ -163,10 +160,13 @@ end
 
 local function install_plugin(plugin, display_win, job_ctx)
   if plugin.installer == 'local' then
+    -- TODO: Should local plugins be symlinked or copied or something?
     update_helptags(plugin.path)
   else
-    display_win:task_start(plugin.name, 'Installing')
+    local plugin_name = util.get_plugin_full_name(plugin)
+    display_win:task_start(plugin_name, 'Installing')
     local installer_job = plugin.installer(display_win, job_ctx)
+    -- TODO: This will have to change when multiple packages are added
     local install_path = util.join_paths(config.pack_dir, plugin.type, plugin.name)
     installer_job.after = function(result) if result then update_helptags(install_path) end end
     job_ctx:start(installer_job)
@@ -199,10 +199,6 @@ local function get_plugin_status(plugin_name, start_plugins, opt_plugins)
   local plugin = plugins[plugin_name]
   status.wrong_type = (plugin.type == 'start' and vim.tbl_contains(opt_plugins, util.join_paths(config.opt_dir, plugin_name))) or
     (plugin.type == 'opt' and vim.tbl_contains(start_plugins, util.join_paths(config.start_dir, plugin_name)))
-  local plugin_type = status.wrong_type and opposite_type(plugin.type) or plugin.type
-  status.wrong_branch = plugin.branch and (plugin.branch ~= git.get_branch(plugin, plugin_type))
-  status.wrong_rev = plugin.rev and (plugin.rev ~= git.get_rev(plugin, plugin_type))
-
   return status
 end
 
@@ -219,8 +215,10 @@ local function fix_plugin_type(plugin)
 
   -- NOTE: If we stored all plugins somewhere off-package-path and used symlinks to put them in the
   -- right directories, this could be lighter-weight
-  local move = util.is_windows and 'move' or 'mv'
-  api.nvim_command('silent! !' .. move .. ' ' .. from .. ' ' .. to)
+  local success, msg = os.rename(from, to)
+  if not success then
+    log.error('Failed to move ' .. from .. ' to ' .. to .. ': ' .. msg)
+  end
 end
 
 local function fix_plugin_types(plugin_names)
@@ -239,7 +237,8 @@ local function update_plugin(plugin, status, display_win, job_ctx)
   if plugin.installer_type == 'local' then
     update_helptags(plugin.path)
   else
-    display_win:task_start(plugin.name, 'Updating')
+    local plugin_name = util.get_plugin_full_name(plugin)
+    display_win:task_start(plugin_name, 'Updating')
     local updater_job = plugin.updater(status, display_win, job_ctx)
     if status.wrong_type then
       updater_job.before = fix_plugin_type(plugin)
@@ -283,12 +282,12 @@ packer.sync = function(...)
   return packer.update(unpack(sync_plugins))
 end
 
-local function compile_config()
--- TODO
-end
-
 packer.save = function(output_path)
--- TODO
+  local compiled_loader = config.compile_vim and compile.to_vim(plugins) or compile.to_lua(plugins)
+  vim.fn.mkdir(vim.fn.fnamemodify(output_path, ":h"), 'p')
+  local output_file = io.open(output_path, 'w')
+  output_file:write(compiled_loader)
+  output_file:close()
 end
 
 packer.config = config

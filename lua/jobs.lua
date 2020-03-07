@@ -5,14 +5,20 @@ local loop = vim.loop
 
 local job_mt = {}
 job_mt = {
+  -- TODO: It would probably be nice to allow raw tables to be passed here and construct a job in
+  -- the right context if needed
   and_then = function(self, next_job)
     -- Run the next job if the previous job succeeded
     next_job.first  = self.first or self
-    self.next = function(success)
+    self.next = function(success, data)
       if success then
-        next_job:__run()
+        next_job:__run(data)
       elseif next_job.next then
-          next_job.next(success)
+        next_job.next(success, data)
+      elseif next_job.finally then
+        -- This means the next job is the last link in the chain,is not supposed to run on success,
+        -- and has a "chain-ender" function to run
+        next_job.finally(success)
       end
     end
 
@@ -26,11 +32,15 @@ job_mt = {
   or_else = function(self, next_job)
     -- Run the next job if the previous job failed
     next_job.first = self.first or self
-    self.next = function(success)
+    self.next = function(success, data)
       if not success then
-        next_job:__run()
+        next_job:__run(data)
       elseif next_job.next then
-          next_job.next(success)
+        next_job.next(success, data)
+      elseif next_job.finally then
+        -- This means the next job is the last link in the chain,is not supposed to run on success,
+        -- and has a "chain-ender" function to run
+        next_job.finally(success)
       end
     end
   end,
@@ -44,9 +54,9 @@ job_mt = {
     job:__run()
   end,
 
-  __run = function(self)
+  __run = function(self, data)
     if self.before then
-      self.before()
+      self.before(data)
     end
 
     local stdout = nil
@@ -65,6 +75,7 @@ job_mt = {
       stdio = { stdout, stderr },
       hide = true
     },
+
     function(exit_code, signal)
       if stdout then
         stdout:read_stop()
@@ -90,14 +101,19 @@ job_mt = {
   end,
 
   __exit = function(self, exit_code, signal)
-    local success = self.callbacks.exit(exit_code, signal)
+    local success = self.callbacks.exit and self.callbacks.exit(exit_code, signal) or (exit_code == 0)
+    local data = nil
     if self.after then
-      self.after(success)
+      data = self.after(success)
     end
 
     if self.next then
-      self.next(success)
+      self.next(success, data)
     else
+      if self.finally then
+        self.finally(success, data)
+      end
+
       self:__done()
     end
   end,
@@ -113,6 +129,10 @@ function Context:new_job(job_data)
   job_data  = job_data or {}
   local job = setmetatable(job_data, job_mt)
   job.ctx   = self
+  if not job.callbacks then
+    job.callbacks = {}
+  end
+
   return job
 end
 
@@ -127,7 +147,7 @@ function Context:start(job)
 end
 
 function Context:job_done(job)
-  self.jobs[job.idx] = nil
+  self.jobs[job.id] = nil
   if #self.jobs == 0 then
     self:all_done()
   else
@@ -147,7 +167,7 @@ end
 jobs.new = function(max_jobs, after_done)
   local ctx             = setmetatable({}, { __index = Context })
   ctx.queue             = {}
-  ctx.max_jobs          = max_jobs
+  ctx.max_jobs          = max_jobs or math.huge
   ctx.jobs              = {}
   ctx.after_done        = after_done
   return ctx

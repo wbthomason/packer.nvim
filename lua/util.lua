@@ -127,4 +127,17 @@ util.join_paths = function(...)
   return result
 end
 
+util.get_plugin_full_name = function(plugin)
+  local plugin_name = plugin.name
+  if plugin.branch then
+    plugin_name = plugin_name .. ':' .. plugin.branch
+  end
+
+  if plugin.rev then
+    plugin_name = plugin_name .. '@' .. plugin.rev
+  end
+
+  return plugin_name
+end
+
 return util
