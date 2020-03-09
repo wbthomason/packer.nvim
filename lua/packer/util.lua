@@ -44,15 +44,14 @@ end
 
 util.fold = function(func, seq, init)
   local acc = init or seq[1]
-  do
-    if init == nil then
-      seq = util.tail(seq)
-    end
-
-    for _, v in ipairs(seq) do
-      acc = func(acc, v)
-    end
+  if init == nil then
+    seq = util.tail(seq)
   end
+
+  for _, v in ipairs(seq) do
+    acc = func(acc, v)
+  end
+
   return acc
 end
 
@@ -72,6 +71,7 @@ util.filter = function(func, seq)
     if func(val) then
       table.insert(acc, val)
     end
+
     return acc
   end
 
@@ -118,9 +118,10 @@ end
 
 util.join_paths = function(...)
   local args = {...}
-  local result = ''
+  local result = args[1]
   local separator = get_separator()
-  for _, segment in ipairs(args) do
+  for idx = 2, #args do
+    local segment = args[idx]
     result = result .. separator .. segment
   end
 

@@ -1,18 +1,18 @@
-local display = require('display')
-local git     = require('git')
-local jobs    = require('jobs')
-local log     = require('log')
-local util    = require('util')
-local compile = require('compile')
+local display = require('packer/display')
+local git     = require('packer/git')
+local jobs    = require('packer/jobs')
+local log     = require('packer/log')
+local util    = require('packer/util')
+local compile = require('packer/compile')
 
 local api     = vim.api
 
 local function ensure_dirs(config)
-  if not vim.fn.isdirectory(config.opt_dir) then
+  if vim.fn.isdirectory(config.opt_dir) == 0 then
     vim.fn.mkdir(config.opt_dir, 'p')
   end
 
-  if not vim.fn.isdirectory(config.start_dir) then
+  if vim.fn.isdirectory(config.start_dir) == 0 then
     vim.fn.mkdir(config.start_dir, 'p')
   end
 end
@@ -55,8 +55,10 @@ local plugins = nil
 
 -- Initialize any customizations and the plugin table
 packer.init = function(user_config)
+  user_config = user_config or {}
   vim.tbl_extend('force', config, user_config)
   plugins = {}
+  config.package_root = vim.fn.fnamemodify(config.package_root, ':p')
   config.pack_dir = util.join_paths(config.package_root, config.plugin_package)
   config.opt_dir = util.join_paths(config.pack_dir, 'opt')
   config.start_dir = util.join_paths(config.pack_dir, 'start')
@@ -68,26 +70,26 @@ end
 local function setup_installer(plugin)
   if plugin.installer then
     plugin.installer_type = 'custom'
-  elseif vim.fn.isdirectory(plugin.path) then
+  elseif vim.fn.isdirectory(plugin.path) ~= 0 then
     plugin.installer_type = 'local'
     plugin.url = plugin.path
   elseif util.slice(plugin.path, 1, 6) == 'git://' or
     util.slice(plugin.path, 1, 4) == 'http' or
-    string.match(plugin.path '@') then
+    string.match(plugin.path, '@') then
     plugin.url = plugin.path
     plugin.installer_type = 'git'
-    git.make_git_installer(plugin)
+    git.make_installer(plugin)
   else
     plugin.url = 'https://github.com/' .. plugin.path
     plugin.installer_type = 'git'
-    git.make_git_installer(plugin)
+    git.make_installer(plugin)
   end
 end
 
 -- Add a plugin to the managed set
 packer.use = function(plugin)
   local path = plugin[1]
-  local name = util.slice(path, string.find(path, '/%S$'))
+  local name = string.sub(path, string.find(path, '/%S+$') + 1)
   plugin.name = name
   plugin.path = path
   -- Some config keys modify a plugin type
@@ -148,12 +150,14 @@ packer.clean = function(...)
   end
 end
 
-local function plugin_missing(plugin_name, start_plugins, opt_plugins)
-  local plugin = plugins[plugin_name]
-  if not plugin.opt then
-    return vim.tbl_contains(start_plugins, util.join_paths(config.start_dir, plugin_name))
-  else
-    return vim.tbl_contains(opt_plugins, util.join_paths(config.opt_dir, plugin_name))
+local function plugin_missing(opt_plugins, start_plugins)
+  return function(plugin_name)
+    local plugin = plugins[plugin_name]
+    if not plugin.opt then
+      return not vim.tbl_contains(start_plugins, util.join_paths(config.start_dir, plugin_name))
+    else
+      return not vim.tbl_contains(opt_plugins, util.join_paths(config.opt_dir, plugin_name))
+    end
   end
 end
 
@@ -180,7 +184,7 @@ local function update_helptags(plugin_dir)
 end
 
 local function install_plugin(plugin, display_win, job_ctx)
-  if plugin.installer == 'local' then
+  if plugin.installer_type == 'local' then
     -- TODO: Should local plugins be symlinked or copied or something?
     update_helptags(plugin.path)
   else
@@ -210,9 +214,16 @@ local function install_helper(missing_plugins)
 end
 
 packer.install = function(...)
-  local install_plugins = args_or_all(...)
-  local missing_plugins = util.filter(plugin_missing, install_plugins)
-  install_helper(missing_plugins)
+  local install_plugins = nil
+  if ... then
+    install_plugins = {...}
+  else
+    local opt_plugins, start_plugins = list_installed_plugins()
+    install_plugins = util.filter(plugin_missing(opt_plugins, start_plugins), vim.tbl_keys(plugins))
+  end
+
+  install_helper(install_plugins)
+  log.info('Install done for ' .. vim.inspect(install_plugins))
 end
 
 local function get_plugin_status(plugin_name, start_plugins, opt_plugins)
@@ -248,7 +259,7 @@ local function fix_plugin_types(plugin_names)
     local plugin = plugins[v]
     -- TODO: This will have to change when separate packages are implemented
     local install_dir = util.join_paths(plugin.opt and config.opt_dir or config.start_dir, plugin.name)
-    if not vim.fn.isdirectory(install_dir) then
+    if vim.fn.isdirectory(install_dir) == 0 then
       fix_plugin_type(plugin)
     end
   end
@@ -272,8 +283,8 @@ end
 
 packer.update = function(...)
   local update_plugins = args_or_all(...)
-  local missing_plugins, installed_plugins = util.partition(plugin_missing, update_plugins)
   local opt_plugins, start_plugins = list_installed_plugins()
+  local missing_plugins, installed_plugins = util.partition(plugin_missing(opt_plugins, start_plugins), update_plugins)
   local display_win, job_ctx = install_helper(missing_plugins)
   if display_win == nil then
     display_win = display.open(config.display_fn or config.display_cmd)
@@ -293,7 +304,8 @@ end
 
 packer.sync = function(...)
   local sync_plugins         = args_or_all(...)
-  local _, installed_plugins = util.partition(plugin_missing, sync_plugins)
+  local opt_plugins, start_plugins = list_installed_plugins()
+  local _, installed_plugins = util.partition(plugin_missing(opt_plugins, start_plugins), sync_plugins)
 
   -- Move any plugins with changed types
   fix_plugin_types(installed_plugins)

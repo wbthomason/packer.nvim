@@ -1,5 +1,5 @@
 -- Compiling plugin specifications to Vimscript/Lua for lazy-loading
-local util = require('util')
+local util = require('packer/util')
 local compile = {}
 
 -- Allowed keys:
@@ -46,6 +46,12 @@ compile.to_vim = function(plugins)
   -- Command loaders
   -- Deferred loaders
   -- Sequence loaders
+
+  -- Output everything
+  local result = 'augroup packer_load_aucmds\nau!\n' .. vim.fn.join(ft_aucmds, '\n') .. vim.fn.join(event_aucmds, '\n')
+
+  result = result .. '\naugroup END'
+  return result
 end
 
 return compile

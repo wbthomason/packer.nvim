@@ -1,19 +1,16 @@
-set packpath^=~/.local/share/nvim/site
+packadd packer.nvim
 
 lua << EOF
-local p = require('plague')
-use = p.use
-sync = p.sync
-configure = p.configure
+local packer = require('packer')
+use = packer.use
 
-use { 'morhetz/gruvbox', ensure = true }
-use { 'wbthomason/vim-nazgul', ensure = true }
-use { 'tpope/vim-unimpaired', ensure = true }
+packer.init()
 
-sync()
+use { 'morhetz/gruvbox' }
+use { 'wbthomason/vim-nazgul' }
+use { 'tpope/vim-unimpaired' }
 
+packer.install()
 EOF
 
-set runtimepath
-set packpath
 " colorscheme gruvbox

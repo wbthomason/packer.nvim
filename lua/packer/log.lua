@@ -2,7 +2,7 @@ local api = vim.api
 
 local function echo_special(msg, hl)
   api.nvim_command('echohl ' .. hl)
-  api.nvim_command('echom [plague] ' .. msg)
+  api.nvim_command('echom "[packer] ' .. msg .. '"')
   api.nvim_command('echohl None')
 end
 

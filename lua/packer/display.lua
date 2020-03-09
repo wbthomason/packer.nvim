@@ -21,6 +21,8 @@ local display_mt = {
   end,
 }
 
+display_mt.__index = display_mt
+
 display.set_config = function(working_sym, done_sym, error_sym)
   config.working_sym = working_sym
   config.done_sym = done_sym
@@ -38,7 +40,7 @@ display.open = function(opener)
   end
 
   disp.marks = {}
-  disp.ns = api.nvim_create_namespace()
+  disp.ns = api.nvim_create_namespace('')
   api.nvim_set_current_line('packer.nvim')
 
   -- TODO: Set up keybindings and autocommands for update window

@@ -1,5 +1,5 @@
-local util = require('util')
-local log  = require('log')
+local util = require('packer/util')
+local log  = require('packer/log')
 
 local git = {}
 
