@@ -5,6 +5,7 @@ local log     = require('packer/log')
 local util    = require('packer/util')
 local compile = require('packer/compile')
 
+local vim = vim
 local api     = vim.api
 
 local function ensure_dirs(config)
@@ -227,7 +228,6 @@ packer.install = function(...)
   end
 
   install_helper(install_plugins)
-  log.info('Install done for ' .. vim.inspect(install_plugins))
 end
 
 local function get_plugin_status(plugin_name, start_plugins, opt_plugins)
