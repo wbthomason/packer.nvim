@@ -275,12 +275,16 @@ local function update_plugin(plugin, status, display_win, job_ctx)
   else
     local plugin_name = util.get_plugin_full_name(plugin)
     display_win:task_start(plugin_name, 'Updating')
-    local updater_job = plugin.updater(status, display_win, job_ctx)
+    local updater_job = plugin.updater(display_win, job_ctx, status)
     if status.wrong_type then
       updater_job.before = fix_plugin_type(plugin)
     end
     local install_path = util.join_paths(config.pack_dir, plugin.opt and 'opt' or 'start', plugin.name)
-    updater_job.after = function(result) if result then update_helptags(install_path) end end
+    updater_job.after = vim.schedule_wrap(function(result)
+      if result then
+        update_helptags(install_path)
+      end
+    end)
     job_ctx:start(updater_job)
   end
 end
