@@ -1,8 +1,8 @@
 -- Interface with Neovim job control and provide a simple job sequencing structure
-
-local jobs = {}
+local vim = vim
 local loop = vim.loop
 
+local jobs = {}
 local job_mt = {
   -- TODO: It would probably be nice to allow raw tables to be passed here and construct a job in
   -- the right context if needed
@@ -69,17 +69,13 @@ local job_mt = {
     end
 
     local handle = nil
-    local cmd = nil
-    local args = nil
     if type(self.task) == 'string' then
-      -- NOTE: We could call vim.fn.split here to maintain perfect compatibility
       local split_pattern = "%s+"
-      local shell_cmd = vim.list_extend(vim.split(vim.o.shell, split_pattern), vim.split(vim.o.shellcmdflag, split_pattern))
-      self.task = vim.list_extend(shell_cmd, {'"' .. self.task .. '"'})
+      self.task = vim.split(self.task, split_pattern)
     end
 
-    cmd = self.task[1]
-    args = unpack(self.task, 2)
+    local cmd = self.task[1]
+    local args = { unpack(self.task, 2) }
 
     handle = loop.spawn(cmd, {
       args = args,
