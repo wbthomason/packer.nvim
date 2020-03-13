@@ -58,7 +58,7 @@ packer.init = function(user_config)
   user_config = user_config or {}
   vim.tbl_extend('force', config, user_config)
   plugins = {}
-  config.package_root = vim.fn.fnamemodify(config.package_root, ':p')
+  config.package_root = vim.fn.fnamemodify(config.package_root, ':p:h')
   config.pack_dir = util.join_paths(config.package_root, config.plugin_package)
   config.opt_dir = util.join_paths(config.pack_dir, 'opt')
   config.start_dir = util.join_paths(config.pack_dir, 'start')
