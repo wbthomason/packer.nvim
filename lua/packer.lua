@@ -38,7 +38,7 @@ local config_defaults = {
   depth       = 1,
   -- This can be a function that returns a window and buffer ID pair
   display_fn  = nil,
-  display_cmd = '45vsplit',
+  display_cmd = '45vnew',
   working_sym = '🔄',
   error_sym = '❌',
   done_sym = '✅'
