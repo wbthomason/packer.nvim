@@ -120,30 +120,26 @@ local function list_installed_plugins()
 end
 
 -- Find and remove any plugins not currently configured for use
-packer.clean = function(...)
-  local dirty_plugins = {}
-  if ... then
-    dirty_plugins = {...}
-  else
-    local opt_plugins, start_plugins = list_installed_plugins()
-    local function find_unused(plugin_list)
-      return util.filter(
-        function(plugin_path)
-          local plugin_name = vim.fn.fnamemodify(plugin_path, ":t")
-          local plugin_data = plugins[plugin_name]
-          return (plugin_data == nil) or (plugin_data.disable)
-        end,
-        plugin_list)
-    end
-
-    vim.list_extend(dirty_plugins, find_unused(opt_plugins))
-    vim.list_extend(dirty_plugins, find_unused(start_plugins))
+packer.clean = function()
+  local opt_plugins, start_plugins = list_installed_plugins()
+  local function find_unused(plugin_list)
+    return util.filter(
+      function(plugin_path)
+        local plugin_name = vim.fn.fnamemodify(plugin_path, ":t")
+        local plugin_data = plugins[plugin_name]
+        return (plugin_data == nil) or (plugin_data.disable)
+      end,
+      plugin_list)
   end
+
+  local dirty_plugins = {}
+  vim.list_extend(dirty_plugins, find_unused(opt_plugins))
+  vim.list_extend(dirty_plugins, find_unused(start_plugins))
 
   if #dirty_plugins > 0 then
     -- TODO: Use a prettier display, like vim-packager, for this
     log.info(table.concat(dirty_plugins, ', '))
-    if vim.fn.input('Removing the above directories. OK? [y/N]') == 'y' then
+    if vim.fn.input('Removing the above directories. OK? [y/N] ') == 'y' then
       return os.execute('rm -rf ' .. table.concat(dirty_plugins, ' '))
     end
   else
@@ -207,11 +203,12 @@ local function install_helper(missing_plugins)
   local display_win = nil
   local job_ctx = nil
   if #missing_plugins > 0 then
-    log.info('Installing ' .. #missing_plugins .. ' plugins')
     display_win = display.open(config.display_fn or config.display_cmd)
     job_ctx = jobs.new(config.max_jobs)
     for _, v in ipairs(missing_plugins) do
-      install_plugin(plugins[v], display_win, job_ctx)
+      if not plugins[v].disable then
+        install_plugin(plugins[v], display_win, job_ctx)
+      end
     end
   end
 
@@ -319,7 +316,7 @@ packer.sync = function(...)
   fix_plugin_types(installed_plugins)
 
   -- Remove any unused plugins
-  packer.clean(unpack(sync_plugins))
+  packer.clean()
 
   -- Finally, update the rest
   return packer.update(unpack(sync_plugins))
