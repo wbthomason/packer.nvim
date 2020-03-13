@@ -117,15 +117,8 @@ local function get_separator()
 end
 
 util.join_paths = function(...)
-  local args = {...}
-  local result = args[1]
   local separator = get_separator()
-  for idx = 2, #args do
-    local segment = args[idx]
-    result = result .. separator .. segment
-  end
-
-  return result
+  return table.concat({...}, separator)
 end
 
 util.get_plugin_full_name = function(plugin)
