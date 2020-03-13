@@ -193,7 +193,11 @@ local function install_plugin(plugin, display_win, job_ctx)
     local installer_job = plugin.installer(display_win, job_ctx)
     -- TODO: This will have to change when multiple packages are added
     local install_path = util.join_paths(config.pack_dir, plugin.opt and 'opt' or 'start', plugin.name)
-    installer_job.after = function(result) if result then update_helptags(install_path) end end
+    installer_job.after = vim.schedule_wrap(function(result)
+      if result then
+        update_helptags(install_path)
+      end
+    end)
     job_ctx:start(installer_job)
   end
 end
