@@ -1,3 +1,4 @@
+nmap <space>q :qa!<cr>
 packadd packer.nvim
 
 lua << EOF

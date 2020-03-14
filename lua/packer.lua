@@ -1,3 +1,11 @@
+-- TODO: Allow separate packages
+-- TODO: Post-operation hooks
+-- TODO: Fix final_results callers
+-- TODO: Update remote plugins
+-- TODO: Collect and optionally display stdout and stderr
+-- TODO: Plugin details display?
+-- TODO: Show count remaining in top status
+-- TODO: Log stages but not events
 local display = require('packer/display')
 local git     = require('packer/git')
 local jobs    = require('packer/jobs')
@@ -39,10 +47,12 @@ local config_defaults = {
   depth       = 1,
   -- This can be a function that returns a window and buffer ID pair
   display_fn  = nil,
-  display_cmd = '45vnew',
+  display_cmd = '45vnew [packer]',
   working_sym = '🔄',
   error_sym = '❌',
-  done_sym = '✅'
+  done_sym = '✅',
+  removed_sym = '⮾',
+  header_sym = '━'
 }
 
 local config    = {}
@@ -65,7 +75,7 @@ packer.init = function(user_config)
   config.start_dir = util.join_paths(config.pack_dir, 'start')
   ensure_dirs(config)
   git.set_config(config.git_cmd, config.git_commands, config.package_root, config.plugin_package)
-  display.set_config(config.working_sym, config.done_sym, config.error_sym)
+  display.set_config(config.working_sym, config.done_sym, config.error_sym, config.removed_sym, config.header_sym)
 end
 
 local function setup_installer(plugin)
@@ -199,12 +209,18 @@ local function install_plugin(plugin, display_win, job_ctx)
   end
 end
 
-local function install_helper(missing_plugins)
+local function install_helper(missing_plugins, start_time)
   local display_win = nil
   local job_ctx = nil
   if #missing_plugins > 0 then
     display_win = display.open(config.display_fn or config.display_cmd)
-    job_ctx = jobs.new(config.max_jobs)
+    job_ctx = jobs.new(config.max_jobs, vim.schedule_wrap(
+      function()
+        local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
+        display_win:final_results(missing_plugins, nil, nil, delta)
+      end
+    )
+    )
     for _, v in ipairs(missing_plugins) do
       if not plugins[v].disable then
         install_plugin(plugins[v], display_win, job_ctx)
@@ -216,6 +232,7 @@ local function install_helper(missing_plugins)
 end
 
 packer.install = function(...)
+  local start_time = vim.fn.reltime()
   local install_plugins = nil
   if ... then
     install_plugins = {...}
@@ -224,7 +241,7 @@ packer.install = function(...)
     install_plugins = util.filter(plugin_missing(opt_plugins, start_plugins), vim.tbl_keys(plugins))
   end
 
-  install_helper(install_plugins)
+  install_helper(install_plugins, start_time)
 end
 
 local function get_plugin_status(plugin_name, start_plugins, opt_plugins)
@@ -287,16 +304,25 @@ local function update_plugin(plugin, status, display_win, job_ctx)
 end
 
 packer.update = function(...)
+  local start_time = vim.fn.reltime()
   local update_plugins = args_or_all(...)
   local opt_plugins, start_plugins = list_installed_plugins()
   local missing_plugins, installed_plugins = util.partition(plugin_missing(opt_plugins, start_plugins), update_plugins)
-  local display_win, job_ctx = install_helper(missing_plugins)
+  local display_win, job_ctx = install_helper(missing_plugins, start_time)
   if display_win == nil then
     display_win = display.open(config.display_fn or config.display_cmd)
   end
 
+  local updated_plugins = {}
+  local update_final_results = vim.schedule_wrap(
+    function()
+      local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
+      display_win:final_results(missing_plugins, updated_plugins, nil, delta)
+    end
+  )
+
   if job_ctx == nil then
-    job_ctx = jobs.new(config.max_jobs)
+    job_ctx = jobs.new(config.max_jobs, update_final_results)
   end
 
   for _, v in ipairs(installed_plugins) do

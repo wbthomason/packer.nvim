@@ -29,9 +29,6 @@ local function handle_checkouts(job, job_ctx, plugin, dest)
   return job
 end
 
-local function branch_aware_install(plugin, cmd, dest, needs_checkout)
-  return end
-
 git.make_installer = function(plugin)
   local needs_checkout = plugin.rev ~= nil or plugin.branch ~= nil
   local base_dir = nil
