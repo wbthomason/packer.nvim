@@ -187,11 +187,11 @@ local function clean_plugins(results)
   vim.list_extend(dirty_plugins, find_unused(start_plugins))
 
   if #dirty_plugins > 0 then
-    -- TODO: Use a prettier display, like vim-packager, for this
-    log.info(table.concat(dirty_plugins, ', '))
-    if vim.fn.input('Removing the above directories. OK? [y/N] ') == 'y' then
+    if await(display.ask_user('Removing the following directories. OK? (y/N)', dirty_plugins)) then
       results.removals = dirty_plugins
       return os.execute('rm -rf ' .. table.concat(dirty_plugins, ' '))
+    else
+      log.warning('Cleaning cancelled!')
     end
   else
     log.info("Already clean!")

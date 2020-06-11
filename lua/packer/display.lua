@@ -1,6 +1,7 @@
 local api  = vim.api
 local log  = require('packer/log')
 local util = require('packer/util')
+local a    = require('packer/async')
 
 local display = {}
 local config = {
@@ -360,5 +361,43 @@ end
 display.toggle_info = function()
   display.status.disp:toggle_info()
 end
+
+display.ask_user = a.wrap(function(headline, body, callback)
+  local buf = api.nvim_create_buf(false, true)
+  local width = math.min(65, math.floor(0.8 * vim.o.columns))
+  local height = #body + 3
+  local x = (vim.o.columns - width) / 2.0
+  local y = (vim.o.lines - height) / 2.0
+  local pad_width = math.max(math.floor((width - string.len(headline)) / 2.0), 0)
+  api.nvim_buf_set_lines(buf, 0, -1, true,
+    vim.list_extend({ string.rep(' ', pad_width) .. headline .. string.rep(' ', pad_width), '' }, body))
+  api.nvim_buf_set_option(buf, 'modifiable', false)
+  local opts = {
+    relative = 'editor',
+    width = width,
+    height = height,
+    col = x,
+    row = y,
+    focusable = false,
+    style = 'minimal'
+  }
+
+  local win = api.nvim_open_win(buf, false, opts)
+  local check = vim.loop.new_prepare()
+  local prompted = false
+  vim.loop.prepare_start(check, vim.schedule_wrap(function()
+    if not api.nvim_win_is_valid(win) then
+      return
+    end
+
+    vim.loop.prepare_stop(check)
+    if not prompted then
+      prompted = true
+      local ans = string.lower(vim.fn.input('OK to remove? [y/N] ')) == 'y'
+      api.nvim_win_close(win, true)
+      callback(ans)
+    end
+  end))
+end)
 
 return display
