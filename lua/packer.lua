@@ -342,8 +342,8 @@ local function fix_plugin_types(plugin_names, results)
   for _, v in ipairs(plugin_names) do
     local plugin = plugins[v]
     -- TODO: This will have to change when separate packages are implemented
-    local install_dir = util.join_paths(plugin.opt and config.opt_dir or config.start_dir, plugin.name)
-    if vim.fn.isdirectory(install_dir) == 0 then
+    local install_dir = util.join_paths(plugin.opt and config.start_dir or config.opt_dir, plugin.name)
+    if vim.fn.isdirectory(install_dir) == 1 then
       fix_plugin_type(plugin, results)
     end
   end
