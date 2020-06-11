@@ -2,6 +2,8 @@
 local util = require('packer/util')
 local compile = {}
 
+compile.opt_keys = { 'defer', 'after', 'cmd', 'ft', 'keys', 'event', 'cond' }
+
 -- Allowed keys:
 -- after, cmds, fts, bind, event, cond, defer, config
 compile.to_vim = function(plugins)
