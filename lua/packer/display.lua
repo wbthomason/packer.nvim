@@ -1,29 +1,30 @@
 local api  = vim.api
 local log  = require('packer/log')
-local util = require('packer/util')
 local a    = require('packer/async')
 
 local display = {}
 local config = {
   keymaps = {
-    -- TODO: Keymap to show output
     { 'n', 'q', '<cmd>lua require"packer/display".quit()<cr>', { nowait = true, silent = true } },
     { 'n', '<cr>', '<cmd>lua require"packer/display".toggle_info()<cr>', { nowait = true, silent = true } }
   }
 }
 
 local display_mt = {
+  set_lines = function(self, start_idx, end_idx, lines)
+    api.nvim_buf_set_option(self.buf, 'modifiable', true)
+    api.nvim_buf_set_lines(self.buf, start_idx, end_idx, true, lines)
+    api.nvim_buf_set_option(self.buf, 'modifiable', false)
+  end,
   task_start = vim.schedule_wrap(function(self, plugin, message)
     if not api.nvim_buf_is_valid(self.buf) then
       return
     end
 
     display.status.running = true
-    api.nvim_buf_set_lines(
-      self.buf,
+    self:set_lines(
       config.header_lines,
       config.header_lines,
-      true,
       { vim.fn.printf('%s %s: %s', config.working_sym, plugin, message) }
     )
     self.marks[plugin] = api.nvim_buf_set_extmark(self.buf, self.ns, 0, config.header_lines, 0, {})
@@ -36,7 +37,9 @@ local display_mt = {
 
     local cursor_pos = api.nvim_win_get_cursor(self.win)
     api.nvim_win_set_cursor(self.win, {1, 0})
+    api.nvim_buf_set_option(self.buf, 'modifiable', true)
     vim.fn.execute('normal! ')
+    api.nvim_buf_set_option(self.buf, 'modifiable', false)
     api.nvim_win_set_cursor(self.win, cursor_pos)
   end),
 
@@ -46,11 +49,9 @@ local display_mt = {
     end
 
     local line, _ = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
-    api.nvim_buf_set_lines(
-      self.buf,
+    self:set_lines(
       line[1],
       line[1] + 1,
-      true,
       { vim.fn.printf('%s %s: %s', config.done_sym, plugin, message) }
     )
     api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin])
@@ -64,11 +65,9 @@ local display_mt = {
     end
 
     local line, _ = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
-    api.nvim_buf_set_lines(
-      self.buf,
+    self:set_lines(
       line[1],
       line[1] + 1,
-      true,
       { vim.fn.printf('%s %s: %s', config.error_sym, plugin, message) }
     )
     api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin])
@@ -82,11 +81,9 @@ local display_mt = {
     end
 
     local line, _ = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
-    api.nvim_buf_set_lines(
-      self.buf,
+    self:set_lines(
       line[1],
       line[1] + 1,
-      true,
       { vim.fn.printf('%s %s: %s', config.working_sym, plugin, message) }
     )
     api.nvim_buf_set_extmark(self.buf, self.ns, self.marks[plugin], line[1], 0, {})
@@ -100,11 +97,9 @@ local display_mt = {
     local headline = config.title .. ' - ' .. message
     local width = api.nvim_win_get_width(self.win) - 2
     local pad_width = math.max(math.floor((width - string.len(headline)) / 2.0), 0)
-    api.nvim_buf_set_lines(
-      self.buf,
+    self:set_lines(
       0,
       config.header_lines - 1,
-      true,
       { string.rep(' ', pad_width) .. headline .. string.rep(' ', pad_width) }
     )
   end),
@@ -116,7 +111,9 @@ local display_mt = {
 
     local cursor_pos = api.nvim_win_get_cursor(self.win)
     api.nvim_win_set_cursor(self.win, {1, 0})
+    api.nvim_buf_set_option(self.buf, 'modifiable', true)
     vim.fn.execute('normal! ')
+    api.nvim_buf_set_option(self.buf, 'modifiable', false)
     api.nvim_win_set_cursor(self.win, cursor_pos)
   end),
 
@@ -181,19 +178,11 @@ local display_mt = {
       end
     end
 
-    api.nvim_buf_set_lines(self.buf, config.header_lines, -1, true, lines)
+    self:set_lines(config.header_lines, -1, lines)
     local plugins = {}
     for plugin_name, plugin in pairs(results.plugins) do
       local plugin_data = { displayed = false, lines = {} }
       if plugin.output then
-        -- if plugin.output.data and #plugin.output.data > 0 then
-        --   table.insert(plugin_data.lines, '  Output:')
-        --   for _, line in ipairs(plugin.output.data) do
-        --     line = string.gsub(vim.trim(line), '\n', ' ')
-        --     table.insert(plugin_data.lines, '    ' .. line)
-        --   end
-        -- end
-
         if plugin.output.err and #plugin.output.err > 0 then
           table.insert(plugin_data.lines, '  Errors:')
           for _, line in ipairs(plugin.output.err) do
@@ -235,10 +224,10 @@ local display_mt = {
 
     local plugin_data = self.plugins[plugin_name]
     if plugin_data.displayed then
-      api.nvim_buf_set_lines(self.buf, cursor_pos[1], cursor_pos[1] + #plugin_data.lines, true, {})
+      self:set_lines(cursor_pos[1], cursor_pos[1] + #plugin_data.lines, {})
       plugin_data.displayed = false
     elseif #plugin_data.lines > 0 then
-      api.nvim_buf_set_lines(self.buf, cursor_pos[1], cursor_pos[1], true, plugin_data.lines)
+      self:set_lines(cursor_pos[1], cursor_pos[1], plugin_data.lines)
       plugin_data.displayed = true
     else
       log.info('No further information for ' .. plugin_name)
