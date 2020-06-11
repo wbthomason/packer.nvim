@@ -26,7 +26,17 @@ local spawn = a.wrap(function(cmd, options, callback)
     options,
     function(exit_code, signal)
       handle:close()
-      callback(exit_code, signal)
+      local check = loop.new_check()
+      loop.check_start(check, function()
+        for _, pipe in pairs(options.stdio) do
+          if not loop.is_closing(pipe) then
+            return
+          end
+        end
+
+        loop.check_stop(check)
+        callback(exit_code, signal)
+      end)
     end)
 
   if options.stdio then
