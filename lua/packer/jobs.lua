@@ -1,186 +1,129 @@
 -- Interface with Neovim job control and provide a simple job sequencing structure
-local vim = vim
-local loop = vim.loop
+local split = vim.split
+local loop  = vim.loop
+local a     = require('packer/async')
+local log   = require('packer/log')
 
-local jobs = {}
-local job_mt = {
-  -- TODO: It would probably be nice to allow raw tables to be passed here and construct a job in
-  -- the right context if needed
-  and_then = function(self, next_job)
-    -- Run the next job if the previous job succeeded
-    next_job.first  = self.first or self
-    self.next = function(success, data)
-      if success then
-        next_job:__run(data)
-      elseif next_job.next then
-        next_job.next(success, data)
-      elseif next_job.finally then
-        -- This means the next job is the last link in the chain,is not supposed to run on success,
-        -- and has a "chain-ender" function to run
-        next_job.finally(success)
-      end
+local function make_logging_callback(err_tbl, data_tbl, pipe)
+  return function(err, data)
+    if err then
+      table.insert(err_tbl, vim.trim(err))
     end
 
-    return next_job
-  end,
-
-  __mul = function(prev, next_job)
-    return prev:and_then(next_job)
-  end,
-
-  or_else = function(self, next_job)
-    -- Run the next job if the previous job failed
-    next_job.first = self.first or self
-    self.next = function(success, data)
-      if not success then
-        next_job:__run(data)
-      elseif next_job.next then
-        next_job.next(success, data)
-      elseif next_job.finally then
-        -- This means the next job is the last link in the chain,is not supposed to run on success,
-        -- and has a "chain-ender" function to run
-        next_job.finally(success)
-      end
+    if data ~= nil then
+      table.insert(data_tbl, vim.trim(data))
+    else
+      loop.read_stop(pipe)
+      loop.close(pipe)
     end
-  end,
+  end
+end
 
-  __add = function(prev, next_job)
-    return prev:or_else(next_job)
-  end,
-
-  start = function(self)
-    local job = self.first or self
-    job:__run()
-  end,
-
-  __run = function(self, data)
-    if self.before then
-      self.before(data)
-    end
-
-    local stdout = nil
-    local stderr = nil
-    if self.callbacks.stdout then
-      stdout = loop.new_pipe(false)
-    end
-
-    if self.callbacks.stderr then
-      stderr = loop.new_pipe(false)
-    end
-
-    local handle = nil
-    if type(self.task) == 'string' then
-      local split_pattern = "%s+"
-      self.task = vim.split(self.task, split_pattern)
-    end
-
-    local cmd = self.task[1]
-    local args = { unpack(self.task, 2) }
-
-    handle = loop.spawn(cmd, {
-      args = args,
-      stdio = { stdout, stderr },
-      hide = true
-    },
-
+local spawn = a.wrap(function(cmd, options, callback)
+  local handle = nil
+  handle = loop.spawn(
+    cmd,
+    options,
     function(exit_code, signal)
-      if stdout then
-        stdout:read_stop()
-        stdout:close()
-      end
-
-      if stderr then
-        stderr:read_stop()
-        stderr:close()
-      end
-
       handle:close()
-      self:__exit(exit_code, signal)
+      callback(exit_code, signal)
     end)
 
-    if stdout then
-      loop.read_start(stdout, self.callbacks.stdout)
+  if options.stdio then
+    for i, pipe in pairs(options.stdio) do
+      loop.read_start(pipe, options.stdio_callbacks[i])
     end
+  end
+end)
 
-    if stderr then
-      loop.read_start(stderr, self.callbacks.stderr)
-    end
-  end,
+local run_job = function(task, capture_output, options)
+  return a.sync(
+    function()
+      options = options or { hide = true }
+      local stdout = nil
+      local stderr = nil
+      local result = { exit_code = -1, signal = -1 }
+      local uv_err
+      local output = { err = {}, data = {} }
+      local callbacks = {}
+      local output_valid = false
+      if capture_output then
+        if type(capture_output) == 'boolean' then
+          stdout, uv_err = loop.new_pipe(false)
+          if uv_err then
+            log.error('Failed to open stdout pipe: ' .. uv_err)
+            return result
+          end
 
-  __exit = function(self, exit_code, signal)
-    local success = self.callbacks.exit and self.callbacks.exit(exit_code, signal) or (exit_code == 0)
-    local data = nil
-    if self.after then
-      data = self.after(success)
-    end
+          stderr, uv_err = loop.new_pipe(false)
+          if uv_err then
+            log.error('Failed to open stderr pipe: ' .. uv_err)
+            return result
+          end
 
-    if self.next then
-      self.next(success, data)
-    else
-      if self.finally then
-        self.finally(success, data)
+          callbacks.stdout = make_logging_callback(output.err, output.data, stdout)
+          callbacks.stderr = make_logging_callback(output.err, output.data, stderr)
+          output_valid = true
+        elseif type(capture_output) == 'table' then
+          if capture_output.stdout then
+            stdout, uv_err = loop.new_pipe(false)
+            if uv_err then
+              log.error('Failed to open stdout pipe: ' .. uv_err)
+              return result
+            end
+
+            callbacks.stdout = function(err, data)
+              if data ~= nil then
+                capture_output.stdout(err, data)
+              else
+                loop.read_stop(stdout)
+                loop.close(stdout)
+              end
+            end
+          end
+          if capture_output.stderr then
+            stderr, uv_err = loop.new_pipe(false)
+            if uv_err then
+              log.error('Failed to open stderr pipe: ' .. uv_err)
+              return result
+            end
+
+            callbacks.stderr = function(err, data)
+              if data ~= nil then
+                capture_output.stderr(err, data)
+              else
+                loop.read_stop(stderr)
+                loop.close(stderr)
+              end
+            end
+          end
+        end
       end
 
-      self:__done()
-    end
-  end,
+      if type(task) == 'string' then
+        local split_pattern = '%s+'
+        task = split(task, split_pattern)
+      end
 
-  __done = function(self)
-    self.ctx:job_done(self)
-  end
+      local cmd = task[1]
+      options.args = { unpack(task, 2) }
+      options.stdio = { nil, stdout, stderr }
+      options.stdio_callbacks = { nil, callbacks.stdout, callbacks.stderr }
+
+      local exit_code, signal = a.wait(spawn(cmd, options))
+      result = { exit_code = exit_code, signal = signal }
+
+      if output_valid then
+        result.output = output
+      end
+
+      return result
+    end)
+end
+
+local jobs = {
+  run = run_job,
+  make_logging_callback = make_logging_callback
 }
-
-job_mt.__index = job_mt
-
-local Context = {}
-Context.__index = Context
-
-function Context:new_job(job_data)
-  job_data  = job_data or {}
-  local job = setmetatable(job_data, job_mt)
-  job.ctx   = self
-  if not job.callbacks then
-    job.callbacks = {}
-  end
-
-  return job
-end
-
-function Context:start(job)
-  if #self.jobs > self.max_jobs then
-    table.insert(self.queue, job)
-  else
-    job.id = 'job_' .. #self.jobs
-    self.jobs[job.id] = job
-    job:start()
-  end
-end
-
-function Context:job_done(job)
-  self.jobs[job.id] = nil
-  if #self.jobs == 0 then
-    self:all_done()
-  else
-    local next_job = table.remove(self.queue, 1)
-    next_job.id = job.id
-    self.jobs[job.id] = next_job
-    next_job:start()
-  end
-end
-
-function Context:all_done()
-  if self.after_done then
-    self.after_done()
-  end
-end
-
-jobs.new = function(max_jobs, after_done)
-  local ctx             = setmetatable({}, { __index = Context })
-  ctx.queue             = {}
-  ctx.max_jobs          = max_jobs or math.huge
-  ctx.jobs              = {}
-  ctx.after_done        = after_done
-  return ctx
-end
 
 return jobs
