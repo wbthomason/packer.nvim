@@ -1,10 +1,10 @@
 local api = vim.api
 
-local function echo_special(msg, hl)
+local echo_special = vim.schedule_wrap(function(msg, hl)
   api.nvim_command('echohl ' .. hl)
   api.nvim_command('echom "[packer] ' .. msg .. '"')
   api.nvim_command('echohl None')
-end
+end)
 
 local log = {
   info = function(msg) echo_special(msg, 'None') end,
