@@ -331,6 +331,11 @@ local function setup_window(disp)
 end
 
 display.open = function(opener)
+  if display.status.disp then
+    api.nvim_win_close(display.status.disp.win, true)
+    display.status.disp = nil
+  end
+
   local disp = setmetatable({}, display_mt)
   if type(opener) == 'string' then
     api.nvim_command(opener)
