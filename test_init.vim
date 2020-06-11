@@ -7,9 +7,9 @@ use = packer.use
 
 packer.init()
 
-use { 'morhetz/gruvbox' }
-use { 'wbthomason/vim-nazgul' }
-use { 'tpope/vim-unimpaired' }
+use 'morhetz/gruvbox'
+use 'wbthomason/vim-nazgul'
+use 'tpope/vim-unimpaired'
 use { 'tpope/vim-endwise', disable = false }
 
 packer.sync()
