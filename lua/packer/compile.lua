@@ -1,12 +1,20 @@
--- Compiling plugin specifications to Vimscript/Lua for lazy-loading
+-- Compiling plugin specifications to Lua for lazy-loading
 local util = require('packer/util')
-local compile = {}
 
-compile.opt_keys = { 'defer', 'after', 'cmd', 'ft', 'keys', 'event', 'cond' }
+local config = nil
 
--- Allowed keys:
--- after, cmds, fts, bind, event, cond, defer, config
-compile.to_vim = function(plugins)
+local function cfg(_config)
+  config = _config
+end
+
+-- Also support: config, rtp
+local function make_loaders(plugins)
+  -- Make loader tables
+  local loaders = {}
+  for name, plugin in pairs(plugins) do
+    loaders[name] = { plugin_name = name }
+  end
+
   -- Filetype loaders
   local fts = {}
   for name, plugin in pairs(util.filter(function(plugin) return plugin.fts ~= nil end, plugins)) do
@@ -55,5 +63,9 @@ compile.to_vim = function(plugins)
   result = result .. '\naugroup END'
   return result
 end
+
+local compile = setmetatable({ cfg = cfg }, { __call = make_loaders })
+
+compile.opt_keys = { 'defer', 'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup' }
 
 return compile

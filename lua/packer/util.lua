@@ -78,17 +78,22 @@ util.filter = function(func, seq)
   return util.fold(f, seq, {})
 end
 
-util.partition = function(func, seq)
-  local function f(acc, val)
-    if func(val) then
-      table.insert(acc[1], val)
-    else
-      table.insert(acc[2], val)
-    end
-    return acc
+util.partition = function(sub, seq)
+  local sub_vals = {}
+  for _, val in ipairs(sub) do
+    sub_vals[val] = true
   end
 
-  return unpack(util.fold(f, seq, {{}, {}}))
+  local result = { {}, {} }
+  for _, val in ipairs(seq) do
+    if sub_vals[val] then
+      table.insert(result[1], val)
+    else
+      table.insert(result[2], val)
+    end
+  end
+
+  return unpack(result)
 end
 
 util.nonempty_or = function(opt, alt)
@@ -123,8 +128,8 @@ end
 
 util.get_plugin_full_name = function(plugin)
   local plugin_name = plugin.name
-  if plugin.branch then
-    plugin_name = plugin_name .. ':' .. plugin.branch
+  if plugin.branch and plugin.branch ~= 'master' then
+    plugin_name = plugin_name .. '/' .. plugin.branch
   end
 
   if plugin.rev then

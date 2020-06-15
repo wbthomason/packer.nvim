@@ -2,14 +2,13 @@ local api  = vim.api
 local log  = require('packer/log')
 local a    = require('packer/async')
 
-local display = {}
-local config = {
-  keymaps = {
-    { 'n', 'q', '<cmd>lua require"packer/display".quit()<cr>', { nowait = true, silent = true } },
-    { 'n', '<cr>', '<cmd>lua require"packer/display".toggle_info()<cr>', { nowait = true, silent = true } }
-  }
+local config = nil
+local keymaps = {
+  { 'n', 'q', '<cmd>lua require"packer/display".quit()<cr>', { nowait = true, silent = true } },
+  { 'n', '<cr>', '<cmd>lua require"packer/display".toggle_info()<cr>', { nowait = true, silent = true } }
 }
 
+local display = {}
 local display_mt = {
   set_lines = function(self, start_idx, end_idx, lines)
     api.nvim_buf_set_option(self.buf, 'modifiable', true)
@@ -25,7 +24,7 @@ local display_mt = {
     self:set_lines(
       config.header_lines,
       config.header_lines,
-      { vim.fn.printf('%s %s: %s', config.working_sym, plugin, message) }
+      { string.format('%s %s: %s', config.working_sym, plugin, message) }
     )
     self.marks[plugin] = api.nvim_buf_set_extmark(self.buf, self.ns, 0, config.header_lines, 0, {})
   end),
@@ -52,7 +51,7 @@ local display_mt = {
     self:set_lines(
       line[1],
       line[1] + 1,
-      { vim.fn.printf('%s %s: %s', config.done_sym, plugin, message) }
+      { string.format('%s %s: %s', config.done_sym, plugin, message) }
     )
     api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin])
     self.marks[plugin] = nil
@@ -68,7 +67,7 @@ local display_mt = {
     self:set_lines(
       line[1],
       line[1] + 1,
-      { vim.fn.printf('%s %s: %s', config.error_sym, plugin, message) }
+      { string.format('%s %s: %s', config.error_sym, plugin, message) }
     )
     api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin])
     self.marks[plugin] = nil
@@ -84,7 +83,7 @@ local display_mt = {
     self:set_lines(
       line[1],
       line[1] + 1,
-      { vim.fn.printf('%s %s: %s', config.working_sym, plugin, message) }
+      { string.format('%s %s: %s', config.working_sym, plugin, message) }
     )
     api.nvim_buf_set_extmark(self.buf, self.ns, self.marks[plugin], line[1], 0, {})
   end),
@@ -124,13 +123,13 @@ local display_mt = {
 
     display.status.running = false
     time = tonumber(time)
-    self:update_headline_message(vim.fn.printf('finished in %.3fs', time))
+    self:update_headline_message(string.format('finished in %.3fs', time))
     local lines = {}
     if results.removals then
-      for _, plugin_dir in ipairs(results.removals) do
+      for _, plugin_dir in pairs(results.removals) do
         table.insert(
           lines,
-          vim.fn.printf(
+          string.format(
             '%s Removed %s',
             config.removed_sym,
             plugin_dir
@@ -143,7 +142,7 @@ local display_mt = {
       for plugin, result in pairs(results.installs) do
         table.insert(
           lines,
-          vim.fn.printf(
+          string.format(
             '%s %s %s',
             result.ok and config.done_sym or config.error_sym,
             result.ok and 'Installed' or 'Failed to install',
@@ -154,24 +153,31 @@ local display_mt = {
     end
 
     if results.updates then
-      for plugin_name, result_data in pairs(results.updates) do
-        local result, plugin = unpack(result_data)
+      for plugin_name, result in pairs(results.updates) do
+        local plugin = results.plugins[plugin_name]
         local message = {}
         if result.ok then
           if plugin.revs[1] == plugin.revs[2] then
-            table.insert(message, vim.fn.printf('%s %s is already up to date', config.done_sym, plugin_name))
+            table.insert(message, string.format('%s %s is already up to date', config.done_sym, plugin_name))
           else
-            table.insert(message, vim.fn.printf(
+            table.insert(message, string.format(
               '%s Updated %s: %s..%s',
               config.done_sym,
               plugin_name,
               plugin.revs[1],
               plugin.revs[2]
             ))
-            vim.list_extend(message, plugin.messages)
           end
         else
-          table.insert(message, vim.fn.printf('%s Failed to update %s', config.error_sym, plugin_name))
+          table.insert(
+            message,
+            string.format(
+              '%s Failed to update %s: %s',
+              config.error_sym,
+              plugin_name,
+              vim.inspect(result.err)
+            )
+          )
         end
 
         lines = vim.list_extend(lines, message)
@@ -194,9 +200,10 @@ local display_mt = {
 
       if plugin.messages then
         table.insert(plugin_data.lines, '  Commits:')
-        for _, line in ipairs(plugin.messages) do
-          line = string.gsub(vim.trim(line), '\n', ' ')
-          table.insert(plugin_data.lines, '    - ' .. line)
+        for _, msg in ipairs(plugin.messages) do
+          for _, line in ipairs(vim.split(msg, '\n')) do
+            table.insert(plugin_data.lines, string.rep(' ', 4) .. line)
+          end
         end
       end
       plugins[plugin_name] = plugin_data
@@ -281,15 +288,13 @@ local function make_filetype_cmds(working_sym, done_sym, error_sym)
   }
 end
 
-display.set_config = function(working_sym, done_sym, error_sym, removed_sym, header_sym)
-  config.working_sym = working_sym
-  config.done_sym = done_sym
-  config.error_sym = error_sym
-  config.removed_sym = removed_sym
-  config.header_lines = 2
-  config.title = 'packer.nvim'
-  config.header_sym = header_sym
-  config.filetype_cmds = make_filetype_cmds(working_sym, done_sym, error_sym)
+display.cfg = function(_config)
+  config = _config.display
+  config.filetype_cmds = make_filetype_cmds(
+    config.working_sym,
+    config.done_sym,
+    config.error_sym
+  )
 end
 
 local function make_header(disp)
@@ -309,7 +314,7 @@ end
 
 local function setup_window(disp)
   api.nvim_buf_set_option(disp.buf, 'filetype', 'packer')
-  for _, m in ipairs(config.keymaps) do
+  for _, m in ipairs(keymaps) do
     api.nvim_buf_set_keymap(disp.buf, m[1], m[2], m[3], m[4])
   end
 
@@ -362,7 +367,15 @@ end
 
 display.ask_user = a.wrap(function(headline, body, callback)
   local buf = api.nvim_create_buf(false, true)
-  local width = math.min(65, math.floor(0.8 * vim.o.columns))
+  local longest_line = 0
+  for _, line in ipairs(body) do
+    local line_length = string.len(line)
+    if line_length > longest_line then
+      longest_line = line_length
+    end
+  end
+
+  local width = math.min(longest_line + 2, math.floor(0.9 * vim.o.columns))
   local height = #body + 3
   local x = (vim.o.columns - width) / 2.0
   local y = (vim.o.lines - height) / 2.0

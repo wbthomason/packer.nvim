@@ -5,14 +5,18 @@ local a      = require('packer/async')
 local log    = require('packer/log')
 local result = require('packer/result')
 
-local function make_logging_callback(err_tbl, data_tbl, pipe)
+local function make_logging_callback(err_tbl, data_tbl, pipe, disp, name)
   return function(err, data)
     if err then
       table.insert(err_tbl, vim.trim(err))
     end
 
     if data ~= nil then
-      table.insert(data_tbl, vim.trim(data))
+      local trimmed = vim.trim(data)
+      table.insert(data_tbl, trimmed)
+      if disp then
+        disp:task_update(name, split(trimmed, '\n')[1])
+      end
     else
       loop.read_stop(pipe)
       loop.close(pipe)
@@ -78,89 +82,88 @@ local function was_successful(r)
 end
 
 local run_job = function(task, opts)
-  return a.sync(
-    function()
-      local options = opts.options or { hide = true }
-      local stdout = nil
-      local stderr = nil
-      local job_result = { exit_code = -1, signal = -1 }
-      local success_test = opts.success_test or was_successful
-      local uv_err
-      local output = make_output_table()
-      local callbacks = {}
-      local output_valid = false
-      if opts.capture_output then
-        if type(opts.capture_output) == 'boolean' then
+  return a.sync(function()
+    local options = opts.options or { hide = true }
+    local stdout = nil
+    local stderr = nil
+    local job_result = { exit_code = -1, signal = -1 }
+    local success_test = opts.success_test or was_successful
+    local uv_err
+    local output = make_output_table()
+    local callbacks = {}
+    local output_valid = false
+    if opts.capture_output then
+      if type(opts.capture_output) == 'boolean' then
+        stdout, uv_err = loop.new_pipe(false)
+        if uv_err then
+          log.error('Failed to open stdout pipe: ' .. uv_err)
+          return result.err()
+        end
+
+        stderr, uv_err = loop.new_pipe(false)
+        if uv_err then
+          log.error('Failed to open stderr pipe: ' .. uv_err)
+          return job_result
+        end
+
+        callbacks.stdout = make_logging_callback(output.err.stdout, output.data.stdout, stdout)
+        callbacks.stderr = make_logging_callback(output.err.stderr, output.data.stderr, stderr)
+        output_valid = true
+      elseif type(opts.capture_output) == 'table' then
+        if opts.capture_output.stdout then
           stdout, uv_err = loop.new_pipe(false)
           if uv_err then
             log.error('Failed to open stdout pipe: ' .. uv_err)
-            return result.err()
+            return job_result
           end
 
+          callbacks.stdout = function(err, data)
+            if data ~= nil then
+              opts.capture_output.stdout(err, data)
+            else
+              loop.read_stop(stdout)
+              loop.close(stdout)
+            end
+          end
+        end
+        if opts.capture_output.stderr then
           stderr, uv_err = loop.new_pipe(false)
           if uv_err then
             log.error('Failed to open stderr pipe: ' .. uv_err)
             return job_result
           end
 
-          callbacks.stdout = make_logging_callback(output.err, output.data, stdout)
-          callbacks.stderr = make_logging_callback(output.err, output.data, stderr)
-          output_valid = true
-        elseif type(opts.capture_output) == 'table' then
-          if opts.capture_output.stdout then
-            stdout, uv_err = loop.new_pipe(false)
-            if uv_err then
-              log.error('Failed to open stdout pipe: ' .. uv_err)
-              return job_result
-            end
-
-            callbacks.stdout = function(err, data)
-              if data ~= nil then
-                opts.capture_output.stdout(err, data)
-              else
-                loop.read_stop(stdout)
-                loop.close(stdout)
-              end
-            end
-          end
-          if opts.capture_output.stderr then
-            stderr, uv_err = loop.new_pipe(false)
-            if uv_err then
-              log.error('Failed to open stderr pipe: ' .. uv_err)
-              return job_result
-            end
-
-            callbacks.stderr = function(err, data)
-              if data ~= nil then
-                opts.capture_output.stderr(err, data)
-              else
-                loop.read_stop(stderr)
-                loop.close(stderr)
-              end
+          callbacks.stderr = function(err, data)
+            if data ~= nil then
+              opts.capture_output.stderr(err, data)
+            else
+              loop.read_stop(stderr)
+              loop.close(stderr)
             end
           end
         end
       end
+    end
 
-      if type(task) == 'string' then
-        local split_pattern = '%s+'
-        task = split(task, split_pattern)
-      end
+    if type(task) == 'string' then
+      local split_pattern = '%s+'
+      task = split(task, split_pattern)
+    end
 
-      local cmd = task[1]
-      options.args = { unpack(task, 2) }
-      options.stdio = { nil, stdout, stderr }
-      options.stdio_callbacks = { nil, callbacks.stdout, callbacks.stderr }
+    local cmd = task[1]
+    options.args = { unpack(task, 2) }
+    options.stdio = { nil, stdout, stderr }
+    options.stdio_callbacks = { nil, callbacks.stdout, callbacks.stderr }
 
-      local exit_code, signal = a.wait(spawn(cmd, options))
-      job_result = { exit_code = exit_code, signal = signal }
+    local exit_code, signal = a.wait(spawn(cmd, options))
+    job_result = { exit_code = exit_code, signal = signal }
 
-      if output_valid then
-        job_result.output = output
-      end
+    if output_valid then
+      job_result.output = output
+    end
 
-      return success_test(job_result)
-    end)
+    return success_test(job_result)
+  end)
 end
 
 local jobs = {
