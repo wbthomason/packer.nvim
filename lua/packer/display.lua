@@ -321,7 +321,10 @@ end
 
 display.open = function(opener)
   if display.status.disp then
-    api.nvim_win_close(display.status.disp.win, true)
+    if api.nvim_win_is_valid(display.status.disp.win) then
+      api.nvim_win_close(display.status.disp.win, true)
+    end
+
     display.status.disp = nil
   end
 
@@ -353,7 +356,9 @@ display.quit = function()
 end
 
 display.toggle_info = function()
-  display.status.disp:toggle_info()
+  if display.status.disp then
+    display.status.disp:toggle_info()
+  end
 end
 
 display.ask_user = a.wrap(function(headline, body, callback)
