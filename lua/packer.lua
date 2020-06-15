@@ -186,7 +186,12 @@ local function clean_plugins(results)
   vim.list_extend(dirty_plugins, find_unused(start_plugins))
 
   if #dirty_plugins > 0 then
-    if await(display.ask_user('Removing the following directories. OK? (y/N)', dirty_plugins)) then
+    local lines = {}
+    for _, path in ipairs(dirty_plugins) do
+      table.insert(lines, '\t- ' .. path)
+    end
+
+    if await(display.ask_user('Removing the following directories. OK? (y/N)', lines)) then
       results.removals = dirty_plugins
       return os.execute('rm -rf ' .. table.concat(dirty_plugins, ' '))
     else
