@@ -145,8 +145,8 @@ local display_mt = {
           lines,
           vim.fn.printf(
             '%s %s %s',
-            result and config.done_sym or config.error_sym,
-            result and 'Installed' or 'Failed to install',
+            result.ok and config.done_sym or config.error_sym,
+            result.ok and 'Installed' or 'Failed to install',
             plugin
           )
         )
@@ -157,7 +157,7 @@ local display_mt = {
       for plugin_name, result_data in pairs(results.updates) do
         local result, plugin = unpack(result_data)
         local message = {}
-        if result then
+        if result.ok then
           if plugin.revs[1] == plugin.revs[2] then
             table.insert(message, vim.fn.printf('%s %s is already up to date', config.done_sym, plugin_name))
           else
@@ -246,7 +246,6 @@ local display_mt = {
       end
     end
   end
-
 }
 
 display_mt.__index = display_mt

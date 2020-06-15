@@ -1,7 +1,10 @@
-local util = require('packer/util')
-local log  = require('packer/log')
-local jobs = require('packer/jobs')
-local a    = require('packer/async')
+local util   = require('packer/util')
+local log    = require('packer/log')
+local jobs   = require('packer/jobs')
+local a      = require('packer/async')
+local result = require('packer/result')
+local await = a.wait
+local async = a.sync
 
 local vim = vim
 
@@ -15,54 +18,62 @@ git.set_config = function(cmd, subcommands, base_dir, default_pkg)
   config.default_base_dir = util.join_paths(base_dir, default_pkg)
 end
 
-local function was_successful(result)
-  return result.exit_code == 0
-    and (not result.output or not result.output.err or #result.output.err == 0)
-end
-
 local handle_checkouts = function(plugin, dest, disp)
   local plugin_name = util.get_plugin_full_name(plugin)
-  return a.sync(function()
+  return async(function()
     disp:task_update(plugin_name, 'fetching reference...')
-    local output = { err = {}, data = {} }
-    local logger = jobs.make_logging_callback(output.err, output.data)
+    local output = jobs.output_table()
     local callbacks = {
-      stdout = logger,
-      stderr = logger
+      stdout = jobs.logging_callback(output.err.stdout, output.data.stdout),
+      stderr = jobs.logging_callback(output.err.stderr, output.data.stderr)
     }
 
-    local result = a.wait(jobs.run(config.git .. vim.fn.printf(config.cmds.fetch, dest), callbacks))
-    if not was_successful(result) then
-      log.error('Error fetching ' .. plugin_name)
-      result.output = output
-      return result
-    end
+    local opts = { capture_output = callbacks }
+
+    local r = await(jobs.run(config.git .. vim.fn.printf(config.cmds.fetch, dest), opts))
+      :map_err(function(err) return { msg = 'Error fetching ' .. plugin_name, data = err } end)
 
     if plugin.branch then
       disp:task_update(plugin_name 'updating branch ' .. plugin.branch .. '...')
-      result = a.wait(jobs.run(config.git .. vim.fn.printf(config.cmds.update_branch, dest), callbacks))
-      if not was_successful(result) then
-        log.error('Error updating branch for ' .. plugin_name)
-        result.output = output
-        return result
-      end
+      r = r:and_then(
+        await,
+        jobs.run(config.git .. vim.fn.printf(config.cmds.update_branch, dest), opts)
+      )
+        :map_err(function(err)
+          return {
+            msg = 'Error updating branch ' .. plugin.branch .. ' for ' .. plugin_name,
+            data = err
+          }
+        end)
 
       disp:task_update(plugin_name 'checking out branch ' .. plugin.branch .. '...')
-      result = a.wait(jobs.run(config.git .. vim.fn.printf(config.cmds.checkout, dest, plugin.branch), callbacks))
-      if not was_successful(result) then
-        log.error('Error checking out branch for ' .. plugin_name)
-        result.output = output
-        return result
-      end
+      r = r:and_then(
+        await,
+        jobs.run(config.git .. vim.fn.printf(config.cmds.checkout, dest, plugin.branch), opts)
+      )
+        :map_err(function(err)
+          return {
+            msg = 'Error checking out branch ' .. plugin.branch .. ' for ' .. plugin_name,
+            data = err
+          }
+        end)
     end
 
     if plugin.rev then
       disp:task_update(plugin_name, 'checking out ' .. plugin.rev .. '...')
-      result = a.wait(jobs.run(config.git .. vim.fn.printf(config.cmds.checkout, dest, plugin.rev), callbacks))
+      r = r:and_then(
+        await,
+        jobs.run(config.git .. vim.fn.printf(config.cmds.checkout, dest, plugin.rev), opts)
+      )
+        :map_err(function(err)
+          return {
+            msg = 'Error checking out revision ' .. plugin.rev .. ' for ' .. plugin_name,
+            data = err
+          }
+        end)
     end
 
-    result.output = output
-    return result
+    return r:map_ok(function(ok) return { status = ok, output = output } end)
   end)
 end
 
@@ -95,41 +106,34 @@ git.make_installer = function(plugin)
     install_cmd = install_cmd .. ' --branch ' .. plugin.branch
   end
 
+  local installer_opts = { capture_output = true }
   plugin.installer = function(disp)
-    return a.sync(function()
+    return async(function()
       disp:task_update(plugin_name, 'cloning...')
-      local result = a.wait(jobs.run(install_cmd, true))
-      plugin.output = result.output
-      if was_successful(result) then
-        if needs_checkout then
-          result = a.wait(handle_checkouts(plugin, install_to, disp))
-          plugin.output.data = vim.list_extend(plugin.output.data, result.output.data)
-          plugin.output.err = vim.list_extend(plugin.output.err, result.output.err)
-        end
-      end
-      if not was_successful(result) then
-        return false
-      end
-
-      result = a.wait(jobs.run(rev_cmd, true))
-      if not was_successful(result) then
-        return false
+      local r = await(jobs.run(install_cmd, installer_opts))
+      r:map_ok(function(ok) plugin.output = ok.output end)
+      if needs_checkout then
+        r = r:and_then(await, handle_checkouts(plugin, install_to, disp))
+        r:map_ok(function(ok)
+          plugin.output.data = jobs.extend_output(plugin.output.data, ok.output.data)
+        end)
+          :map_err(function(err)
+            plugin.output.data = jobs.extend_output(plugin.output.data, err.output.data)
+            plugin.output.err = jobs.extend_output(plugin.output.err, err.output.err)
+          end)
       end
 
-      plugin.revs = result.output.data
-      result = a.wait(jobs.run(commit_cmd, true))
+      r = r:and_then(await, jobs.run(rev_cmd, installer_opts))
+        :map_ok(function(ok) plugin.revs = ok.output.data.stderr end)
+      r = r:and_then(await, jobs.run(commit_cmd, { capture_output = true }))
+        :map_ok(function(ok) plugin.messages = ok.output.data.stderr end)
 
-      if was_successful(result) then
-        plugin.messages = result.output.data
-        return true
-      end
-
-      return false
+      return r
     end)
   end
 
   plugin.updater = function(disp)
-    return a.sync(function()
+    return async(function()
       local update_info = {
         err = {},
         revs = {},
@@ -137,85 +141,125 @@ git.make_installer = function(plugin)
         messages = {}
       }
 
-      local function exit_ok(result)
-        if #update_info.err > 0 then
-          return false
+      local function exit_ok(r)
+        if #update_info.err > 0 or r.exit_code ~= 0 then
+          return result.err(r)
         end
 
-        return result.exit_code == 0
+        return result.ok(r)
       end
 
-      local rev_onread = jobs.make_logging_callback(update_info.err, update_info.revs)
+      local rev_onread = jobs.logging_callback(update_info.err, update_info.revs)
       local rev_callbacks = {
         stdout = rev_onread,
         stderr = rev_onread,
       }
 
       disp:task_update(plugin_name, 'checking current commit...')
-      local result = a.wait(jobs.run(rev_cmd, rev_callbacks))
-      if not exit_ok(result) then
-        plugin.output = { err = update_info.err, data = update_info.output }
-        plugin.output.err = vim.list_extend(plugin.output.err, update_info.revs)
-        return { false, update_info }
-      end
+      local r = await(
+        jobs.run(rev_cmd, { success_test = exit_ok, capture_output = rev_callbacks })
+      )
+        :map_err(function(err)
+          plugin.output = {
+            err = vim.list_extend(update_info.err, update_info.revs),
+            data = {}
+          }
 
-      local update_onread = jobs.make_logging_callback(update_info.err, update_info.output)
+          return err
+        end)
+
+      local update_onread = jobs.logging_callback(update_info.err, update_info.output)
       local update_callbacks = {
         stdout = update_onread,
         stderr = update_onread,
       }
 
       disp:task_update(plugin_name, 'pulling updates...')
-      result = a.wait(jobs.run(update_cmd, update_callbacks))
-      if not exit_ok(result) then
-        plugin.output = { err = update_info.err, data = update_info.output }
-        return { false, update_info }
-      end
+      r = r:and_then(
+        await,
+        jobs.run(update_cmd, { success_test = exit_ok, capture_output = update_callbacks})
+      )
+        :map_err(function(err)
+          plugin.output = {
+            err = vim.list_extend(update_info.err, update_info.output),
+            data = {}
+          }
+
+          return err
+        end)
 
       if needs_checkout then
-        result = a.wait(handle_checkouts(plugin, install_to, disp))
-        update_info.err = vim.list_extend(update_info.err, result.output.err)
-        update_info.output = vim.list_extend(update_info.output, result.output.data)
-        if not exit_ok(result) then
-          plugin.output = { err = update_info.err, data = update_info.output }
-          return { false, update_info }
+        r = r:and_then(await, handle_checkouts(plugin, install_to, disp))
+        local function merge_output(res)
+          update_info.err = vim.list_extend(
+            update_info.err,
+            res.output.err.stderr,
+            res.output.err.stdout
+          )
+          update_info.output = vim.list_extend(
+            update_info.output,
+            res.output.data.stdout,
+            res.output.data.stderr
+          )
         end
+
+        r:map_ok(merge_output)
+        r:map_err(function(err)
+          merge_output(err)
+          plugin.output = {
+            err = vim.list.extend(update_info.err, update_info.output),
+            data = {}
+          }
+        end)
       end
 
       disp:task_update(plugin_name, 'checking updated commit...')
-      result = a.wait(jobs.run(rev_cmd, rev_callbacks))
-      if not exit_ok(result) then
-        plugin.output = { err = update_info.err, data = update_info.output }
-        plugin.output.err = vim.list_extend(plugin.output.err, update_info.revs)
-        return { false, update_info }
-      end
+      r = r:and_then(
+        await,
+        jobs.run(rev_cmd, { success_test = exit_ok, capture_output = rev_callbacks })
+      )
+        :map_err(function(_)
+          plugin.output = {
+            err = vim.list_extend(update_info.err, update_info.revs),
+            data = {}
+          }
+        end)
 
-      local messages_onread = jobs.make_logging_callback(update_info.err, update_info.messages)
-      local messages_callbacks = {
-        stdout = messages_onread,
-        stderr = messages_onread,
-      }
+      if r.ok then
+        if update_info.revs[1] ~= update_info.revs[2] then
+          local messages_onread = jobs.logging_callback(update_info.err, update_info.messages)
+          local messages_callbacks = {
+            stdout = messages_onread,
+            stderr = messages_onread,
+          }
 
-      disp:task_update(plugin_name, 'getting commit messages...')
-      result = a.wait(jobs.run(messages_cmd, messages_callbacks))
-      plugin.output = { err = update_info.err, data = update_info.output }
-      if exit_ok(result) then
-        plugin.messages = update_info.messages
-        plugin.revs = update_info.revs
-        return { true, update_info }
-      elseif update_info.messages[1] == "fatal: log for 'HEAD' only has 1 entries" then
-        plugin.revs = update_info.revs
-        plugin.messages = update_info.messages
-        result = a.wait(jobs.run(commit_cmd, true))
-        if was_successful(result) then
-          plugin.messages = result.output.data
+          disp:task_update(plugin_name, 'getting commit messages...')
+          r = r:and_then(
+            await,
+            jobs.run(messages_cmd, { success_test = exit_ok, capture_output = messages_callbacks })
+          )
+
+          plugin.output = { err = update_info.err, data = update_info.output }
+          if r.ok then
+            plugin.messages = update_info.messages
+            plugin.revs = update_info.revs
+          end
+        else
+          plugin.revs = update_info.revs
+          plugin.messages = update_info.messages
+          r = r:and_then(
+            await,
+            jobs.run(commit_cmd, { capture_output = true })
+          )
+            :map_ok(function(ok)
+              plugin.messages = ok.output.data
+            end)
         end
-
-        return { was_successful(result), update_info }
       else
         plugin.output.err = vim.list_extend(plugin.output.err, update_info.messages)
-        return { false, update_info }
       end
+
+      return { r, update_info }
     end)
   end
 end

@@ -247,8 +247,8 @@ local function install_plugin(plugin, display_win, results)
   local install_path = util.join_paths(config.pack_dir, plugin.opt and 'opt' or 'start', plugin.name)
   return async(function()
     display_win:task_start(plugin_name, 'installing...')
-    local success = await(plugin.installer(display_win))
-    if success then
+    local r = await(plugin.installer(display_win))
+    if r.ok then
       if plugin.run then
         plugin.run(install_path)
       end
@@ -258,7 +258,7 @@ local function install_plugin(plugin, display_win, results)
       display_win:task_failed(plugin_name, 'failed to install')
     end
 
-    results.installs[plugin_name] = success
+    results.installs[plugin_name] = r
     results.plugins[plugin_name] = plugin
   end)
 end
@@ -363,8 +363,8 @@ local function update_plugin(plugin, status, display_win, results)
       fix_plugin_type(plugin)
     end
 
-    local success, info = unpack(await(plugin.updater(display_win)))
-    if success then
+    local r, info = unpack(await(plugin.updater(display_win)))
+    if r.ok then
       local actual_update = info.revs[1] ~= info.revs[2]
       local msg = actual_update
         and ('updated: ' .. info.revs[1] .. '...' .. info.revs[2])
@@ -382,7 +382,7 @@ local function update_plugin(plugin, status, display_win, results)
       display_win:task_failed(plugin_name, 'failed to update')
     end
 
-    results.updates[plugin_name] = { success, plugin }
+    results.updates[plugin_name] = { r, plugin }
     results.plugins[plugin_name] = plugin
   end)
 end
@@ -459,7 +459,7 @@ packer.sync = function(...)
 end
 
 packer.compile = function(output_path)
-  local compiled_loader = compile.to_vim(plugins)
+  local compiled_loader = compile.to_lua(plugins)
   vim.fn.mkdir(vim.fn.fnamemodify(output_path, ":h"), 'p')
   local output_file = io.open(output_path, 'w')
   output_file:write(compiled_loader)
