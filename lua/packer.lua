@@ -1,5 +1,6 @@
 -- TODO: Allow separate packages
 -- TODO: Fetch/manage LuaRocks dependencies
+-- TODO: Allow overriding plugin type detection
 
 local display = require('packer/display')
 local git     = require('packer/git')
