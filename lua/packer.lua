@@ -367,8 +367,8 @@ local function update_plugin(plugin, status, display_win, results)
     if success then
       local actual_update = info.revs[1] ~= info.revs[2]
       local msg = actual_update
-        and ('already up to date')
-        or ('updated: ' .. info.revs[1] .. '...' .. info.revs[2])
+        and ('updated: ' .. info.revs[1] .. '...' .. info.revs[2])
+        or 'already up to date'
       if actual_update then
         if plugin.run then
           plugin.run(install_path)
