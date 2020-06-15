@@ -303,7 +303,7 @@ local function make_header(disp)
     true,
     {
       string.rep(' ', pad_width) .. config.title,
-      ' ' .. string.rep(config.header_sym, width - 2)
+      ' ' .. string.rep(config.header_sym, width - 4) .. ' '
     }
   )
 end
