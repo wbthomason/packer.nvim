@@ -134,4 +134,11 @@ util.get_plugin_full_name = function(plugin)
   return plugin_name
 end
 
+util.memoize = function(func)
+  return setmetatable({}, {
+    __index = function(self, k) local v = func(k); self[k] = v; return v end,
+    __call = function(self, k) return self[k] end
+  })
+end
+
 return util
