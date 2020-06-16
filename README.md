@@ -3,18 +3,18 @@ An experimental Neovim plugin manager in Lua for speed and ease of development, 
 lazy-loading features.
 
 ## Status
-**tl;dr**: Late alpha. You can probably use it and it'll probably work, but it's not done and not
-super stable yet.
+**tl;dr**: Beta. Things seem to work and most features are complete, but certainly not every edge
+case has been tested. People willing to give it a try and report bugs/errors are very welcome!
 
 - Basic package management seems to work (i.e. installation, updating, cleaning, start/opt plugins,
   displaying results)
+- Automatic generation of lazy-loading code seems to work
 - More testing is needed
 - The code is rather messy and needs cleanup and refactoring
 
 ## Current work
-- Compiling lazy-loading code
+- Luarocks support
 
 ## TODO
-- Luarocks support
 - Allow multiple packages
 - Optimizations?
