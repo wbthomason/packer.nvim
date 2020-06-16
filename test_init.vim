@@ -3,16 +3,17 @@ packadd packer.nvim
 
 lua << EOF
 local packer = require('packer')
-use = packer.use
+local use = packer.use
 
 packer.init()
+use { 'lervag/vimtex', setup = {'print("done")'} }
+use { 'morhetz/gruvbox', ft = 'markdown', config = 'print("done2")' }
+use { 'wbthomason/vim-nazgul', after = 'gruvbox' }
+use { 'tpope/vim-unimpaired', after = 'vim-nazgul' }
+use { 'tpope/vim-endwise', disable = false, requires = {{'tpope/vim-fugitive', keys = 'bb', config = 'print("yo")' }}}
+use { 'dense-analysis/ale', disable = false, after = 'vimtex', requires = 'wbthomason/vim-nazgul' }
 
-use 'morhetz/gruvbox'
-use 'wbthomason/vim-nazgul'
-use 'tpope/vim-unimpaired'
-use { 'tpope/vim-endwise', disable = false }
-
-packer.sync()
+packer.compile('~/.config/nvim/plugin/packer_load.vim')
 EOF
 
 " colorscheme gruvbox
