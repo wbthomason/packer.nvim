@@ -31,15 +31,14 @@ local function cfg(_config)
 end
 
 local function fix_plugin_type(plugin, results)
-  local plugin_name = util.get_plugin_full_name(plugin)
   local from
   local to
   if plugin.opt then
-    from = util.join_paths(config.start_dir, plugin.name)
-    to   = util.join_paths(config.opt_dir, plugin.name)
+    from = util.join_paths(config.start_dir, plugin.short_name)
+    to   = util.join_paths(config.opt_dir, plugin.short_name)
   else
-    from = util.join_paths(config.opt_dir, plugin.name)
-    to   = util.join_paths(config.start_dir, plugin.name)
+    from = util.join_paths(config.opt_dir, plugin.short_name)
+    to   = util.join_paths(config.start_dir, plugin.short_name)
   end
 
   -- NOTE: If we stored all plugins somewhere off-package-path and used symlinks to put them in the
@@ -47,9 +46,10 @@ local function fix_plugin_type(plugin, results)
   local success, msg = os.rename(from, to)
   if not success then
     log.error('Failed to move ' .. from .. ' to ' .. to .. ': ' .. msg)
+    results.moves[plugin.short_name] = { from = from, to = to, result = result.err(success) }
+  else
+    results.moves[plugin.short_name] = { from = from, to = to, result = result.ok(success) }
   end
-
-  results.moves[plugin_name] = { from = from, to = to, result = result.ok(success) }
 end
 
 local function fix_plugin_types(plugins, plugin_names, results)
@@ -59,7 +59,7 @@ local function fix_plugin_types(plugins, plugin_names, results)
   for _, v in ipairs(plugin_names) do
     local plugin = plugins[v]
     -- TODO: This will have to change when separate packages are implemented
-    local install_dir = util.join_paths(plugin.opt and config.start_dir or config.opt_dir, plugin.name)
+    local install_dir = util.join_paths(plugin.opt and config.start_dir or config.opt_dir, plugin.short_name)
     if vim.fn.isdirectory(install_dir) == 1 then
       fix_plugin_type(plugin, results)
     end

@@ -138,6 +138,23 @@ local display_mt = {
       end
     end
 
+    if results.moves then
+      for plugin, result in pairs(results.moves) do
+        table.insert(
+          lines,
+          string.format(
+            '%s %s %s: %s %s %s',
+            result.result.ok and config.done_sym or config.error_sym,
+            result.result.ok and 'Moved' or 'Failed to move',
+            plugin,
+            result.from,
+            config.moved_sym,
+            result.to
+          )
+        )
+      end
+    end
+
     if results.installs then
       for plugin, result in pairs(results.installs) do
         table.insert(

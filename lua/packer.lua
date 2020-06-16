@@ -1,11 +1,10 @@
 -- TODO: Allow to review/rollback updates
 -- TODO: Fetch/manage LuaRocks dependencies
 -- TODO: Performance analysis/tuning
+-- TODO: Merge start plugins?
 
 -- WIP:
 -- TODO: Allow separate packages
--- TODO: rtp in subdirectory
--- TODO: Add utility function for easily making keybindings
 
 local a            = require('packer/async')
 local clean        = require('packer/clean')
@@ -54,6 +53,7 @@ local config_defaults = {
     error_sym = '❌',
     done_sym = '✅',
     removed_sym = '⮾',
+    moved_sym = '🡲',
     header_sym = '━',
     header_lines = 2,
     title = 'packer.nvim'
@@ -101,6 +101,11 @@ local function manage(plugin)
 
   local path = plugin[1]
   local name = string.sub(path, string.find(path, '/%S+$') + 1)
+  if plugins[name] then
+    log.warning('Plugin ' .. name .. ' is used twice!')
+    return
+  end
+
   plugin.short_name = name
   plugin.name = path
   plugin.path = path
@@ -112,6 +117,9 @@ local function manage(plugin)
       break
     end
   end
+
+  -- TODO: This needs to change for supporting multiple packages
+  plugin.install_path = util.join_paths(plugin.opt and config.opt_dir or config.start_dir, plugin.short_name)
 
   if not plugin.type then
     plugin_utils.guess_type(plugin)
@@ -138,10 +146,18 @@ end
 packer.use = function(plugin)
   manage(plugin)
   if plugin.requires and config.ensure_dependencies then
-    for _, req_path in ipairs(plugin.requires) do
-      local req_name = util.slice(req_path, string.find(req_path, '/%S$'))
-      if not plugins[req_name] then
-        manage(req_path)
+    if type(plugin.requires) == 'string' then
+      plugin.requires = { plugin.requires }
+    end
+
+    for _, req in ipairs(plugin.requires) do
+      if type(req) == 'string' then
+        req = { req }
+      end
+
+      local name = string.sub(req[1], string.find(req[1], '/%S+$') + 1)
+      if not plugins[name] then
+        manage(req)
       end
     end
   end
@@ -203,7 +219,9 @@ packer.update = function(...)
       update_plugins
     )
 
-    update.fix_plugin_types(plugins, installed_plugins, results)
+    update.fix_plugin_types(plugins, missing_plugins, results)
+    local _
+    _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)
     local tasks, display_win = install(plugins, missing_plugins, results)
     local update_tasks
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
@@ -245,10 +263,11 @@ packer.sync = function(...)
       sync_plugins
     )
 
-    update.fix_plugin_types(plugins, installed_plugins, results)
+    update.fix_plugin_types(plugins, missing_plugins, results)
+    local _
+    _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)
     if config.auto_clean then
       await(clean(plugins, results))
-      local _
       _, installed_plugins = util.partition(vim.tbl_keys(results.removals), installed_plugins)
     end
 
@@ -283,6 +302,7 @@ end
 
 packer.compile = function(output_path)
   local compiled_loader = compile(plugins)
+  output_path = vim.fn.expand(output_path)
   vim.fn.mkdir(vim.fn.fnamemodify(output_path, ":h"), 'p')
   local output_file = io.open(output_path, 'w')
   output_file:write(compiled_loader)
