@@ -103,8 +103,8 @@ local function manage(plugin)
     plugin = { plugin }
   end
 
-  local path = plugin[1]
-  local name = string.sub(path, string.find(path, '/%S+$') + 1)
+  local path = vim.fn.expand(plugin[1])
+  local _, name = path:match'(.*/)(.*)'
   if plugins[name] then
     log.warning('Plugin ' .. name .. ' is used twice!')
     return
