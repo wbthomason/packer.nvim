@@ -323,7 +323,7 @@ then
   local command_defs = {}
   for command, names in pairs(commands) do
     local command_line = fmt(
-      'command! -nargs=* -range -bang -complete=file %s call s:load([%s], { "cmd": %s, "l1": <line1>, "l2": <line2>, "bang": <bang>, "args": <q-args> })',
+      'command! -nargs=* -range -bang -complete=file %s call s:load([%s], { "cmd": "%s", "l1": <line1>, "l2": <line2>, "bang": <q-bang>, "args": <q-args> })',
       command,
       table.concat(names, ', '),
       command
