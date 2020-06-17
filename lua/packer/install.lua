@@ -9,9 +9,6 @@ local config = nil
 
 local function install_plugin(plugin, display_win, results)
   local plugin_name = util.get_plugin_full_name(plugin)
-  -- TODO: This will have to change when multiple packages are added
-  local install_path = util.join_paths(config.pack_dir, plugin.opt and 'opt' or 'start', plugin.name)
-  plugin.install_path = install_path
   return async(function()
     display_win:task_start(plugin_name, 'installing...')
     local r = await(plugin.installer(display_win))
