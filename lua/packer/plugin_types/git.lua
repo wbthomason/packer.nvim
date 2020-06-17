@@ -1,5 +1,4 @@
 local util   = require('packer/util')
-local log    = require('packer/log')
 local jobs   = require('packer/jobs')
 local a      = require('packer/async')
 local result = require('packer/result')
@@ -75,15 +74,7 @@ end
 
 git.setup = function(plugin)
   local plugin_name = util.get_plugin_full_name(plugin)
-  local base_dir
-  if plugin.package then
-    base_dir = util.join_paths(config.base_dir, plugin.package)
-  else
-    base_dir = config.default_base_dir
-  end
-
-  base_dir = util.join_paths(base_dir, plugin.opt and 'opt' or 'start')
-  local install_to = util.join_paths(base_dir, plugin.short_name)
+  local install_to = plugin.install_path
   local install_cmd = config.exec_cmd .. fmt(config.subcommands.install,
     plugin.url,
     install_to,
@@ -288,7 +279,8 @@ git.setup = function(plugin)
         plugin.output.err = vim.list_extend(plugin.output.err, update_info.messages)
       end
 
-      return { r, update_info }
+      r.info = update_info
+      return r
     end)
   end
 end
