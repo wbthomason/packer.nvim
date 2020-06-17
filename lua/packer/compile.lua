@@ -84,6 +84,7 @@ _packer_load = function(names, cause)
       if plugins[name].after then
         for _, after_name in ipairs(plugins[name].after) do
           handle_after(after_name, name)
+          vim.api.nvim_command('redraw')
         end
       end
 
@@ -395,7 +396,7 @@ then
     for _, name in ipairs(graph[plugin].out_links) do
       if not loaders[plugin].only_sequence then
         loaders[name].only_sequence = false
-        table.insert(loaders[name].load_after, plugin)
+        loaders[name].load_after[plugin] = true
       end
 
       graph[name].in_links[plugin] = nil
