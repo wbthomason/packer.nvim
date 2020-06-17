@@ -125,6 +125,7 @@ local display_mt = {
     time = tonumber(time)
     self:update_headline_message(string.format('finished in %.3fs', time))
     local lines = {}
+    local no_change_lines = {}
     if results.removals then
       for _, plugin_dir in pairs(results.removals) do
         table.insert(
@@ -173,8 +174,10 @@ local display_mt = {
       for plugin_name, result in pairs(results.updates) do
         local plugin = results.plugins[plugin_name]
         local message = {}
+        local actual_update = true
         if result.ok then
           if plugin.type ~= 'git' or plugin.revs[1] == plugin.revs[2] then
+            actual_update = false
             table.insert(message, string.format('%s %s is already up to date', config.done_sym, plugin_name))
           else
             table.insert(message, string.format(
@@ -197,10 +200,15 @@ local display_mt = {
           )
         end
 
-        lines = vim.list_extend(lines, message)
+        if actual_update then
+          lines = vim.list_extend(lines, message)
+        else
+          no_change_lines = vim.list_extend(no_change_lines, message)
+        end
       end
     end
 
+    lines = vim.list_extend(lines, no_change_lines)
     self:set_lines(config.header_lines, -1, lines)
     local plugins = {}
     for plugin_name, plugin in pairs(results.plugins) do
