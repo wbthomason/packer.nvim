@@ -174,7 +174,7 @@ local display_mt = {
         local plugin = results.plugins[plugin_name]
         local message = {}
         if result.ok then
-          if plugin.revs[1] == plugin.revs[2] then
+          if plugin.type ~= 'git' or plugin.revs[1] == plugin.revs[2] then
             table.insert(message, string.format('%s %s is already up to date', config.done_sym, plugin_name))
           else
             table.insert(message, string.format(
