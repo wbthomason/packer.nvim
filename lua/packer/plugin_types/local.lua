@@ -1,7 +1,8 @@
-local a    = require('packer/async')
-local jobs = require('packer/jobs')
-local log  = require('packer/log')
-local util = require('packer/util')
+local a      = require('packer/async')
+local jobs   = require('packer/jobs')
+local log    = require('packer/log')
+local util   = require('packer/util')
+local result = require('packer/result')
 
 local async = a.sync
 local await = a.wait
@@ -13,7 +14,7 @@ end
 
 local function setup_local(plugin)
   local from = plugin.path
-  local to = util.join_paths((plugin.opt and config.opt_dir or config.start_dir), plugin.name)
+  local to = plugin.install_path
   local task
   if vim.fn.executable('ln') then
     task = { 'ln', '-sf', from, to }
@@ -28,12 +29,11 @@ local function setup_local(plugin)
   plugin.installer = function(disp)
     return async(function()
       disp:task_update(plugin_name, 'making symlink...')
-      local result = await(jobs.run(task))
-      return result.exit_code == 0
+      return await(jobs.run(task, { capture_output = true }))
     end)
   end
 
-  plugin.updater = function(_) return async(function() return true end) end
+  plugin.updater = function(_) return async(function() return result.ok(true) end) end
 end
 
 local local_plugin = {
