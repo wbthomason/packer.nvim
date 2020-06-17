@@ -70,7 +70,7 @@ packer.init = function(user_config)
   config = vim.tbl_extend('force', config, user_config)
   setmetatable(config, config_mt)
 
-  plugins = {}
+  packer.reset()
 
   config.package_root = vim.fn.fnamemodify(config.package_root, ':p')
   config.package_root = string.sub(config.package_root, 1, string.len(config.package_root) - 1)
@@ -92,6 +92,10 @@ packer.init = function(user_config)
   end
 
   plugin_utils.ensure_dirs()
+end
+
+packer.reset = function()
+  plugins = {}
 end
 
 local function manage(plugin)
