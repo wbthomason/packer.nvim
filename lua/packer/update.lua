@@ -1,10 +1,9 @@
-local util = require('packer/util')
-local install = require('packer/install')
+local util         = require('packer/util')
+local result       = require('packer/result')
+local display      = require('packer/display')
+local a            = require('packer/async')
+local log          = require('packer/log')
 local plugin_utils = require('packer/plugin_utils')
-local result = require('packer/result')
-local display = require('packer/display')
-local a = require('packer/async')
-local log = require('packer/log')
 
 local async = a.sync
 local await = a.wait
@@ -73,19 +72,23 @@ local function update_plugin(plugin, display_win, results)
   plugin.install_path = install_path
   return async(function()
     display_win:task_start(plugin_name, 'updating...')
-    local r, info = unpack(await(plugin.updater(display_win)))
+    local r = await(plugin.updater(display_win))
     if r.ok then
-      local actual_update = info.revs[1] ~= info.revs[2]
-      local msg = actual_update
-        and ('updated: ' .. info.revs[1] .. '...' .. info.revs[2])
-        or 'already up to date'
-      if actual_update then
-        if plugin.run then
-          plugin.run(plugin, install_path)
+      local msg = 'up to date'
+      if plugin.type == 'git' then
+        local info = r.info
+        local actual_update = info.revs[1] ~= info.revs[2]
+        msg = actual_update
+          and ('updated: ' .. info.revs[1] .. '...' .. info.revs[2])
+          or 'already up to date'
+        if actual_update then
+          r = r:and_then(await, plugin_utils.post_update_hook(plugin, display_win))
         end
       end
 
-      display_win:task_succeeded(plugin_name, msg)
+      if r.ok then
+        display_win:task_succeeded(plugin_name, msg)
+      end
     else
       display_win:task_failed(plugin_name, 'failed to update')
     end
