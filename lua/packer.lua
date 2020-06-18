@@ -98,7 +98,8 @@ packer.reset = function()
   plugins = {}
 end
 
-local function manage(plugin)
+local manage = nil
+manage = function(plugin)
   if type(plugin) == 'string' then
     plugin = { plugin }
   end
@@ -140,15 +141,7 @@ local function manage(plugin)
   end
 
   plugins[name] = plugin
-end
 
-packer.set_handler = function(name, func)
-  handlers[name] = func
-end
-
--- Add a plugin to the managed set
-packer.use = function(plugin)
-  manage(plugin)
   if plugin.requires and config.ensure_dependencies then
     if type(plugin.requires) == 'string' then
       plugin.requires = { plugin.requires }
@@ -159,13 +152,20 @@ packer.use = function(plugin)
         req = { req }
       end
 
-      local name = string.sub(req[1], string.find(req[1], '/%S+$') + 1)
-      if not plugins[name] then
+      local req_name = string.sub(req[1], string.find(req[1], '/%S+$') + 1)
+      if not plugins[req_name] then
         manage(req)
       end
     end
   end
 end
+
+packer.set_handler = function(name, func)
+  handlers[name] = func
+end
+
+-- Add a plugin to the managed set
+packer.use = manage
 
 packer.clean = function(results) async(function() await(clean(plugins, results)) end)() end
 
