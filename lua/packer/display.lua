@@ -124,11 +124,11 @@ local display_mt = {
     display.status.running = false
     time = tonumber(time)
     self:update_headline_message(string.format('finished in %.3fs', time))
-    local lines = {}
+    local raw_lines = {}
     if results.removals then
       for _, plugin_dir in pairs(results.removals) do
         table.insert(
-          lines,
+          raw_lines,
           string.format(
             '%s Removed %s',
             config.removed_sym,
@@ -141,7 +141,7 @@ local display_mt = {
     if results.moves then
       for plugin, result in pairs(results.moves) do
         table.insert(
-          lines,
+          raw_lines,
           string.format(
             '%s %s %s: %s %s %s',
             result.result.ok and config.done_sym or config.error_sym,
@@ -158,7 +158,7 @@ local display_mt = {
     if results.installs then
       for plugin, result in pairs(results.installs) do
         table.insert(
-          lines,
+          raw_lines,
           string.format(
             '%s %s %s',
             result.ok and config.done_sym or config.error_sym,
@@ -200,13 +200,21 @@ local display_mt = {
         end
 
         if actual_update then
-          lines = vim.list_extend(lines, message)
+          raw_lines = vim.list_extend(raw_lines, message)
         end
       end
     end
 
-    if #lines == 0 then
-      table.insert(lines, 'Everything already up to date!')
+    if #raw_lines == 0 then
+      table.insert(raw_lines, 'Everything already up to date!')
+    end
+
+    -- Ensure there are no newlines
+    local lines = {}
+    for _, line in ipairs(raw_lines) do
+      for _, chunk in ipairs(vim.split(line, '\n')) do
+        table.insert(lines, chunk)
+      end
     end
 
     self:set_lines(config.header_lines, -1, lines)
