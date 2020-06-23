@@ -267,13 +267,6 @@ git.setup = function(plugin)
         else
           plugin.revs = update_info.revs
           plugin.messages = update_info.messages
-          r = r:and_then(
-            await,
-            jobs.run(commit_cmd, { capture_output = true })
-          )
-            :map_ok(function(ok)
-              plugin.messages = ok.output.data.stdout
-            end)
         end
       else
         plugin.output.err = vim.list_extend(plugin.output.err, update_info.messages)
