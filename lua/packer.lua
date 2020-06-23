@@ -48,7 +48,7 @@ local config_defaults = {
   },
   display = {
     open_fn  = nil,
-    open_cmd = '57vnew [packer]',
+    open_cmd = '65vnew [packer]',
     working_sym = '🔄',
     error_sym = '❌',
     done_sym = '✅',
