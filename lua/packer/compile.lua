@@ -276,7 +276,7 @@ local function make_loaders(_, plugins)
 
   local rtp_line = ''
   for _, rtp in ipairs(rtps) do
-    rtp_line = rtp_line .. ',' .. vim.fn.escape(rtp, '\\,')
+    rtp_line = rtp_line .. '",' .. vim.fn.escape(rtp, '\\,') .. '"'
   end
 
   if rtp_line ~= '' then
