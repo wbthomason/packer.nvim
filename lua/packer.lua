@@ -311,6 +311,7 @@ packer.compile = function(output_path)
   local output_file = io.open(output_path, 'w')
   output_file:write(compiled_loader)
   output_file:close()
+  log.info('Finished compiling lazy-loaders!')
 end
 
 packer.config = config
