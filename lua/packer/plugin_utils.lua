@@ -2,6 +2,7 @@ local a      = require('packer/async')
 local jobs   = require('packer/jobs')
 local util   = require('packer/util')
 local result = require('packer/result')
+local log    = require('packer/log')
 
 local slice = util.slice
 
@@ -59,6 +60,7 @@ plugin_utils.update_helptags = vim.schedule_wrap(function(...)
   for _, dir in ipairs(...) do
     local doc_dir = util.join_paths(dir, 'doc')
     if plugin_utils.helptags_stale(doc_dir) then
+      log.info('Updating helptags for ' .. doc_dir)
       vim.api.nvim_command('silent! helptags ' .. vim.fn.fnameescape(doc_dir))
     end
   end
