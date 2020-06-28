@@ -133,9 +133,7 @@ plugin_utils.post_update_hook = function(plugin, disp)
       elseif type(plugin.run) == 'string' then
         if string.sub(plugin.run, 1, 1) == ':' then
           a.wait(vim.schedule)
-          print('pre')
           vim.api.nvim_command(string.sub(plugin.run, 2))
-          print('post')
           return result.ok(true)
         else
           local hook_output = { err = {}, output = {} }
