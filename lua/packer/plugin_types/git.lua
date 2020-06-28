@@ -163,14 +163,18 @@ git.setup = function(plugin)
       }
 
       disp:task_update(plugin_name, 'checking current commit...')
-      local r = await(
+      local r
+      r = await(
         jobs.run(rev_cmd, { success_test = exit_ok, capture_output = rev_callbacks })
       )
-        :map_err(function(_)
+        :map_err(function(err)
           plugin.output = {
             err = vim.list_extend(update_info.err, update_info.revs),
             data = {}
           }
+
+          r.err_info = err
+          return table.concat(update_info.revs, '\n')
         end)
 
       local branch
@@ -179,11 +183,14 @@ git.setup = function(plugin)
         jobs.run(branch_cmd, { success_test = exit_ok, capture_output = true })
       )
         :map_ok(function(ok) branch = ok.output.data.stdout[1] end)
-        :map_err(function(_)
+        :map_err(function(err)
           plugin.output = {
             err = vim.list_extend(update_info.err, update_info.revs),
             data = {}
           }
+
+          r.err_info = err
+          return table.concat(update_info.revs, '\n')
         end)
 
       local needs_checkout = plugin.tag ~= nil or plugin.commit ~= nil or plugin.branch ~= nil
@@ -208,6 +215,9 @@ git.setup = function(plugin)
             err = vim.list.extend(update_info.err, update_info.output),
             data = {}
           }
+
+          r.err_info = err
+          return table.concat(update_info.output, '\n')
         end)
       end
 
@@ -230,7 +240,8 @@ git.setup = function(plugin)
             data = {}
           }
 
-          return err
+          r.err_info = err
+          return table.concat(update_info.output, '\n')
         end)
 
       disp:task_update(plugin_name, 'checking updated commit...')
@@ -238,11 +249,14 @@ git.setup = function(plugin)
         await,
         jobs.run(rev_cmd, { success_test = exit_ok, capture_output = rev_callbacks })
       )
-        :map_err(function(_)
+        :map_err(function(err)
           plugin.output = {
             err = vim.list_extend(update_info.err, update_info.revs),
             data = {}
           }
+
+          r.err_info = err
+          return table.concat(update_info.revs, '\n')
         end)
 
       if r.ok then
