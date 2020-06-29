@@ -1,6 +1,4 @@
 -- Adapted from https://ms-jpq.github.io/neovim-async-tutorial/
--- TODO: Add monad for sequencing failure checks
-
 local co = coroutine
 
 local function step(func, callback)
