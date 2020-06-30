@@ -1,13 +1,11 @@
 -- Compiling plugin specifications to Lua for lazy-loading
 local util = require('packer/util')
-local log  = require('packer/log')
-local fmt  = string.format
+local log = require('packer/log')
+local fmt = string.format
 
 local config = nil
 
-local function cfg(_config)
-  config = _config
-end
+local function cfg(_config) config = _config end
 
 local vim_loader = [[
 function! s:load(names, cause) abort
@@ -145,13 +143,13 @@ local function make_loaders(_, plugins)
   local after = {}
   for name, plugin in pairs(plugins) do
     local quote_name = "'" .. name .. "'"
-    if plugin.config and not plugin.opt then
-      configs[name] = plugin.config
+    if plugin.config and type(plugin.config) == 'function' then
+      plugin.config = string.dump(plugin.config, true)
     end
 
-    if plugin.rtp then
-      table.insert(rtps, util.join_paths(plugin.install_path, plugin.rtp))
-    end
+    if plugin.config and not plugin.opt then configs[name] = plugin.config end
+
+    if plugin.rtp then table.insert(rtps, util.join_paths(plugin.install_path, plugin.rtp)) end
 
     if plugin.opt then
       loaders[name] = {
@@ -163,6 +161,10 @@ local function make_loaders(_, plugins)
       }
 
       if plugin.setup then
+        if type(plugin.setup) == 'function' then
+          plugin.setup = string.dump(plugin.setup, true)
+        end
+
         loaders[name].only_setup = true
         setup[name] = plugin.setup
       end
@@ -170,9 +172,7 @@ local function make_loaders(_, plugins)
       if plugin.ft then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        if type(plugin.ft) == 'string' then
-          plugin.ft = { plugin.ft }
-        end
+        if type(plugin.ft) == 'string' then plugin.ft = {plugin.ft} end
 
         for _, ft in ipairs(plugin.ft) do
           fts[ft] = fts[ft] or {}
@@ -183,9 +183,7 @@ local function make_loaders(_, plugins)
       if plugin.event then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        if type(plugin.event) == 'string' then
-          plugin.event = { plugin.event }
-        end
+        if type(plugin.event) == 'string' then plugin.event = {plugin.event} end
 
         for _, event in ipairs(plugin.event) do
           events[event] = events[event] or {}
@@ -196,11 +194,11 @@ local function make_loaders(_, plugins)
       if plugin.cond then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        if type(plugin.cond) == 'string' then
-          plugin.cond = { plugin.cond }
-        end
+        if type(plugin.cond) == 'string' then plugin.cond = {plugin.cond} end
 
         for _, condition in ipairs(plugin.cond) do
+          if type(condition) == 'function' then condition = string.dump(condition, true) end
+
           conditions[condition] = conditions[condition] or {}
           table.insert(conditions[condition], name)
         end
@@ -209,9 +207,7 @@ local function make_loaders(_, plugins)
       if plugin.cmd then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        if type(plugin.cmd) == 'string' then
-          plugin.cmd = { plugin.cmd }
-        end
+        if type(plugin.cmd) == 'string' then plugin.cmd = {plugin.cmd} end
 
         loaders[name].commands = {}
         for _, command in ipairs(plugin.cmd) do
@@ -224,15 +220,11 @@ local function make_loaders(_, plugins)
       if plugin.keys then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        if type(plugin.keys) == 'string' then
-          plugin.keys = { plugin.keys }
-        end
+        if type(plugin.keys) == 'string' then plugin.keys = {plugin.keys} end
 
         loaders[name].keys = {}
         for _, keymap in ipairs(plugin.keys) do
-          if type(keymap) == 'string' then
-            keymap = { '', keymap }
-          end
+          if type(keymap) == 'string' then keymap = {'', keymap} end
 
           keymaps[keymap] = keymaps[keymap] or {}
           table.insert(loaders[name].keys, keymap)
@@ -243,9 +235,7 @@ local function make_loaders(_, plugins)
       if plugin.after then
         loaders[name].only_setup = false
 
-        if type(plugin.after) == 'string' then
-          plugin.after = { plugin.after }
-        end
+        if type(plugin.after) == 'string' then plugin.after = {plugin.after} end
 
         for _, other_plugin in ipairs(plugin.after) do
           after[other_plugin] = after[other_plugin] or {}
@@ -257,35 +247,31 @@ local function make_loaders(_, plugins)
 
   local ft_aucmds = {}
   for ft, names in pairs(fts) do
-    table.insert(ft_aucmds,
-      fmt('  au FileType %s ++once call s:load([%s], { "ft": "%s" })', ft, table.concat(names, ', '), ft))
+    table.insert(ft_aucmds, fmt('  au FileType %s ++once call s:load([%s], { "ft": "%s" })', ft,
+                                table.concat(names, ', '), ft))
   end
 
   local event_aucmds = {}
   for event, names in pairs(events) do
-    table.insert(ft_aucmds,
-      fmt('  au %s ++once call s:load([%s], { "event": "%s" })', event, table.concat(names, ', '), event))
+    table.insert(ft_aucmds, fmt('  au %s ++once call s:load([%s], { "event": "%s" })', event,
+                                table.concat(names, ', '), event))
   end
 
   local config_lines = {}
   for name, plugin_config in pairs(configs) do
-    local lines = { '-- Config for: ' .. name }
+    local lines = {'-- Config for: ' .. name}
     lines = vim.list_extend(lines, plugin_config)
     config_lines = vim.list_extend(config_lines, lines)
   end
 
   local rtp_line = ''
-  for _, rtp in ipairs(rtps) do
-    rtp_line = rtp_line .. '",' .. vim.fn.escape(rtp, '\\,') .. '"'
-  end
+  for _, rtp in ipairs(rtps) do rtp_line = rtp_line .. '",' .. vim.fn.escape(rtp, '\\,') .. '"' end
 
-  if rtp_line ~= '' then
-    rtp_line = 'let &runtimepath .=' .. rtp_line
-  end
+  if rtp_line ~= '' then rtp_line = 'let &runtimepath .=' .. rtp_line end
 
   local setup_lines = {}
   for name, plugin_setup in pairs(setup) do
-    local lines = { '-- Setup for: ' .. name }
+    local lines = {'-- Setup for: ' .. name}
     lines = vim.list_extend(lines, plugin_setup)
     if loaders[name].only_setup then
       table.insert(lines, 'vim.api.nvim_command("packadd ' .. name .. '")')
@@ -305,7 +291,7 @@ local function make_loaders(_, plugins)
     for _, name in ipairs(names) do
       table.insert(conditional_loads, 'vim.api.nvim_command("packadd ' .. name .. '")')
       if plugins[name].config then
-        local lines = { '', '-- Config for: ' .. name }
+        local lines = {'', '-- Config for: ' .. name}
         lines = vim.list_extend(lines, plugins[name].config)
         table.insert(lines, '')
         conditional_loads = vim.list_extend(conditional_loads, lines)
@@ -324,29 +310,20 @@ then
   local command_defs = {}
   for command, names in pairs(commands) do
     local command_line = fmt(
-      'command! -nargs=* -range -bang -complete=file %s call s:load([%s], { "cmd": "%s", "l1": <line1>, "l2": <line2>, "bang": <q-bang>, "args": <q-args> })',
-      command,
-      table.concat(names, ', '),
-      command
-    )
+                           'command! -nargs=* -range -bang -complete=file %s call s:load([%s], { "cmd": "%s", "l1": <line1>, "l2": <line2>, "bang": <q-bang>, "args": <q-args> })',
+                           command, table.concat(names, ', '), command)
     table.insert(command_defs, command_line)
   end
 
   local keymap_defs = {}
   for keymap, names in pairs(keymaps) do
     local prefix = nil
-    if keymap[1] ~= 'i' then
-      prefix = ''
-    end
+    if keymap[1] ~= 'i' then prefix = '' end
 
     local keymap_line = fmt(
-      '%snoremap <silent> %s <cmd>call <SID>load([%s], { "keys": "%s"%s })<cr>',
-      keymap[1],
-      keymap[2],
-      table.concat(names, ', '),
-      keymap[2],
-      prefix == nil and '' or (', "prefix": "' .. prefix .. '"')
-    )
+                          '%snoremap <silent> %s <cmd>call <SID>load([%s], { "keys": "%s"%s })<cr>',
+                          keymap[1], keymap[2], table.concat(names, ', '), keymap[2],
+                          prefix == nil and '' or (', "prefix": "' .. prefix .. '"'))
 
     table.insert(keymap_defs, keymap_line)
   end
@@ -366,9 +343,9 @@ then
   local sequence_lines = {}
   local graph = {}
   for name, precedents in pairs(sequence_loads) do
-    graph[name] = graph[name] or { in_links = {}, out_links = {} }
+    graph[name] = graph[name] or {in_links = {}, out_links = {}}
     for _, pre in ipairs(precedents) do
-      graph[pre] = graph[pre] or { in_links = {}, out_links = {} }
+      graph[pre] = graph[pre] or {in_links = {}, out_links = {}}
       graph[name].in_links[pre] = true
       table.insert(graph[pre].out_links, name)
     end
@@ -376,9 +353,7 @@ then
 
   local frontier = {}
   for name, links in pairs(graph) do
-    if next(links.in_links) == nil then
-      table.insert(frontier, name)
-    end
+    if next(links.in_links) == nil then table.insert(frontier, name) end
   end
 
   while next(frontier) ~= nil do
@@ -386,7 +361,7 @@ then
     if loaders[plugin].only_sequence and not loaders[plugin].only_setup then
       table.insert(sequence_lines, 'packadd ' .. plugin)
       if plugins[plugin].config then
-        local lines = { '', '-- Config for: ' .. plugin }
+        local lines = {'', '-- Config for: ' .. plugin}
         lines = vim.list_extend(lines, plugins[plugin].config)
         table.insert(lines, '')
         sequence_lines = vim.list_extend(sequence_lines, lines)
@@ -400,9 +375,7 @@ then
       end
 
       graph[name].in_links[plugin] = nil
-      if next(graph[name].in_links) == nil then
-        table.insert(frontier, name)
-      end
+      if next(graph[name].in_links) == nil then table.insert(frontier, name) end
     end
 
     graph[plugin] = nil
@@ -415,7 +388,7 @@ then
     for plugin, _ in pairs(graph) do
       table.insert(sequence_lines, 'packadd ' .. plugin)
       if plugins[plugin].config then
-        local lines = { 'lua << END', '-- Config for: ' .. plugin }
+        local lines = {'lua << END', '-- Config for: ' .. plugin}
         lines = vim.list_extend(lines, plugins[plugin].config)
         table.insert(lines, 'END')
         sequence_lines = vim.list_extend(sequence_lines, lines)
@@ -426,7 +399,7 @@ then
   -- Output everything:
 
   -- First, the Lua code
-  local result = { '" Automatically generated packer.nvim plugin loader code\n', 'lua << END' }
+  local result = {'" Automatically generated packer.nvim plugin loader code\n', 'lua << END'}
   table.insert(result, fmt('local plugins = %s\n', vim.inspect(loaders)))
   table.insert(result, lua_loader)
   table.insert(result, '-- Pre-load configuration')
@@ -467,8 +440,8 @@ then
   return table.concat(result, '\n')
 end
 
-local compile = setmetatable({ cfg = cfg }, { __call = make_loaders })
+local compile = setmetatable({cfg = cfg}, {__call = make_loaders})
 
-compile.opt_keys = { 'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup' }
+compile.opt_keys = {'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup'}
 
 return compile
