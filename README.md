@@ -10,7 +10,7 @@ Neovim.
 - Automatically compiles efficient lazy-loading code to improve startup time
 - Uses native packages
 - Extensible
-- Written in Lua
+- Written in Lua, configured in Lua
 - Post-install/update hooks
 - Uses jobs for async installation
 - Support for `git` tags, branches, revisions, submodules
