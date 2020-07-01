@@ -105,7 +105,8 @@ manage = function(plugin)
   end
 
   local path = vim.fn.expand(plugin[1])
-  local _, name = path:match'(.*/)(.*)'
+  local name_segments = vim.split(path, '/')
+  local name = name_segments[#name_segments]
   if plugins[name] then
     log.warning('Plugin ' .. name .. ' is used twice!')
     return
@@ -152,7 +153,8 @@ manage = function(plugin)
         req = { req }
       end
 
-      local req_name = string.sub(req[1], string.find(req[1], '/%S+$') + 1)
+      local name_segments = vim.split(req[1], '/')
+      local req_name = name_segments[#name_segments]
       if not plugins[req_name] then
         manage(req)
       end
