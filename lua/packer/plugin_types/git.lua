@@ -122,19 +122,30 @@ git.setup = function(plugin)
 
       if plugin.commit then
         disp:task_update(plugin_name, fmt('checking out %s...', plugin.commit))
-        r = r:and_then(await, jobs.run(config.exec_cmd
-                                         .. fmt(config.subcommands.checkout, install_to,
-                                                plugin.commit), {})):map_err(
+        r = r:and_then(await,
+                       jobs.run(config.exec_cmd
+                                  .. fmt(config.subcommands.checkout, install_to, plugin.commit),
+                                installer_opts)):map_err(
               function(err)
             return {
               msg = fmt('Error checking out commit %s for %s', plugin.commit, plugin_name),
-              data = err
+              data = {err, output}
             }
           end)
       end
 
-      r = r:and_then(await, jobs.run(commit_cmd, {capture_output = true})):map_ok(
-            function(ok) plugin.messages = ok.output.data.stdout end)
+      r = r:and_then(await, jobs.run(commit_cmd, installer_opts)):map_ok(
+            function(ok) plugin.messages = output.data.stdout end):map_err(
+            function(err)
+          plugin.output = {err = output.data.stderr}
+          if not err.msg then
+            return {
+              msg = fmt('Error installing %s: %s', plugin_name,
+                        table.concat(output.data.stderr, '\n')),
+              data = {err, output}
+            }
+          end
+        end)
 
       return r
     end)
