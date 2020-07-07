@@ -146,18 +146,18 @@ local function make_loaders(_, plugins)
   for name, plugin in pairs(plugins) do
     local quote_name = "'" .. name .. "'"
     if plugin.config then
-        if type(plugin.config) ~= 'table' then plugin.config = {plugin.config} end
-        for i, config_item in ipairs(plugin.config) do
-          if type(config_item) == 'function' then
-            local stringified = string.dump(config_item, true)
-            if not plugin.opt then
-              stringified = 'loadstring(' .. vim.inspect(stringified) .. ')'
-            end
-
-            plugin.config[i] = stringified
+      if type(plugin.config) ~= 'table' then plugin.config = {plugin.config} end
+      for i, config_item in ipairs(plugin.config) do
+        if type(config_item) == 'function' then
+          local stringified = string.dump(config_item, true)
+          if not plugin.opt then
+            stringified = 'loadstring(' .. vim.inspect(stringified) .. ')'
           end
+
+          plugin.config[i] = stringified
         end
       end
+    end
 
     if plugin.config and not plugin.opt then configs[name] = plugin.config end
 
