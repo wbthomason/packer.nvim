@@ -76,7 +76,9 @@ _packer_load = function(names, cause)
     if not plugins[name].loaded then
       vim.api.nvim_command('packadd ' .. name)
       if plugins[name].config then
-        loadstring(plugins[name].config)()
+        for _i, config_line in ipairs(plugins[name].config) do
+          loadstring(config_line)()
+        end
       end
 
       if plugins[name].after then
@@ -143,9 +145,19 @@ local function make_loaders(_, plugins)
   local after = {}
   for name, plugin in pairs(plugins) do
     local quote_name = "'" .. name .. "'"
-    if plugin.config and type(plugin.config) == 'function' then
-      plugin.config = string.dump(plugin.config, true)
-    end
+    if plugin.config then
+        if type(plugin.config) ~= 'table' then plugin.config = {plugin.config} end
+        for i, config_item in ipairs(plugin.config) do
+          if type(config_item) == 'function' then
+            local stringified = string.dump(config_item, true)
+            if not plugin.opt then
+              stringified = 'loadstring(' .. vim.inspect(stringified) .. ')'
+            end
+
+            plugin.config[i] = stringified
+          end
+        end
+      end
 
     if plugin.config and not plugin.opt then configs[name] = plugin.config end
 
@@ -161,8 +173,12 @@ local function make_loaders(_, plugins)
       }
 
       if plugin.setup then
-        if type(plugin.setup) == 'function' then
-          plugin.setup = string.dump(plugin.setup, true)
+        if type(plugin.setup) ~= 'table' then plugin.setup = {plugin.setup} end
+        for i, setup_item in ipairs(plugin.setup) do
+          if type(setup_item) == 'function' then
+            local stringified = vim.inspect(string.dump(setup_item, true))
+            plugin.setup[i] = 'loadstring(' .. stringified .. ')()'
+          end
         end
 
         loaders[name].only_setup = true
