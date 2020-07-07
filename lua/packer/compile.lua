@@ -168,7 +168,7 @@ local function make_loaders(_, plugins)
         loaded = false,
         config = plugin.config,
         path = plugin.install_path .. (plugin.rtp and plugin.rtp or ''),
-        only_sequence = true,
+        only_sequence = plugin.manual_opt == nil,
         only_setup = false
       }
 
@@ -181,7 +181,7 @@ local function make_loaders(_, plugins)
           end
         end
 
-        loaders[name].only_setup = true
+        loaders[name].only_setup = plugin.manual_opt == nil
         setup[name] = plugin.setup
       end
 

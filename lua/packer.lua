@@ -117,6 +117,10 @@ manage = function(plugin)
   plugin.path = path
 
   -- Some config keys modify a plugin type
+  if plugin.opt then
+    plugin.manual_opt = true
+  end
+
   for _, key in ipairs(compile.opt_keys) do
     if plugin[key] then
       plugin.opt = true
@@ -153,8 +157,8 @@ manage = function(plugin)
         req = { req }
       end
 
-      local name_segments = vim.split(req[1], '/')
-      local req_name = name_segments[#name_segments]
+      local req_name_segments = vim.split(req[1], '/')
+      local req_name = req_name_segments[#req_name_segments]
       if not plugins[req_name] then
         manage(req)
       end
