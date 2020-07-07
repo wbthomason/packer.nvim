@@ -41,9 +41,9 @@ end
 plugin_utils.helptags_stale = function(dir)
   -- Adapted directly from minpac.vim
   local txts = vim.fn.glob(util.join_paths(dir, '*.txt'), true, true)
-  txts = vim.list_extend(txts, vim.fn.glob(util.join_paths(dir, '*.[a-z][a-z]x'), true, true))
+  vim.list_extend(txts, vim.fn.glob(util.join_paths(dir, '*.[a-z][a-z]x'), true, true))
   local tags = vim.fn.glob(util.join_paths(dir, 'tags'), true, true)
-  tags = vim.list_extend(tags, vim.fn.glob(util.join_paths(dir, 'tags-[a-z][a-z]'), true, true))
+  vim.list_extend(tags, vim.fn.glob(util.join_paths(dir, 'tags-[a-z][a-z]'), true, true))
   local txt_newest = math.max(unpack(util.map(vim.fn.getftime, txts)))
   local tag_oldest = math.min(unpack(util.map(vim.fn.getftime, tags)))
   return txt_newest > tag_oldest

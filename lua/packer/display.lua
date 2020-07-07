@@ -200,7 +200,7 @@ local display_mt = {
         end
 
         if actual_update then
-          raw_lines = vim.list_extend(raw_lines, message)
+          vim.list_extend(raw_lines, message)
         end
       end
     end

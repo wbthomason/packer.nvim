@@ -38,8 +38,8 @@ local function make_output_table()
 end
 
 local function extend_output(to, from)
-  to.stdout = vim.list_extend(to.stdout, from.stdout)
-  to.stderr = vim.list_extend(to.stderr, from.stderr)
+  vim.list_extend(to.stdout, from.stdout)
+  vim.list_extend(to.stderr, from.stderr)
   return to
 end
 

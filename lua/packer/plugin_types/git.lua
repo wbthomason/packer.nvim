@@ -201,10 +201,10 @@ git.setup = function(plugin)
       if needs_checkout then
         r = r:and_then(await, handle_checkouts(plugin, install_to, disp))
         local function merge_output(res)
-          update_info.err = vim.list_extend(update_info.err, res.output.err.stderr)
-          update_info.err = vim.list_extend(update_info.err, res.output.err.stdout)
-          update_info.output = vim.list_extend(update_info.output, res.output.data.stdout)
-          update_info.output = vim.list_extend(update_info.output, res.output.data.stderr)
+          vim.list_extend(update_info.err, res.output.err.stderr)
+          vim.list_extend(update_info.err, res.output.err.stdout)
+          vim.list_extend(update_info.output, res.output.data.stdout)
+          vim.list_extend(update_info.output, res.output.data.stderr)
         end
 
         r:map_ok(merge_output)

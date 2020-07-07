@@ -235,7 +235,7 @@ packer.update = function(...)
     local tasks, display_win = install(plugins, missing_plugins, results)
     local update_tasks
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
-    tasks = vim.list_extend(tasks, update_tasks)
+    vim.list_extend(tasks, update_tasks)
     table.insert(tasks, 1, function() return not display.status.running end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     display_win:update_headline_message(
@@ -284,7 +284,7 @@ packer.sync = function(...)
     local tasks, display_win = install(plugins, missing_plugins, results)
     local update_tasks
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
-    tasks = vim.list_extend(tasks, update_tasks)
+    vim.list_extend(tasks, update_tasks)
     table.insert(tasks, 1, function() return not display.status.running end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     display_win:update_headline_message('syncing ' .. #tasks - 2 .. ' / ' .. #tasks - 2 .. ' plugins')

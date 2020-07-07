@@ -276,8 +276,8 @@ local function make_loaders(_, plugins)
   local config_lines = {}
   for name, plugin_config in pairs(configs) do
     local lines = {'-- Config for: ' .. name}
-    lines = vim.list_extend(lines, plugin_config)
-    config_lines = vim.list_extend(config_lines, lines)
+    vim.list_extend(lines, plugin_config)
+    vim.list_extend(config_lines, lines)
   end
 
   local rtp_line = ''
@@ -288,12 +288,12 @@ local function make_loaders(_, plugins)
   local setup_lines = {}
   for name, plugin_setup in pairs(setup) do
     local lines = {'-- Setup for: ' .. name}
-    lines = vim.list_extend(lines, plugin_setup)
+    vim.list_extend(lines, plugin_setup)
     if loaders[name].only_setup then
       table.insert(lines, 'vim.api.nvim_command("packadd ' .. name .. '")')
     end
 
-    setup_lines = vim.list_extend(setup_lines, lines)
+    vim.list_extend(setup_lines, lines)
   end
 
   local conditionals = {}
@@ -308,9 +308,9 @@ local function make_loaders(_, plugins)
       table.insert(conditional_loads, 'vim.api.nvim_command("packadd ' .. name .. '")')
       if plugins[name].config then
         local lines = {'', '-- Config for: ' .. name}
-        lines = vim.list_extend(lines, plugins[name].config)
+        vim.list_extend(lines, plugins[name].config)
         table.insert(lines, '')
-        conditional_loads = vim.list_extend(conditional_loads, lines)
+        vim.list_extend(conditional_loads, lines)
       end
     end
 
@@ -378,9 +378,9 @@ then
       table.insert(sequence_lines, 'packadd ' .. plugin)
       if plugins[plugin].config then
         local lines = {'', '-- Config for: ' .. plugin}
-        lines = vim.list_extend(lines, plugins[plugin].config)
+        vim.list_extend(lines, plugins[plugin].config)
         table.insert(lines, '')
-        sequence_lines = vim.list_extend(sequence_lines, lines)
+        vim.list_extend(sequence_lines, lines)
       end
     end
 
@@ -405,9 +405,9 @@ then
       table.insert(sequence_lines, 'packadd ' .. plugin)
       if plugins[plugin].config then
         local lines = {'lua << END', '-- Config for: ' .. plugin}
-        lines = vim.list_extend(lines, plugins[plugin].config)
+        vim.list_extend(lines, plugins[plugin].config)
         table.insert(lines, 'END')
-        sequence_lines = vim.list_extend(sequence_lines, lines)
+        vim.list_extend(sequence_lines, lines)
       end
     end
   end
@@ -419,11 +419,11 @@ then
   table.insert(result, fmt('local plugins = %s\n', vim.inspect(loaders)))
   table.insert(result, lua_loader)
   table.insert(result, '-- Pre-load configuration')
-  result = vim.list_extend(result, setup_lines)
+  vim.list_extend(result, setup_lines)
   table.insert(result, '-- Post-load configuration')
-  result = vim.list_extend(result, config_lines)
+  vim.list_extend(result, config_lines)
   table.insert(result, '-- Conditional loads')
-  result = vim.list_extend(result, conditionals)
+  vim.list_extend(result, conditionals)
   table.insert(result, 'END\n')
 
   -- Then the Vim loader function
@@ -431,22 +431,22 @@ then
 
   -- The sequenced loads
   table.insert(result, '" Load plugins in order defined by `after`')
-  result = vim.list_extend(result, sequence_lines)
+  vim.list_extend(result, sequence_lines)
 
   -- The command and keymap definitions
   table.insert(result, '\n" Command lazy-loads')
-  result = vim.list_extend(result, command_defs)
+  vim.list_extend(result, command_defs)
   table.insert(result, '')
   table.insert(result, '" Keymap lazy-loads')
-  result = vim.list_extend(result, keymap_defs)
+  vim.list_extend(result, keymap_defs)
   table.insert(result, '')
 
   -- The filetype and event autocommands
   table.insert(result, 'augroup packer_load_aucmds\n  au!')
   table.insert(result, '  " Filetype lazy-loads')
-  result = vim.list_extend(result, ft_aucmds)
+  vim.list_extend(result, ft_aucmds)
   table.insert(result, '  " Event lazy-loads')
-  result = vim.list_extend(result, event_aucmds)
+  vim.list_extend(result, event_aucmds)
   table.insert(result, 'augroup END\n')
 
   -- Finally, the runtimepath line
