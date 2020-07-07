@@ -204,9 +204,9 @@ packer.install = function(...)
         end
       end
 
+      await(a.main)
       plugin_utils.update_helptags(install_paths)
       plugin_utils.update_rplugins()
-      await(a.main)
       local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
       display_win:final_results(results, delta)
     else
@@ -251,9 +251,9 @@ packer.update = function(...)
       end
     end
 
+    await(a.main)
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
-    await(a.main)
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta)
   end)()
@@ -298,9 +298,9 @@ packer.sync = function(...)
       end
     end
 
+    await(a.main)
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
-    await(a.main)
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta)
   end)()
