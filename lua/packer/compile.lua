@@ -269,8 +269,8 @@ local function make_loaders(_, plugins)
 
   local event_aucmds = {}
   for event, names in pairs(events) do
-    table.insert(ft_aucmds, fmt('  au %s ++once call s:load([%s], { "event": "%s" })', event,
-                                table.concat(names, ', '), event))
+    table.insert(event_aucmds, fmt('  au %s ++once call s:load([%s], { "event": "%s" })', event,
+                                   table.concat(names, ', '), event))
   end
 
   local config_lines = {}
