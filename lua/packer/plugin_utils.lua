@@ -121,7 +121,8 @@ plugin_utils.post_update_hook = function(plugin, disp)
         else
           local hook_output = {err = {}, output = {}}
           local hook_callbacks = {
-            stderr = jobs.logging_callback(hook_output.err, hook_output.output),
+            stderr = jobs.logging_callback(hook_output.err, hook_output.output, nil, disp,
+                                           plugin_name),
             stdout = jobs.logging_callback(hook_output.err, hook_output.output, nil, disp,
                                            plugin_name)
           }
