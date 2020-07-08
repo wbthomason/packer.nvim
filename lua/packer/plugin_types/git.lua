@@ -157,7 +157,6 @@ git.setup = function(plugin)
 
       local function exit_ok(r)
         if #update_info.err > 0 or r.exit_code ~= 0 then return result.err(r) end
-
         return result.ok(r)
       end
 
