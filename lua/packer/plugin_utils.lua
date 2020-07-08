@@ -129,9 +129,19 @@ plugin_utils.post_update_hook = function(plugin, disp)
           local cmd = {
             os.getenv('SHELL'), '-c', 'cd ' .. plugin.install_path .. ' && ' .. plugin.run
           }
-          return a.wait(jobs.run(cmd, {capture_output = hook_callbacks}))
+          local r = result.ok(true)
+          return r:and_then(a.wait, jobs.run(cmd, {capture_output = hook_callbacks})):map_err(
+                   function(err)
+              return {
+                msg = string.format('Error running post update hook: %s',
+                                    table.concat(hook_output.output, '\n')),
+                data = err
+              }
+            end)
         end
       else
+        -- TODO/NOTE: This case should also capture output in case of error. The minor difficulty is
+        -- what to do if the plugin's run table (i.e. this case) already specifies output handling.
         return a.wait(jobs.run(plugin.run))
       end
     else
