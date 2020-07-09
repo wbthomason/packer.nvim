@@ -1,3 +1,6 @@
+-- Load compatibility shim for Neovim versions <0.5.0
+require('packer/compat_shim')
+
 local api  = vim.api
 local log  = require('packer/log')
 local a    = require('packer/async')

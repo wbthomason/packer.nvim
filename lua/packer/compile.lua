@@ -1,3 +1,6 @@
+-- Load compatibility shim for Neovim versions <0.5.0
+require('packer/compat_shim')
+
 -- Compiling plugin specifications to Lua for lazy-loading
 local util = require('packer/util')
 local log = require('packer/log')
@@ -14,6 +17,17 @@ endfunction
 ]]
 
 local lua_loader = [[
+-- Compatibility shim for Neovim versions <0.5.0
+vim.fn = vim.fn or setmetatable({}, {
+  __index = function(t, key)
+    local function _fn(...)
+      return vim.api.nvim_call_function(key, {...})
+    end
+    t[key] = _fn
+    return _fn
+  end
+})
+
 local function handle_bufread(names)
   for _, name in ipairs(names) do
     local path = plugins[name].path

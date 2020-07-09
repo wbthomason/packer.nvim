@@ -1,3 +1,6 @@
+-- Load compatibility shim for Neovim versions <0.5.0
+require('packer/compat_shim')
+
 local plugin_utils = require('packer/plugin_utils')
 local a            = require('packer/async')
 local display      = require('packer/display')

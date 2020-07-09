@@ -6,6 +6,9 @@
 -- WIP:
 -- TODO: Allow separate packages
 
+-- Load compatibility shim for Neovim versions <0.5.0
+require('packer/compat_shim')
+
 local a            = require('packer/async')
 local clean        = require('packer/clean')
 local compile      = require('packer/compile')

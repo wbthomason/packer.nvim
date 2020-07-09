@@ -1,3 +1,6 @@
+-- Load compatibility shim for Neovim versions <0.5.0
+require('packer/compat_shim')
+
 -- Interface with Neovim job control and provide a simple job sequencing structure
 local split  = vim.split
 local loop   = vim.loop
