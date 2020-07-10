@@ -28,6 +28,11 @@ vim.fn = vim.fn or setmetatable({}, {
   end
 })
 
+vim.list_extend = vim.list_extend or function(dst, src, start, finish)
+  for i = start or 1, finish or #src do table.insert(dst, src[i]) end
+  return dst
+end
+
 local function handle_bufread(names)
   for _, name in ipairs(names) do
     local path = plugins[name].path
