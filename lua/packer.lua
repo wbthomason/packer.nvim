@@ -276,4 +276,6 @@ end
 
 packer.config = config
 
+packer.startup = require('packer.startup')
+
 return packer
