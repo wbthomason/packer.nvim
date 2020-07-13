@@ -250,6 +250,17 @@ is the key you wish to handle and `func` is a function with the signature `func(
 value)` where `plugins` is the global table of managed plugins, `plugin` is the table for a specific
 plugin, and `value` is the value associated with key `name` in `plugin`.
 
+### Compiling Lazy-Loaders
+To optimize startup time, `packer.nvim` compiles code to perform the lazy-loading operations you
+specify. This means that you do not need to load `packer.nvim` unless you want to perform some
+plugin management operations.
+
+To generate the compiled code, call `packer.compile(path)`, where `path` is some file path on you r
+`runtimepath`, with a `.vim` extension. This will generate a blend of Lua and Vimscript to load and
+configure all your lazy-loaded plugins (e.g. generating commands, autocommands, etc.) and save it to
+`path`. Then, when you start vim, the file at `path` is loaded (because `path` must be on your
+`runtimepath`), and lazy-loading works.
+
 ## Status
 **tl;dr**: Beta. Things seem to work and most features are complete, but certainly not every edge
 case has been tested. People willing to give it a try and report bugs/errors are very welcome! You
