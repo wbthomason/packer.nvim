@@ -70,7 +70,7 @@ packer.init = function(user_config)
   packer.reset()
 
   config.package_root = vim.fn.fnamemodify(config.package_root, ':p')
-  config.package_root = string.sub(config.package_root, 1, string.len(config.package_root) - 1)
+  config.package_root, _count = string.gsub(config.package_root, '/$', '', 1)
   config.pack_dir = util.join_paths(config.package_root, config.plugin_package)
   config.opt_dir = util.join_paths(config.pack_dir, 'opt')
   config.start_dir = util.join_paths(config.pack_dir, 'start')
