@@ -261,6 +261,8 @@ configure all your lazy-loaded plugins (e.g. generating commands, autocommands, 
 `path`. Then, when you start vim, the file at `path` is loaded (because `path` must be on your
 `runtimepath`), and lazy-loading works.
 
+Note that you **must** run `packer.compile` yourself to generate this file.
+
 ## Status
 **tl;dr**: Beta. Things seem to work and most features are complete, but certainly not every edge
 case has been tested. People willing to give it a try and report bugs/errors are very welcome! You
