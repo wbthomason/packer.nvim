@@ -24,7 +24,7 @@ local display_mt = {
     self:set_lines(
       config.header_lines,
       config.header_lines,
-      { string.format('%s %s: %s', config.working_sym, plugin, message) }
+      { string.format(' %s %s: %s', config.working_sym, plugin, message) }
     )
     self.marks[plugin] = api.nvim_buf_set_extmark(self.buf, self.ns, 0, config.header_lines, 0, {})
   end),
@@ -51,7 +51,7 @@ local display_mt = {
     self:set_lines(
       line[1],
       line[1] + 1,
-      { string.format('%s %s: %s', config.done_sym, plugin, message) }
+      { string.format(' %s %s: %s', config.done_sym, plugin, message) }
     )
     api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin])
     self.marks[plugin] = nil
@@ -67,7 +67,7 @@ local display_mt = {
     self:set_lines(
       line[1],
       line[1] + 1,
-      { string.format('%s %s: %s', config.error_sym, plugin, message) }
+      { string.format(' %s %s: %s', config.error_sym, plugin, message) }
     )
     api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin])
     self.marks[plugin] = nil
@@ -83,7 +83,7 @@ local display_mt = {
     self:set_lines(
       line[1],
       line[1] + 1,
-      { string.format('%s %s: %s', config.working_sym, plugin, message) }
+      { string.format(' %s %s: %s', config.working_sym, plugin, message) }
     )
     api.nvim_buf_set_extmark(self.buf, self.ns, self.marks[plugin], line[1], 0, {})
   end),
@@ -130,7 +130,7 @@ local display_mt = {
         table.insert(
           raw_lines,
           string.format(
-            '%s Removed %s',
+            ' %s Removed %s',
             config.removed_sym,
             plugin_dir
           )
@@ -143,7 +143,7 @@ local display_mt = {
         table.insert(
           raw_lines,
           string.format(
-            '%s %s %s: %s %s %s',
+            ' %s %s %s: %s %s %s',
             result.result.ok and config.done_sym or config.error_sym,
             result.result.ok and 'Moved' or 'Failed to move',
             plugin,
@@ -160,7 +160,7 @@ local display_mt = {
         table.insert(
           raw_lines,
           string.format(
-            '%s %s %s',
+            ' %s %s %s',
             result.ok and config.done_sym or config.error_sym,
             result.ok and 'Installed' or 'Failed to install',
             plugin
@@ -177,10 +177,10 @@ local display_mt = {
         if result.ok then
           if plugin.type ~= 'git' or plugin.revs[1] == plugin.revs[2] then
             actual_update = false
-            table.insert(message, string.format('%s %s is already up to date', config.done_sym, plugin_name))
+            table.insert(message, string.format(' %s %s is already up to date', config.done_sym, plugin_name))
           else
             table.insert(message, string.format(
-              '%s Updated %s: %s..%s',
+              ' %s Updated %s: %s..%s',
               config.done_sym,
               plugin_name,
               plugin.revs[1],
@@ -191,7 +191,7 @@ local display_mt = {
           table.insert(
             message,
             string.format(
-              '%s Failed to update %s: %s',
+              ' %s Failed to update %s: %s',
               config.error_sym,
               plugin_name,
               vim.inspect(result.err)
@@ -206,7 +206,7 @@ local display_mt = {
     end
 
     if #raw_lines == 0 then
-      table.insert(raw_lines, 'Everything already up to date!')
+      table.insert(raw_lines, ' Everything already up to date!')
     end
 
     -- Ensure there are no newlines
@@ -294,14 +294,14 @@ display_mt.__index = display_mt
 local function make_filetype_cmds(working_sym, done_sym, error_sym)
   return {
     -- Adapted from https://github.com/kristijanhusak/vim-packager
-    'setlocal buftype=nofile bufhidden=wipe nobuflisted nolist noswapfile nowrap nospell nonumber norelativenumber nofoldenable signcolumn=yes:2',
+    'setlocal buftype=nofile bufhidden=wipe nobuflisted nolist noswapfile nowrap nospell nonumber norelativenumber nofoldenable signcolumn=no',
     'syntax clear',
-    'syn match packerWorking /^' .. working_sym .. '/',
-    'syn match packerSuccess /^' .. done_sym .. '/',
-    'syn match packerFail /^' .. error_sym .. '/',
+    'syn match packerWorking /^ ' .. working_sym .. '/',
+    'syn match packerSuccess /^ ' .. done_sym .. '/',
+    'syn match packerFail /^ ' .. error_sym .. '/',
     'syn match packerStatus /\\(^+.*—\\)\\@<=\\s.*$/',
-    'syn match packerStatusSuccess /\\(^' .. done_sym .. '.*—\\)\\@<=\\s.*$/',
-    'syn match packerStatusFail /\\(^' .. error_sym .. '.*—\\)\\@<=\\s.*$/',
+    'syn match packerStatusSuccess /\\(^ ' .. done_sym .. '.*—\\)\\@<=\\s.*$/',
+    'syn match packerStatusFail /\\(^ ' .. error_sym .. '.*—\\)\\@<=\\s.*$/',
     'syn match packerStatusCommit /\\(^\\*.*—\\)\\@<=\\s.*$/',
     'syn match packerHash /\\(\\s\\)[0-9a-f]\\{7,8}\\(\\s\\)/',
     'syn match packerRelDate /([^)]*)$/',
@@ -331,7 +331,7 @@ display.cfg = function(_config)
 end
 
 local function make_header(disp)
-  local width = api.nvim_win_get_width(0) - 2
+  local width = api.nvim_win_get_width(0)
   local pad_width = math.floor((width - string.len(config.title)) / 2.0)
   api.nvim_buf_set_lines(
     disp.buf,
@@ -340,7 +340,7 @@ local function make_header(disp)
     true,
     {
       string.rep(' ', pad_width) .. config.title,
-      ' ' .. string.rep(config.header_sym, width - 4) .. ' '
+      ' ' .. string.rep(config.header_sym, width - 2) .. ' '
     }
   )
 end
