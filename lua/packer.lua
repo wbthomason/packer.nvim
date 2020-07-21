@@ -320,7 +320,7 @@ packer.startup = function(spec)
 
   if user_func then
     setfenv(user_func, vim.tbl_extend('force', getfenv(), {use = packer.use}))
-    user_func()
+    user_func(packer.use)
   else
     for _, plugin_spec in ipairs(user_plugins) do packer.use(plugin_spec) end
   end
