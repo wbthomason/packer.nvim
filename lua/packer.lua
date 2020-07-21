@@ -281,6 +281,13 @@ end
 packer.config = config
 
 packer.startup = function(user_func, user_config)
+  if type(user_func) == 'table' then
+    user_config = user_func
+    user_func = packer.use
+  elseif user_func == nil then
+    user_func = packer.use
+  end
+
   packer.init(user_config)
   packer.reset()
 
