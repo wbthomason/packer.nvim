@@ -13,6 +13,26 @@ function! s:load(names, cause) abort
 endfunction
 ]]
 
+local recompiler = [[
+  local function recompile(loader_path, spec_path)
+    vim.cmd('packadd packer.nvim')
+    vim._update_package_paths()
+    require('packer').compile(loader_path, spec_path)
+  end
+
+  local function handle_recompile(spec_path, loader_path)
+    local spec_stats = assert(vim.loop.fs_stat(spec_path), 'Could not stat plugin specification file at ' .. spec_path)
+    local loader_stats = vim.loop.fs_stat(loader_path)
+    if
+      loader_stats == nil
+      or (loader_stats.mtime.sec < spec_stats.mtime.sec)
+      or (loader_stats.mtime.sec == spec_stats.mtime.sec and loader_stats.mtime.nsec < spec_stats.mtime.nsec)
+    then
+      recompile(loader_path)
+    end
+  end
+]]
+
 local lua_loader = [[
 local function handle_bufread(names)
   for _, name in ipairs(names) do

@@ -27,9 +27,12 @@ local config_defaults = {
     or '~/.local/share/nvim/site/pack',
   compile_path = util.is_windows and (vim.fn.stdpath('config') .. '\\plugin\\packer_compiled.vim')
     or (vim.fn.stdpath('config') .. '/plugin/packer_compiled.vim'),
+  spec_path = util.is_windows and (vim.fn.stdpath('config') .. '\\lua\\plugins.lua')
+    or (vim.fn.stdpath('config') .. '/lua/plugins.lua'),
   plugin_package = 'packer',
   max_jobs = nil,
   auto_clean = true,
+  auto_compile = true,
   disable_commands = false,
   git = {
     cmd = 'git',
@@ -267,9 +270,10 @@ packer.sync = function(...)
   end)()
 end
 
-packer.compile = function(output_path)
+packer.compile = function(output_path, spec_path)
   output_path = output_path or config.compile_path
-  local compiled_loader = compile(plugins)
+  spec_path = spec_path or config.spec_path
+  local compiled_loader = compile(plugins, output_path, spec_path)
   output_path = vim.fn.expand(output_path)
   vim.fn.mkdir(vim.fn.fnamemodify(output_path, ":h"), 'p')
   local output_file = io.open(output_path, 'w')
