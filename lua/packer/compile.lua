@@ -18,6 +18,7 @@ local recompiler = [[
     vim.cmd('packadd packer.nvim')
     vim._update_package_paths()
     require('packer').compile(loader_path, spec_path)
+    -- TODO: How do we get the set of managed plugins?
   end
 
   local function handle_recompile(spec_path, loader_path)
