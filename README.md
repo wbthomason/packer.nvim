@@ -54,7 +54,7 @@ local function init()
     'w0rp/ale',
     ft = {'sh', 'zsh', 'bash', 'c', 'cpp', 'cmake', 'html', 'markdown', 'racket', 'vim', 'tex'},
     cmd = 'ALEEnable',
-    config = 'vim.api.nvim_command("ALEEnable")'
+    config = 'vim.cmd[[ALEEnable]]
   }
 
   -- Plugins can have dependencies on other plugins

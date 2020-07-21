@@ -54,14 +54,12 @@ plugin_utils.update_helptags = vim.schedule_wrap(function(...)
     local doc_dir = util.join_paths(dir, 'doc')
     if plugin_utils.helptags_stale(doc_dir) then
       log.info('Updating helptags for ' .. doc_dir)
-      vim.api.nvim_command('silent! helptags ' .. vim.fn.fnameescape(doc_dir))
+      vim.cmd('silent! helptags ' .. vim.fn.fnameescape(doc_dir))
     end
   end
 end)
 
-plugin_utils.update_rplugins = vim.schedule_wrap(function()
-  vim.api.nvim_command('UpdateRemotePlugins')
-end)
+plugin_utils.update_rplugins = vim.schedule_wrap(function() vim.cmd [[UpdateRemotePlugins]] end)
 
 plugin_utils.ensure_dirs = function()
   if vim.fn.isdirectory(config.opt_dir) == 0 then vim.fn.mkdir(config.opt_dir, 'p') end
@@ -88,12 +86,13 @@ end
 
 plugin_utils.load_plugin = function(plugin)
   if plugin.opt then
-    vim.api.nvim_command('packadd ' .. plugin.short_name)
+    vim.cmd('packadd ' .. plugin.short_name)
+    vim._update_package_paths()
   else
     vim.o.runtimepath = vim.o.runtimepath .. ',' .. plugin.install_path
     for _, pat in ipairs({'plugin/**/*.vim', 'after/plugin/**/*.vim'}) do
       local path = util.join_paths(plugin.install_path, pat)
-      if #vim.fn.glob(path) > 0 then vim.api.nvim_command('silent exe "source ' .. path .. '"') end
+      if #vim.fn.glob(path) > 0 then vim.cmd('silent exe "source ' .. path .. '"') end
     end
   end
 end
@@ -116,7 +115,7 @@ plugin_utils.post_update_hook = function(plugin, disp)
       elseif type(plugin.run) == 'string' then
         if string.sub(plugin.run, 1, 1) == ':' then
           a.wait(vim.schedule)
-          vim.api.nvim_command(string.sub(plugin.run, 2))
+          vim.cmd(string.sub(plugin.run, 2))
           return result.ok(true)
         else
           local hook_output = {err = {}, output = {}}

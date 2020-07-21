@@ -352,7 +352,7 @@ local function setup_window(disp)
   end
 
   for _, c in ipairs(config.filetype_cmds) do
-    api.nvim_command(c)
+    vim.cmd(c)
   end
 end
 
@@ -367,7 +367,7 @@ display.open = function(opener)
 
   local disp = setmetatable({}, display_mt)
   if type(opener) == 'string' then
-    api.nvim_command(opener)
+    vim.cmd(opener)
     disp.win = api.nvim_get_current_win()
     disp.buf = api.nvim_get_current_buf()
   else
