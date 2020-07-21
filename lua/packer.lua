@@ -287,11 +287,11 @@ packer.config = config
 --
 --  spec can be a table with a function as its first element and config overrides as another
 --  element:
---  packer.startup({function() use 'tjdevries/colorbuddy.vim' end, config = { ... })
+--  packer.startup({function() use 'tjdevries/colorbuddy.vim' end, config = { ... }})
 --
 --  spec can be a table with a table of plugin specifications as its first element and config
 --  overrides as another element:
---  packer.startup({'tjdevries/colorbuddy.vim'}, config = { ... })
+--  packer.startup({{'tjdevries/colorbuddy.vim'}, config = { ... }})
 packer.startup = function(spec)
   local user_func = nil
   local user_config = nil

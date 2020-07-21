@@ -33,7 +33,7 @@ vim.cmd [[packadd packer.nvim]]
 -- Temporary until https://github.com/neovim/neovim/pull/12632 is merged
 vim._update_package_paths()
 
-return require('packer').startup(function(use)
+return require('packer').startup(function()
   -- Packer can manage itself as an optional plugin
   use {'wbthomason/packer.nvim', opt = true}
 
@@ -103,6 +103,16 @@ The above snippets give some examples of `packer` features and use. Examples inc
     - Using this method, you do not require a "loading" file. You can simply `lua require('plugins')` from your `init.vim`
 
 The following is a more in-depth explanation of `packer`'s features and use.
+
+### The `startup` function
+`packer` provides `packer.startup(spec)`, which is used in the above examples.
+
+`startup` is a convenience function for simple setup and can be invoked as follows:
+- `spec` can be a function: `packer.startup(function() use 'tjdevries/colorbuddy.vim' end)`
+- `spec` can be a table with a function as its first element and config overrides as another element:
+  `packer.startup({function() use 'tjdevries/colorbuddy.vim' end, config = { ... }})`
+- `spec` can be a table with a table of plugin specifications as its first element and config overrides as another element:
+ `packer.startup({{'tjdevries/colorbuddy.vim'}, config = { ... }})`
 
 ### Custom Initialization
 You are not required to use `packer.startup` if you prefer a more manual setup with finer control
