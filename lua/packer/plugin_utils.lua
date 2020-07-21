@@ -87,7 +87,6 @@ end
 plugin_utils.load_plugin = function(plugin)
   if plugin.opt then
     vim.cmd('packadd ' .. plugin.short_name)
-    vim._update_package_paths()
   else
     vim.o.runtimepath = vim.o.runtimepath .. ',' .. plugin.install_path
     for _, pat in ipairs({'plugin/**/*.vim', 'after/plugin/**/*.vim'}) do
@@ -95,6 +94,8 @@ plugin_utils.load_plugin = function(plugin)
       if #vim.fn.glob(path) > 0 then vim.cmd('silent exe "source ' .. path .. '"') end
     end
   end
+
+  vim._update_package_paths()
 end
 
 plugin_utils.post_update_hook = function(plugin, disp)
