@@ -25,9 +25,12 @@ local config_defaults = {
   ensure_dependencies = true,
   package_root = util.is_windows and '~\\AppData\\Local\\nvim-data\\site\\pack'
     or '~/.local/share/nvim/site/pack',
+  compile_path = util.is_windows and (vim.fn.stdpath('config') .. '\\plugin\\packer_compiled.vim')
+    or (vim.fn.stdpath('config') .. '/plugin/packer_compiled.vim'),
   plugin_package = 'packer',
   max_jobs = nil,
   auto_clean = true,
+  disable_commands = false,
   git = {
     cmd = 'git',
     subcommands = {
@@ -265,6 +268,7 @@ packer.sync = function(...)
 end
 
 packer.compile = function(output_path)
+  output_path = output_path or config.compile_path
   local compiled_loader = compile(plugins)
   output_path = vim.fn.expand(output_path)
   vim.fn.mkdir(vim.fn.fnamemodify(output_path, ":h"), 'p')
@@ -276,6 +280,21 @@ end
 
 packer.config = config
 
-packer.startup = require('packer.startup')
+packer.startup = function(user_func, user_config)
+  packer.init(user_config)
+  packer.reset()
+
+  user_func(packer.use)
+
+  if not config.disable_commands then
+    vim.cmd [[command! PackerInstall  lua require('packer').install()]]
+    vim.cmd [[command! PackerUpdate   lua require('packer').update()]]
+    vim.cmd [[command! PackerSync     lua require('packer').sync()]]
+    vim.cmd [[command! PackerClean    lua require('packer').clean()]]
+    vim.cmd [[command! PackerCompile  lua require('packer').compile()]]
+  end
+
+  return packer
+end
 
 return packer
