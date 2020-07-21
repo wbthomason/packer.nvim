@@ -280,11 +280,50 @@ end
 
 packer.config = config
 
-packer.startup = function(user_func, user_config)
+--- Convenience function for simple setup
+-- Can be invoked as follows:
+--  spec can be a function:
+--  packer.startup(function() use 'tjdevries/colorbuddy.vim' end)
+--
+--  spec can be a table with a function as its first element and config overrides as another
+--  element:
+--  packer.startup({function() use 'tjdevries/colorbuddy.vim' end, config = { ... }})
+--
+--  spec can be a table with a table of plugin specifications as its first element and config
+--  overrides as another element:
+--  packer.startup({{'tjdevries/colorbuddy.vim'}, config = { ... }})
+packer.startup = function(spec)
+  local user_func = nil
+  local user_config = nil
+  local user_plugins = nil
+  if type(spec) == 'function' then
+    user_func = spec
+  elseif type(spec) == 'table' then
+    if type(spec[1]) == 'function' then
+      user_func = spec[1]
+    elseif type(spec[1]) == 'table' then
+      user_plugins = spec[1]
+    else
+      log.error(
+        'You must provide a function or table of specifications as the first element of the argument to startup!')
+      return
+    end
+
+    -- NOTE: It might be more convenient for users to allow arbitrary config keys to be specified
+    -- and to merge them, but I feel that only avoids a single layer of nesting and adds more
+    -- complication here, so I'm not sure if the benefit justifies the cost
+    user_config = spec.config
+  end
+
   packer.init(user_config)
   packer.reset()
 
-  user_func(packer.use)
+  if user_func then
+    setfenv(user_func, vim.tbl_extend('force', getfenv(), {use = packer.use}))
+    user_func(packer.use)
+  else
+    for _, plugin_spec in ipairs(user_plugins) do packer.use(plugin_spec) end
+  end
 
   if not config.disable_commands then
     vim.cmd [[command! PackerInstall  lua require('packer').install()]]
