@@ -89,7 +89,12 @@ packer.reset = function() plugins = {} end
 
 local manage = nil
 manage = function(plugin)
-  if type(plugin) == 'string' then plugin = {plugin} end
+  if type(plugin) == 'string' then
+    plugin = {plugin}
+  elseif type(plugin) == 'table' and #plugin > 1 then
+    for _, spec in ipairs(plugin) do manage(spec) end
+    return
+  end
 
   local path = vim.fn.expand(plugin[1])
   local name_segments = vim.split(path, '/')
@@ -322,7 +327,7 @@ packer.startup = function(spec)
     setfenv(user_func, vim.tbl_extend('force', getfenv(), {use = packer.use}))
     user_func(packer.use)
   else
-    for _, plugin_spec in ipairs(user_plugins) do packer.use(plugin_spec) end
+    packer.use(user_plugins)
   end
 
   if not config.disable_commands then

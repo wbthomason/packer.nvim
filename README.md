@@ -68,6 +68,9 @@ return require('packer').startup(function()
 
   -- Plugins can have post-install/update hooks
   use {'iamcco/markdown-preview.nvim', run = 'cd app && yarn install', cmd = 'MarkdownPreview'}
+
+  -- You can specify multiple plugins in a single call
+  use {'tjdevries/colorbuddy.vim', {'nvim-treesitter/nvim-treesitter', opt = true}}
 end)
 ```
 
@@ -175,8 +178,11 @@ for a non-optional plugin with no additional configuration. Plugin locations may
 2. Full URLs (treated as plugins managed with `git`)
 3. `username/repo` paths (treated as Github `git` plugins)
 
-A table given to `use` must have a plugin location string as its first element, and may additionally
-have a number of optional keyword elements, shown below:
+A table given to `use` can take two forms:
+
+1. A list of plugin specifications (strings or tables)
+2. A table specifying a single plugin. It must have a plugin location string as its first element,
+   and may additionally have a number of optional keyword elements, shown below:
 ```lua
 use {
   'myusername/example',   -- The plugin location string
