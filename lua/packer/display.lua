@@ -4,9 +4,9 @@ local a    = require('packer.async')
 
 local config = nil
 local keymaps = {
-  {'n', 'q', '<cmd>lua require"packer/display".quit()<cr>', {nowait = true, silent = true}},
+  {'n', 'q', '<cmd>lua require"packer.display".quit()<cr>', {nowait = true, silent = true}},
   {
-    'n', '<cr>', '<cmd>lua require"packer/display".toggle_info()<cr>',
+    'n', '<cr>', '<cmd>lua require"packer.display".toggle_info()<cr>',
     {nowait = true, silent = true}
   }
 }
