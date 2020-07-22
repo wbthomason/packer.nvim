@@ -1,8 +1,8 @@
-local a = require('packer/async')
-local jobs = require('packer/jobs')
-local util = require('packer/util')
-local result = require('packer/result')
-local log = require('packer/log')
+local a = require('packer.async')
+local jobs = require('packer.jobs')
+local util = require('packer.util')
+local result = require('packer.result')
+local log = require('packer.log')
 
 local config = nil
 local plugin_utils = {}

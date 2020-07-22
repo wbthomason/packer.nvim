@@ -1,9 +1,9 @@
 -- Interface with Neovim job control and provide a simple job sequencing structure
-local split = vim.split
-local loop = vim.loop
-local a = require('packer/async')
-local log = require('packer/log')
-local result = require('packer/result')
+local split  = vim.split
+local loop   = vim.loop
+local a      = require('packer.async')
+local log    = require('packer.log')
+local result = require('packer.result')
 
 local function make_logging_callback(err_tbl, data_tbl, pipe, disp, name)
   return function(err, data)

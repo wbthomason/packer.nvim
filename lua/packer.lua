@@ -4,17 +4,17 @@
 -- TODO: Merge start plugins?
 -- WIP:
 -- TODO: Allow separate packages
-local a = require('packer/async')
-local clean = require('packer/clean')
-local compile = require('packer/compile')
-local display = require('packer/display')
-local handlers = require('packer/handlers')
-local install = require('packer/install')
-local log = require('packer/log')
-local plugin_types = require('packer/plugin_types')
-local plugin_utils = require('packer/plugin_utils')
-local update = require('packer/update')
-local util = require('packer/util')
+local a = require('packer.async')
+local clean = require('packer.clean')
+local compile = require('packer.compile')
+local display = require('packer.display')
+local handlers = require('packer.handlers')
+local install = require('packer.install')
+local log = require('packer.log')
+local plugin_types = require('packer.plugin_types')
+local plugin_utils = require('packer.plugin_utils')
+local update = require('packer.update')
+local util = require('packer.util')
 
 local async = a.sync
 local await = a.wait

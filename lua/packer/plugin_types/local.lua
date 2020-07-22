@@ -1,8 +1,8 @@
-local a = require('packer/async')
-local jobs = require('packer/jobs')
-local log = require('packer/log')
-local util = require('packer/util')
-local result = require('packer/result')
+local a      = require('packer.async')
+local jobs   = require('packer.jobs')
+local log    = require('packer.log')
+local util   = require('packer.util')
+local result = require('packer.result')
 
 local async = a.sync
 local await = a.wait
