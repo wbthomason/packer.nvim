@@ -1,6 +1,6 @@
-local a            = require('packer/async')
-local util         = require('packer/util')
-local display      = require('packer/display')
+local a = require('packer/async')
+local util = require('packer/util')
+local display = require('packer/display')
 local plugin_utils = require('packer/plugin_utils')
 
 local async = a.sync
@@ -12,6 +12,8 @@ local function install_plugin(plugin, display_win, results)
   local plugin_name = util.get_plugin_full_name(plugin)
   return async(function()
     display_win:task_start(plugin_name, 'installing...')
+    -- TODO: If the user provided a custom function as an installer, we would like to use pcall
+    -- here. Need to figure out how that integrates with async code
     local r = await(plugin.installer(display_win))
     r = r:and_then(await, plugin_utils.post_update_hook(plugin, display_win))
     if r.ok then
@@ -43,10 +45,8 @@ local function do_install(_, plugins, missing_plugins, results)
   return tasks, display_win
 end
 
-local function cfg(_config)
-  config = _config
-end
+local function cfg(_config) config = _config end
 
-local install = setmetatable({ cfg = cfg }, { __call = do_install })
+local install = setmetatable({cfg = cfg}, {__call = do_install})
 
 return install

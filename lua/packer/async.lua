@@ -10,7 +10,7 @@ local function step(func, callback)
       if type(val) == 'function' then
         val(tick)
       else
-        (callback or function () end)(val)
+        (callback or function() end)(val)
       end
     end
   end
@@ -31,10 +31,7 @@ end
 local function join(...)
   local thunks = {...}
   local thunk_all = function(s)
-    if #thunks == 0 then
-      return s()
-    end
-
+    if #thunks == 0 then return s() end
     local to_go = #thunks
     local results = {}
     for i, thunk in ipairs(thunks) do
@@ -54,21 +51,15 @@ local function join(...)
   return thunk_all
 end
 
-local function wait_all(...)
-  return co.yield(join(...))
-end
+local function wait_all(...) return co.yield(join(...)) end
 
 local function pool(n, interrupt_check, ...)
   local thunks = {...}
   return function(s)
-    if #thunks == 0 then
-      return s()
-    end
-
+    if #thunks == 0 then return s() end
     local remaining = select(n, thunks)
     local results = {}
     local to_go = #thunks
-
     local make_callback = nil
     make_callback = function(idx, left)
       local i = (left == nil) and idx or (idx + left)
@@ -93,17 +84,13 @@ local function pool(n, interrupt_check, ...)
   end
 end
 
-local function wait_pool(limit, ...)
-  return co.yield(pool(limit, false, ...))
-end
+local function wait_pool(limit, ...) return co.yield(pool(limit, false, ...)) end
 
 local function interruptible_wait_pool(limit, interrupt_check, ...)
   return co.yield(pool(limit, interrupt_check, ...))
 end
 
-local function main(f)
-  vim.schedule(f)
-end
+local function main(f) vim.schedule(f) end
 
 local M = {
   sync = wrap(step),

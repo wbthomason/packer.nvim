@@ -290,9 +290,7 @@ local function make_loaders(_, plugins)
   for name, plugin_setup in pairs(setup) do
     local lines = {'-- Setup for: ' .. name}
     vim.list_extend(lines, plugin_setup)
-    if loaders[name].only_setup then
-      table.insert(lines, 'vim.cmd("packadd ' .. name .. '")')
-    end
+    if loaders[name].only_setup then table.insert(lines, 'vim.cmd("packadd ' .. name .. '")') end
 
     vim.list_extend(setup_lines, lines)
   end
