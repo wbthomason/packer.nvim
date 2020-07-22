@@ -1,5 +1,4 @@
 -- A simple Result<V, E> type to simplify control flow with installers and updaters
-
 local result = {}
 
 local ok_result_mt = {
@@ -12,24 +11,18 @@ local ok_result_mt = {
       return r
     end
   end,
-  or_else = function(self)
-    return self
-  end,
+  or_else = function(self) return self end,
   map_ok = function(self, f)
     self.ok = f(self.ok) or self.ok
     return self
   end,
-  map_err = function(self)
-    return self
-  end
+  map_err = function(self) return self end
 }
 
 ok_result_mt.__index = ok_result_mt
 
 local err_result_mt = {
-  and_then = function(self)
-    return self
-  end,
+  and_then = function(self) return self end,
   or_else = function(self, f, ...)
     local r = f(...)
     if r.ok then
@@ -39,9 +32,7 @@ local err_result_mt = {
       return self
     end
   end,
-  map_ok = function(self)
-    return self
-  end,
+  map_ok = function(self) return self end,
   map_err = function(self, f)
     self.err = f(self.err) or self.err
     return self
@@ -63,10 +54,7 @@ result.err = function(err)
 end
 
 result.wrap = function(fst, snd)
-  if fst then
-    return result.ok(fst)
-  end
-
+  if fst then return result.ok(fst) end
   return result.err(snd)
 end
 

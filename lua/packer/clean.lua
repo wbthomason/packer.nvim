@@ -27,10 +27,7 @@ local clean_plugins = function(_, plugins, results)
 
     if next(dirty_plugins) then
       local lines = {}
-      for _, path in pairs(dirty_plugins) do
-        table.insert(lines, '  - ' .. path)
-      end
-
+      for _, path in pairs(dirty_plugins) do table.insert(lines, '  - ' .. path) end
       if await(display.ask_user('Removing the following directories. OK? (y/N)', lines)) then
         results.removals = dirty_plugins
         return os.execute('rm -rf ' .. table.concat(vim.tbl_values(dirty_plugins), ' '))
@@ -43,9 +40,7 @@ local clean_plugins = function(_, plugins, results)
   end)
 end
 
-local function cfg(_config)
-  config = _config
-end
+local function cfg(_config) config = _config end
 
-local clean = setmetatable({ cfg = cfg }, { __call = clean_plugins })
+local clean = setmetatable({cfg = cfg}, {__call = clean_plugins})
 return clean

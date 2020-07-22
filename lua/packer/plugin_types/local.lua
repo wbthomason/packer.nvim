@@ -8,18 +8,16 @@ local async = a.sync
 local await = a.wait
 
 local config = nil
-local function cfg(_config)
-  config = _config
-end
+local function cfg(_config) config = _config end
 
 local function setup_local(plugin)
   local from = plugin.path
   local to = plugin.install_path
   local task
   if vim.fn.executable('ln') then
-    task = { 'ln', '-sf', from, to }
+    task = {'ln', '-sf', from, to}
   elseif util.is_windows and vim.fn.executable('mklink') then
-    task = { 'mklink', from, to }
+    task = {'mklink', from, to}
   else
     log.error('No executable symlink command found!')
     return
@@ -29,16 +27,13 @@ local function setup_local(plugin)
   plugin.installer = function(disp)
     return async(function()
       disp:task_update(plugin_name, 'making symlink...')
-      return await(jobs.run(task, { capture_output = true }))
+      return await(jobs.run(task, {capture_output = true}))
     end)
   end
 
   plugin.updater = function(_) return async(function() return result.ok(true) end) end
 end
 
-local local_plugin = {
-  setup = setup_local,
-  cfg = cfg
-}
+local local_plugin = {setup = setup_local, cfg = cfg}
 
 return local_plugin

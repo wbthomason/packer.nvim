@@ -123,19 +123,14 @@ manage = function(plugin)
                                         plugin.short_name)
 
   if not plugin.type then plugin_utils.guess_type(plugin) end
-
   if plugin.type ~= 'custom' then plugin_types[plugin.type].setup(plugin) end
-
   for k, v in pairs(plugin) do if handlers[k] then handlers[k](plugins, plugin, v) end end
-
   plugins[name] = plugin
 
   if plugin.requires and config.ensure_dependencies then
     if type(plugin.requires) == 'string' then plugin.requires = {plugin.requires} end
-
     for _, req in ipairs(plugin.requires) do
       if type(req) == 'string' then req = {req} end
-
       local req_name_segments = vim.split(req[1], '/')
       local req_name = req_name_segments[#req_name_segments]
       if not plugins[req_name] then manage(req) end
@@ -325,7 +320,11 @@ packer.startup = function(spec)
 
   if user_func then
     setfenv(user_func, vim.tbl_extend('force', getfenv(), {use = packer.use}))
-    user_func(packer.use)
+    local status, err = pcall(user_func, packer.use)
+    if not status then
+      log.error('Failure running setup function: ' .. vim.inspect(err))
+      error(err)
+    end
   else
     packer.use(user_plugins)
   end

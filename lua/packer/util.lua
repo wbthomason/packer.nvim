@@ -7,59 +7,6 @@ util.map = function(func, seq)
   return result
 end
 
-util.imap = function(func, seq)
-  local result = {}
-  for k, v in pairs(seq) do table.insert(result, func(k, v)) end
-
-  return result
-end
-
-util.zip = function(...)
-  local args = {...}
-  local result = {}
-  local min_length = math.min(unpack(util.map(function(l) return #l end, args)))
-  for i = 1, min_length do
-    local elem = {}
-    for _, l in ipairs(args) do table.insert(elem, l[i]) end
-
-    table.insert(result, elem)
-  end
-
-  return result
-end
-
-util.tail = function(seq) return {unpack(seq, 2, #seq)} end
-
-util.head = function(seq) return seq[1] end
-
-util.fold = function(func, seq, init)
-  local acc = init or seq[1]
-  if init == nil then seq = util.tail(seq) end
-
-  for _, v in ipairs(seq) do acc = func(acc, v) end
-
-  return acc
-end
-
-util.slice = function(seq, start, endpoint, step)
-  local result = {}
-  endpoint = endpoint or #seq
-  step = step or 1
-  for i = start, endpoint, step do table.insert(result, seq[i]) end
-
-  return result
-end
-
-util.filter = function(func, seq)
-  local function f(acc, val)
-    if func(val) then table.insert(acc, val) end
-
-    return acc
-  end
-
-  return util.fold(f, seq, {})
-end
-
 util.partition = function(sub, seq)
   local sub_vals = {}
   for _, val in ipairs(sub) do sub_vals[val] = true end
@@ -82,12 +29,6 @@ util.nonempty_or = function(opt, alt)
   else
     return alt
   end
-end
-
-util.get_keys = function(tbl)
-  local keys = {}
-  for k, _ in pairs(tbl) do table.insert(keys, k) end
-  return keys
 end
 
 util.is_windows = jit.os == 'Windows'
