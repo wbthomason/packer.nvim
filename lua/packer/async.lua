@@ -1,5 +1,6 @@
 -- Adapted from https://ms-jpq.github.io/neovim-async-tutorial/
 local co = coroutine
+local log = require('packer.log')
 
 local function step(func, callback)
   local thread = co.create(func)
@@ -12,6 +13,9 @@ local function step(func, callback)
       else
         (callback or function() end)(val)
       end
+    else
+      log.error('Error in coroutine: ' .. val);
+      (callback or function() end)(nil)
     end
   end
 
