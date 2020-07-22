@@ -66,6 +66,9 @@ local config = vim.tbl_extend('force', {}, config_defaults)
 
 local plugins = nil
 
+--- Initialize packer
+-- Forwards user configuration to sub-modules, resets the set of managed plugins, and ensures that
+-- the necessary package directories exist
 packer.init = function(user_config)
   user_config = user_config or {}
   config = util.deep_extend('force', config, user_config)
@@ -73,7 +76,8 @@ packer.init = function(user_config)
   packer.reset()
 
   config.package_root = vim.fn.fnamemodify(config.package_root, ':p')
-  config.package_root, _count = string.gsub(config.package_root, '/$', '', 1)
+  local _
+  config.package_root, _ = string.gsub(config.package_root, '/$', '', 1)
   config.pack_dir = util.join_paths(config.package_root, config.plugin_package)
   config.opt_dir = util.join_paths(config.pack_dir, 'opt')
   config.start_dir = util.join_paths(config.pack_dir, 'start')
@@ -87,6 +91,9 @@ end
 
 packer.reset = function() plugins = {} end
 
+--- The main logic for adding a plugin (and any dependencies) to the managed set
+-- Can be invoked with (1) a single plugin spec as a string, (2) a single plugin spec table, or (3)
+-- a list of plugin specs
 local manage = nil
 manage = function(plugin)
   if type(plugin) == 'string' then
@@ -138,15 +145,22 @@ manage = function(plugin)
   end
 end
 
+--- Add a new keyword handler
 packer.set_handler = function(name, func) handlers[name] = func end
 
--- Add a plugin to the managed set
+--- Add a plugin to the managed set
 packer.use = manage
 
+--- Clean operation:
+-- Finds plugins present in the `packer` package but not in the managed set
 packer.clean = function(results) async(function() await(clean(plugins, results)) end)() end
 
 local function args_or_all(...) return util.nonempty_or({...}, vim.tbl_keys(plugins)) end
 
+--- Install operation:
+-- Takes an optional list of plugin names as an argument. If no list is given, operates on all
+-- managed plugins.
+-- Installs missing plugins, then updates helptags and rplugins
 packer.install = function(...)
   local install_plugins
   if ... then
@@ -186,6 +200,11 @@ packer.install = function(...)
   end)()
 end
 
+--- Update operation:
+-- Takes an optional list of plugin names as an argument. If no list is given, operates on all
+-- managed plugins.
+-- Fixes plugin types, installs missing plugins, then updates installed plugins and updates helptags
+-- and rplugins
 packer.update = function(...)
   local update_plugins = args_or_all(...)
   async(function()
@@ -224,6 +243,14 @@ packer.update = function(...)
   end)()
 end
 
+--- Sync operation:
+-- Takes an optional list of plugin names as an argument. If no list is given, operates on all
+-- managed plugins.
+-- Runs (in sequence):
+--  - Update plugin types
+--  - Clean stale plugins
+--  - Install missing plugins and update installed plugins
+--  - Update helptags and rplugins
 packer.sync = function(...)
   local sync_plugins = args_or_all(...)
   async(function()
@@ -267,6 +294,8 @@ packer.sync = function(...)
   end)()
 end
 
+--- Update the compiled lazy-loader code
+-- Takes an optional argument of a path to which to output the resulting compiled code
 packer.compile = function(output_path)
   output_path = output_path or config.compile_path
   local compiled_loader = compile(plugins)
