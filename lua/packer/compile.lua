@@ -1,6 +1,6 @@
 -- Compiling plugin specifications to Lua for lazy-loading
-local util = require('packer/util')
-local log = require('packer/log')
+local util = require('packer.util')
+local log = require('packer.log')
 local fmt = string.format
 
 local config = nil

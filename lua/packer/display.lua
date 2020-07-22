@@ -1,6 +1,6 @@
 local api  = vim.api
-local log  = require('packer/log')
-local a    = require('packer/async')
+local log  = require('packer.log')
+local a    = require('packer.async')
 
 local config = nil
 local keymaps = {

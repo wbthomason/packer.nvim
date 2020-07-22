@@ -1,7 +1,7 @@
-local a            = require('packer/async')
-local util         = require('packer/util')
-local display      = require('packer/display')
-local plugin_utils = require('packer/plugin_utils')
+local a            = require('packer.async')
+local util         = require('packer.util')
+local display      = require('packer.display')
+local plugin_utils = require('packer.plugin_utils')
 
 local async = a.sync
 local await = a.wait
