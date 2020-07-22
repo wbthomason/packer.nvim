@@ -43,6 +43,10 @@ util.join_paths = function(...)
   return table.concat({...}, separator)
 end
 
+util.absolute_path = function(p)
+  return vim.fn.fnamemodify(p, ":p")
+end
+
 util.get_plugin_full_name = function(plugin)
   local plugin_name = plugin.name
   if plugin.branch and plugin.branch ~= 'master' then
