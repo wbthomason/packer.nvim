@@ -4,6 +4,7 @@ local loop   = vim.loop
 local a      = require('packer.async')
 local log    = require('packer.log')
 local result = require('packer.result')
+local window = require('packer.window')
 
 local function make_logging_callback(err_tbl, data_tbl, pipe, disp, name)
   return function(err, data)
@@ -17,6 +18,34 @@ local function make_logging_callback(err_tbl, data_tbl, pipe, disp, name)
       loop.close(pipe)
     end
   end
+end
+
+--- See window.percentage_range_window
+local function make_floating_callback_table(col_range, row_range)
+  local win, buf
+
+  col_range = col_range or 0.8
+  row_range = row_range or 0.8
+
+  local callback = function (_, data)
+    if win == nil and buf == nil then
+      win, buf = window.percentage_range_window(col_range, row_range)
+    end
+
+    if data ~= nil then
+      vim.schedule_wrap(function()
+        log.info(string.format("DATA: %s", data))
+        for k, v in ipairs(vim.split(data, "\n")) do
+          vim.api.nvim_buf_set_lines(buf, -1, -1, false, {v})
+        end
+      end)()
+    end
+  end
+
+  return {
+    stderr = callback,
+    stdout = callback,
+  }
 end
 
 local function make_output_table()
@@ -139,6 +168,7 @@ end
 local jobs = {
   run = run_job,
   logging_callback = make_logging_callback,
+  floating_callback_table = make_floating_callback_table,
   output_table = make_output_table,
   extend_output = extend_output
 }

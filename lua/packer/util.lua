@@ -47,6 +47,10 @@ util.absolute_path = function(p)
   return vim.fn.fnamemodify(p, ":p")
 end
 
+util.path_exists = function(p)
+  return vim.fn.filereadable(util.absolute_path(p)) ~= 0
+end
+
 util.get_plugin_full_name = function(plugin)
   local plugin_name = plugin.name
   if plugin.branch and plugin.branch ~= 'master' then

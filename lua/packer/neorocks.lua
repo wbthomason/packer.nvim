@@ -21,7 +21,7 @@ neorocks._hererocks_file = util.join_paths(vim.fn.stdpath('cache'), 'hererocks.p
 ---
 ---@param lua_version table The lua version table
 neorocks._hererocks_install_location = function(lua_version)
-  return util.join_paths(vim.fn.stdpath('cache'), 'neorocks_install', lua_version.dir)
+  return util.join_paths(vim.fn.stdpath('cache'), 'packer_hererocks', lua_version.dir)
 end
 
 --- Determine if the hererocks environment is usable for nvim
@@ -54,26 +54,13 @@ neorocks.get_hererocks = async(function()
       url_loc,
       util.absolute_path(neorocks._hererocks_file)
     )
+  else
+    error('"curl" or "wget" is required to install hererocks')
   end
 
-  local win, buf = window.percentage_range_window(0.8, 0.8)
-
-  local function stdout_capture(err, data)
-    if data ~= nil then
-      vim.schedule_wrap(function()
-        log.info(string.format("DATA: %s", data))
-        for k, v in ipairs(vim.split(data, "\n")) do
-          vim.api.nvim_buf_set_lines(buf, -1, -1, false, {v})
-        end
-      end)()
-    end
-  end
-
-  local opts = { capture_output = { stdout = stdout_capture, stderr = stdout_capture } }
-  -- local opts = { capture_output = true }
   local r = result.ok(true)
   return r:and_then(
-      await, jobs.run(cmd, opts)
+      await, jobs.run(cmd, {})
     ):map_err(
       function(err)
         return {
@@ -95,11 +82,67 @@ neorocks.get_hererocks = async(function()
   -- TODO: Delete this, I don't think we need it anymore
   -- -- Just make sure to wait til we can actually read the file.
   -- -- Sometimes the job exists before we get a chacne to do so.
-  -- vim.wait(10000, function() return vim.fn.filereadable(neorocks._hererocks_file:absolute()) ~= 0 end)
+  -- vim.wait(10000, function() ~= 0 end)
   -- vim.fn.input("[Press enter to continue]")
   -- print("All done....")
   -- win_float.clear(run_buf)
 end)
+
+
+--- Handle the set up of luarocks
+neorocks.setup_hererocks = function(force)
+  local lua_version = neorocks.get_lua_version()
+  local install_location = neorocks._hererocks_install_location(lua_version)
+
+  if force == nil then
+    force = false
+  end
+
+  if not util.path_exists(neorocks._hererocks_file) then
+    neorocks.get_hererocks()
+  end
+
+  if neorocks.is_setup() and not force then
+    return
+  end
+
+
+  local cmd
+  if lua_version.jit then
+    cmd = string.format(
+      "python %s --verbose -j %s -r %s %s",
+      util.absolute_path(neorocks._hererocks_file),
+      lua_version.jit,
+      "latest",
+      util.absolute_path(install_location)
+    )
+
+    -- vim.fn.input("[Press enter to continue]")
+    -- win_float.clear(run_buf)
+  else
+    error("Only works for lua jit right now")
+  end
+
+  local r = result.ok(true)
+  return r:and_then(
+      await, jobs.run(cmd, {capture_output = jobs.floating_callback_table()})
+    ):map_err(
+      function(err)
+        return {
+          msg = "Failed to get hererocks",
+          data = err
+        }
+      end
+    ):map_ok(
+      function(ok)
+        return {
+          status = ok,
+          -- TODO: Figure out what we should be doing with the output
+          -- output = output
+        }
+      end
+    )
+end
 
 
 --- Get the current lua version running right now.
