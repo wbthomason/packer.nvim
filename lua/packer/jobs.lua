@@ -1,10 +1,18 @@
 -- Interface with Neovim job control and provide a simple job sequencing structure
-local split  = vim.split
-local loop   = vim.loop
-local a      = require('packer.async')
-local log    = require('packer.log')
+local split = vim.split
+local loop = vim.loop
+local a = require('packer.async')
+local log = require('packer.log')
 local result = require('packer.result')
 
+--- Utility function to make a "standard" logging callback for a given set of tables
+-- Arguments:
+-- - err_tbl: table to which err messages will be logged
+-- - data_tbl: table to which data (non-err messages) will be logged
+-- - pipe: the pipe for which this callback will be used. Passed in so that we can make sure all
+--      output flushes before finishing reading
+-- - disp: optional packer.display object for updating task status. Requires `name`
+-- - name: optional string name for a current task. Used to update task status
 local function make_logging_callback(err_tbl, data_tbl, pipe, disp, name)
   return function(err, data)
     if err then table.insert(err_tbl, vim.trim(err)) end
@@ -19,16 +27,22 @@ local function make_logging_callback(err_tbl, data_tbl, pipe, disp, name)
   end
 end
 
+--- Utility function to make a table for capturing output with "standard" structure
 local function make_output_table()
   return {err = {stdout = {}, stderr = {}}, data = {stdout = {}, stderr = {}}}
 end
 
+--- Utility function to merge stdout and stderr from two tables with "standard" structure (either
+--  the err or data subtables, specifically)
 local function extend_output(to, from)
   vim.list_extend(to.stdout, from.stdout)
   vim.list_extend(to.stderr, from.stderr)
   return to
 end
 
+--- Wrapper for vim.loop.spawn. Takes a command, options, and callback just like vim.loop.spawn, but
+--  (1) makes an async function and (2) ensures that all output from the command has been flushed
+--  before calling the callback
 local spawn = a.wrap(function(cmd, options, callback)
   local handle = nil
   handle = loop.spawn(cmd, options, function(exit_code, signal)
@@ -36,7 +50,6 @@ local spawn = a.wrap(function(cmd, options, callback)
     local check = loop.new_check()
     loop.check_start(check, function()
       for _, pipe in pairs(options.stdio) do if not loop.is_closing(pipe) then return end end
-
       loop.check_stop(check)
       callback(exit_code, signal)
     end)
@@ -47,6 +60,7 @@ local spawn = a.wrap(function(cmd, options, callback)
   end
 end)
 
+--- Utility function to perform a common check for process success and return a result object
 local function was_successful(r)
   if r.exit_code == 0 and (not r.output or not r.output.err or #r.output.err == 0) then
     return result.ok(r)
@@ -55,6 +69,17 @@ local function was_successful(r)
   end
 end
 
+--- Main exposed function for the jobs module. Takes a task and options and returns an async
+-- function that will run the task with the given opts via vim.loop.spawn
+-- Arguments:
+--  - task: either a string or table. If string, split, and the first component is treated as the
+--    command. If table, first element is treated as the command. All subsequent elements are passed
+--    as args
+--  - opts: table of options. Can include the keys "options" (like the options table passed to
+--    vim.loop.spawn), "success_test" (a function, called like `was_successful` (above)),
+--    "capture_output" (either a boolean, in which case default output capture is set up and the
+--    resulting tables are included in the result, or a set of tables, in which case output is logged
+--    to the given tables)
 local run_job = function(task, opts)
   return a.sync(function()
     local options = opts.options or {hide = true}

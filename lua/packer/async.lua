@@ -97,12 +97,22 @@ end
 local function main(f) vim.schedule(f) end
 
 local M = {
+  --- Wrapper for functions that do not take a callback to make async functions
   sync = wrap(step),
+  --- Alias for yielding to await the result of an async function
   wait = co.yield,
+  --- Await the completion of a full set of async functions
   wait_all = wait_all,
+  --- Await the completion of a full set of async functions, with a limit on how many functions can
+  --  run simultaneously
   wait_pool = wait_pool,
+  --- Like wait_pool, but additionally checks at every function completion to see if a condition is
+  --  met indicating that it should keep running the remaining tasks
   interruptible_wait_pool = interruptible_wait_pool,
+  --- Wrapper for functions that do take a callback to make async functions
   wrap = wrap,
+  --- Convenience function to ensure a function runs on the main "thread" (i.e. for functions which
+  --  use Neovim functions, etc.)
   main = main
 }
 
