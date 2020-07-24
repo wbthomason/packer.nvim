@@ -180,6 +180,13 @@ packer.install = function(...)
       await(a.main)
       plugin_utils.update_helptags(install_paths)
       plugin_utils.update_rplugins()
+
+      if not vim.tbl_isempty(results.rocks) then
+        neorocks.install_rocks(results.rocks)
+      else
+        log.info("No rocks to install")
+      end
+
       local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
       display_win:final_results(results, delta)
     else

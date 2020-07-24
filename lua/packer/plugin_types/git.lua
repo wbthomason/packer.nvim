@@ -1,7 +1,6 @@
 local util = require('packer.util')
 local jobs = require('packer.jobs')
 local a = require('packer.async')
-local neorocks = require('packer.neorocks')
 local result = require('packer.result')
 local await = a.wait
 local async = a.sync
@@ -150,13 +149,6 @@ git.setup = function(plugin)
             }
           end
         end)
-
-      if plugin.rocks then
-        r = r:and_then(await, async(function()
-          await(neorocks.setup_hererocks)
-          await(neorocks.get_async_installer(plugin.rocks))
-        end))
-      end
 
       return r
     end)

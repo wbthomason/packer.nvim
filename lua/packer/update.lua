@@ -89,6 +89,7 @@ local function update_plugin(plugin, display_win, results)
   end)
 end
 
+-- TODO: Do the lua rocks stuff here for updating... we haven't done it yet.
 local function do_update(_, plugins, update_plugins, display_win, results)
   results = results or {}
   results.updates = results.updates or {}

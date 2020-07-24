@@ -48,7 +48,22 @@ util.absolute_path = function(p)
 end
 
 util.path_exists = function(p)
-  return vim.fn.filereadable(util.absolute_path(p)) ~= 0
+  -- TODO: Could probably use luarocks stuff here?...
+  local f = io.open(p, 'r')
+  if f ~= nil then
+    f:close()
+    return true
+  end
+
+  return false
+
+  -- local ok, result = pcall(function() return vim.fn.filereadable(util.absolute_path(p)) ~= 0 end)
+  -- if not ok then
+  --   print(debug.traceback())
+  --   return true
+  -- end
+
+  -- return result
 end
 
 util.get_plugin_full_name = function(plugin)

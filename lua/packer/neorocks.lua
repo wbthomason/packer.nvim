@@ -185,45 +185,96 @@ neorocks.setup_paths = function(force)
   end
 end
 
-neorocks.get_async_installer = function(rocks)
-  return async(function()
-    -- TODO: This might be a good thing to include in nvim generally?
-    local original_exit = os.exit
-    os.exit = function(...)
-      print('LUAROCKS EXIT: ', ...)
-    end
+-- activate hererocks based on current $SHELL
+local function source_activate(install_location, activate_file)
+  return string.format('source %s', util.join_paths(install_location, 'bin', activate_file))
+end
 
-    local file_redirect = function(prefix)
-      return setmetatable(
-        { write = function(t, ...) print(prefix, ...) end },
-        { __call = function(t,...) t:write(...) end })
-    end
+neorocks._source_string = function(install_location)
+  local user_shell = os.getenv("SHELL")
+  local shell = user_shell:gmatch("([^/]*)$")()
+  if shell == "fish" then
+    return source_activate(install_location, 'activate.fish')
+  elseif shell == "csh" then
+    return source_activate(install_location, 'activate.csh')
+  end
+  return source_activate(install_location, 'activate')
+end
 
-    local real_stdout = io.stdout
-    io.stdout = file_redirect("STDOUT:")
+-- neorocks.get_async_installer = function(rocks, plugin_name, display)
+--   return async(function(self)
+    -- local new_env = setmetatable({}, {
+    --   __index = function(t, k)
+    --     local val
+    --     if k == 'io' then
+    --       val = setmetatable({
+    --         stdout = { write = function(_, s) display:task_update(plugin_name, string.format('stdout: %s', s)) end, },
+    --         stderr = { write = function(_, s) display:task_update(plugin_name, string.format('stderr: %s', s)) end, },
+    --       }, { __index = function() error('ACCESSING IO') end })
+    --     elseif k == 'os' then
+    --       val = setmetatable({exit = function() error('OS.EXIT') end}, {__index = os})
+    --     elseif k == 'print' then
+    --       val = function(...)
+    --         display:task_update(plugin_name, vim.inspect({...}))
+    --       end
+    --     else
+    --       val = _G[k]
+    --     end
 
-    local real_stderr = io.stderr
-    io.stderr = file_redirect("STDERR:")
+    --     t[k] = val
+    --     return t[k]
+    --   end
+    -- })
 
-    local real_print = print
-    -- print = file_redirect("PRINT:")
+    -- -- Install the package
+    -- local exec_luarocks = loadfile(util.join_paths(neorocks._hererocks_install_location, "bin", "luarocks"))
+    -- -- Redirect io.stdout & io.stderr
+    -- setfenv(exec_luarocks, new_env)('install', rocks[1])
 
-    print("starting...\n")
+    -- TODO: I would really like to go back to the loadfile method and not shoot this out to a shell...
+    --          I'm worried about trying to compile multiple of these at the same time.
+    -- TODO: move to io.popen, so we can pipe the output to the display
+    -- vim.schedule_wrap(function()
+      -- TODO: Figure out how we could queue up these lua rocks commands to do in job start
+      --        so they don't happen in parallel.
+      --        Until then, let's do them synchronously, so that they can't mess each other up.
+      -- local result = vim.fn.systemlist(string.format(
+      --   "%s && %s install %s",
+      --   neorocks._source_string(neorocks._hererocks_install_location),
+      --   util.join_paths(neorocks._hererocks_install_location, "bin", "luarocks"),
+      --   rocks[1]
+      -- ))
 
-    -- Install the package
-    loadfile(util.join_paths(neorocks._hererocks_install_location, "bin", "luarocks"))('install', rocks[1])
+      -- -- In a second we'll try putting it in the floaty window
+      -- print(vim.inspect(result))
+    -- end)()
 
-    print("... Done\n")
+    -- return self
+  -- end)
+-- end
 
-    io.stdout = real_stdout
-    io.stderr = real_stderr
-    print = real_print
-    os.exit = original_exit
+neorocks.install_rocks = function(rocks)
+  local install_outputs = {}
+  for _, v in ipairs(rocks) do
+    -- install_outputs[v] = vim.fn.systemlist(string.format(
+    -- TODO: Fix for windows... sorry windows ppl
+    -- TODO: Fix for if you don't have bash...
+    -- TODO: Fix to run async etc.
+    install_outputs[v] = os.execute(string.format(
+      "bash -c '%s && %s install %s'",
+      neorocks._source_string(neorocks._hererocks_install_location),
+      util.join_paths(neorocks._hererocks_install_location, "bin", "luarocks"),
+      v
+    ))
+  end
 
-    -- print("yoooo", vim.inspect(rocks[1]))
-    -- require('luarocks.cmd.install').command(rocks[1])
-    -- print(".... Finish")
-  end)
+  local success = true
+  for _, v in pairs(install_outputs) do
+    if not v then success = false end
+  end
+
+  -- In a second we'll try putting it in the floaty window
+  log.info("Successfully installed all luarocks deps")
 end
 
 return neorocks

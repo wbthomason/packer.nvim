@@ -24,6 +24,12 @@ local function install_plugin(plugin, display_win, results)
 
     results.installs[plugin_name] = r
     results.plugins[plugin_name] = plugin
+
+    if plugin.rocks then
+      for _, rock in ipairs(plugin.rocks) do
+        table.insert(results.rocks, rock)
+      end
+    end
   end)
 end
 
@@ -31,6 +37,7 @@ local function do_install(_, plugins, missing_plugins, results)
   results = results or {}
   results.installs = results.installs or {}
   results.plugins = results.plugins or {}
+  results.rocks = results.rocks or {}
   local display_win = nil
   local tasks = {}
   if #missing_plugins > 0 then
