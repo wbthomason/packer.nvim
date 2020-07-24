@@ -260,21 +260,28 @@ neorocks.install_rocks = function(rocks)
     -- TODO: Fix for windows... sorry windows ppl
     -- TODO: Fix for if you don't have bash...
     -- TODO: Fix to run async etc.
-    install_outputs[v] = os.execute(string.format(
+    vim.fn.system(string.format(
       "bash -c '%s && %s install %s'",
       neorocks._source_string(neorocks._hererocks_install_location),
       util.join_paths(neorocks._hererocks_install_location, "bin", "luarocks"),
       v
     ))
+
+    install_outputs[v] = vim.v.shell_error == 0
   end
 
-  local success = true
-  for _, v in pairs(install_outputs) do
-    if not v then success = false end
+  local failed = {}
+  for name, v in pairs(install_outputs) do
+    if not v then table.insert(failed, name) end
   end
 
   -- In a second we'll try putting it in the floaty window
-  log.info("Successfully installed all luarocks deps")
+  if vim.tbl_isempty(failed) then
+    log.info("Successfully installed all luarocks deps")
+  else
+    -- TODO: Should probably make this error more apparent and give them the infos they need
+    print(string.format("Failed to install luarocks deps: %s", vim.inspect(failed)))
+  end
 end
 
 return neorocks
