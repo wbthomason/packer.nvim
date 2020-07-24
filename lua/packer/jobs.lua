@@ -21,23 +21,62 @@ local function make_logging_callback(err_tbl, data_tbl, pipe, disp, name)
 end
 
 --- See window.percentage_range_window
-local function make_floating_callback_table(col_range, row_range)
-  local win, buf
+local function make_floating_term_table(col_range, row_range, title)
+  local win, buf, width
+
+  width = 0
+  if title then
+    title = " " .. title .. " "
+  else
+    title = ""
+  end
 
   col_range = col_range or 0.8
   row_range = row_range or 0.8
 
-  local callback = function (_, data)
-    if win == nil and buf == nil then
-      win, buf = window.percentage_range_window(col_range, row_range)
-    end
+  local top = '═'
+  local side = '║'
+  local data_buffer = ''
 
+  local callback = function (_, data)
     if data ~= nil then
       vim.schedule_wrap(function()
-        log.info(string.format("DATA: %s", data))
-        for k, v in ipairs(vim.split(data, "\n")) do
-          vim.api.nvim_buf_set_lines(buf, -1, -1, false, {v})
+        data_buffer = data_buffer .. data:gsub("\r", "")
+
+        if win == nil and buf == nil then
+          win, buf = window.percentage_range_window(col_range, row_range)
+
+          vim.wo[win].wrap = false
+
+          width = vim.api.nvim_win_get_width(win)
+
+          local title_string = string.rep(top, (width / 2) - (vim.fn.strchars(title) / 2))
+          title_string = title_string .. title
+          title_string = title_string .. string.rep(top, width - vim.fn.strchars(title_string))
+
+          vim.api.nvim_buf_set_lines(buf, 0, -1, false, {title_string})
+        elseif not vim.api.nvim_win_is_valid(win) then
+          return
         end
+
+        vim.bo[buf].modifiable = true
+        local start, finish = string.find(data_buffer, "\n")
+        while start or finish do
+          local line = side .. " "
+          line = line .. string.sub(data_buffer, 1, finish - 1)
+          line = line .. string.rep(" ", width - 1 - vim.fn.strchars(line))
+          line = line .. side
+
+          -- Set the lines
+          vim.api.nvim_buf_set_lines(buf, -1, -1, false, {line})
+
+          -- Keep going through the buffer.
+          data_buffer = string.sub(data_buffer, finish + 1)
+          start, finish = string.find(data_buffer, "\n")
+        end
+
+        vim.api.nvim_win_set_cursor(win, {vim.fn.line('$'), 0})
+        vim.bo[buf].modifiable = false
       end)()
     end
   end
@@ -168,7 +207,7 @@ end
 local jobs = {
   run = run_job,
   logging_callback = make_logging_callback,
-  floating_callback_table = make_floating_callback_table,
+  floating_term_table = make_floating_term_table,
   output_table = make_output_table,
   extend_output = extend_output
 }

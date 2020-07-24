@@ -11,8 +11,10 @@ local display = require('packer.display')
 local handlers = require('packer.handlers')
 local install = require('packer.install')
 local log = require('packer.log')
+local neorocks = require('packer.neorocks')
 local plugin_types = require('packer.plugin_types')
 local plugin_utils = require('packer.plugin_utils')
+local result = require('packer.result')
 local update = require('packer.update')
 local util = require('packer.util')
 
@@ -339,5 +341,8 @@ packer.startup = function(spec)
 
   return packer
 end
+
+-- Always set up the paths on require.
+neorocks.setup_paths(true)
 
 return packer
