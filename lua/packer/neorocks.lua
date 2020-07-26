@@ -254,34 +254,63 @@ end
 -- end
 
 neorocks.install_rocks = function(rocks)
-  local install_outputs = {}
-  for _, v in ipairs(rocks) do
-    -- install_outputs[v] = vim.fn.systemlist(string.format(
-    -- TODO: Fix for windows... sorry windows ppl
-    -- TODO: Fix for if you don't have bash...
-    -- TODO: Fix to run async etc.
-    vim.fn.system(string.format(
-      "bash -c '%s && %s install %s'",
-      neorocks._source_string(neorocks._hererocks_install_location),
-      util.join_paths(neorocks._hererocks_install_location, "bin", "luarocks"),
-      v
-    ))
+  return async(function()
+    await(neorocks.setup_hererocks)
 
-    install_outputs[v] = vim.v.shell_error == 0
-  end
+    local r = result.ok(true)
+    local opts = {capture_output = jobs.floating_term_table(nil, nil, "Luarocks Installation")}
+    print(string.format(
+                "bash -c '%s && %s install %s'",
+                neorocks._source_string(neorocks._hererocks_install_location),
+                util.join_paths(neorocks._hererocks_install_location, "bin", "luarocks"),
+                'lua-cjson'
+              ))
 
-  local failed = {}
-  for name, v in pairs(install_outputs) do
-    if not v then table.insert(failed, name) end
-  end
+    local install_outputs = {}
+    for _, v in ipairs(rocks) do
+      -- install_outputs[v] = vim.fn.systemlist(string.format(
+      -- TODO: Fix for windows... sorry windows ppl
+      -- TODO: Fix for if you don't have bash...
+      -- TODO: Fix to run async etc.
+      r = r:and_then(await, jobs.run(
+              {
+                'bash',
+                '-c',
+                string.format(
+                  "%s && %s install %s",
+                  neorocks._source_string(neorocks._hererocks_install_location),
+                  util.join_paths(neorocks._hererocks_install_location, "bin", "luarocks"),
+                  v
+                )
+              }, opts)
+            ):map_ok(
+              function(ok)
+                install_outputs[v] = true
+                return {status = ok}
+              end
+            ):map_err(
+              function(err)
+                install_outputs[v] = false
+                print("ERROR: ", vim.inspect(err))
+              end
+            )
 
-  -- In a second we'll try putting it in the floaty window
-  if vim.tbl_isempty(failed) then
-    log.info("Successfully installed all luarocks deps")
-  else
-    -- TODO: Should probably make this error more apparent and give them the infos they need
-    print(string.format("Failed to install luarocks deps: %s", vim.inspect(failed)))
-  end
+    end
+
+    local failed = {}
+    for name, v in pairs(install_outputs) do
+      if not v then table.insert(failed, name) end
+    end
+
+    -- In a second we'll try putting it in the floaty window
+    if vim.tbl_isempty(failed) then
+      log.info("Successfully installed all luarocks deps")
+      print(string.format(vim.inspect(install_outputs)))
+    else
+      -- TODO: Should probably make this error more apparent and give them the infos they need
+      print(string.format("Failed to install luarocks deps: %s", vim.inspect(failed)))
+    end
+  end)
 end
 
 return neorocks
