@@ -43,7 +43,8 @@ local handle_checkouts = function(plugin, dest, disp)
           return {
             msg = fmt('Error checking out %s %s for %s', plugin.branch and 'branch' or 'tag',
                       branch_or_tag, plugin_name),
-            data = err
+            data = err,
+            output = output
           }
         end)
     end
@@ -56,7 +57,8 @@ local handle_checkouts = function(plugin, dest, disp)
             function(err)
           return {
             msg = fmt('Error checking out commit %s for %s', plugin.commit, plugin_name),
-            data = err
+            data = err,
+            output = output
           }
         end)
     end
@@ -66,7 +68,8 @@ local handle_checkouts = function(plugin, dest, disp)
         if not err.msg then
           return {
             msg = fmt('Error updating %s: %s', plugin_name, table.concat(err, '\n')),
-            data = err
+            data = err,
+            output = output
           }
         end
 
