@@ -253,18 +253,50 @@ end
   -- end)
 -- end
 
-neorocks.install_rocks = function(rocks)
+neorocks.is_rock_installed = function(rock_name)
+  local cmd = string.format("bash -c '%s && %s list --porcelain %s'",
+    neorocks._source_string(neorocks._hererocks_install_location),
+    util.join_paths(neorocks._hererocks_install_location, "bin", "luarocks"),
+    rock_name
+  )
+
+  local results = util.system_output(cmd)
+  for _, line in ipairs(results) do
+    for l_package, version, status, install_path in string.gmatch(line, "([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)") do
+      -- TODO: Use this for general list
+      -- table.insert(result, {
+      --   l_package = l_package,
+      --   version = version,
+      --   status = status,
+      --   install_path = install_path
+      -- })
+      if l_package == rock_name then
+        return true
+      end
+    end
+  end
+
+  return false
+end
+
+neorocks.install_rocks = function(all_rocks)
   return async(function()
     await(neorocks.setup_hererocks)
 
+    local rocks = {}
+    for _, v in ipairs(all_rocks) do
+      if not neorocks.is_rock_installed(v) then
+        table.insert(rocks, v)
+      end
+    end
+
+    if vim.tbl_isempty(rocks) then
+      log.info("No rocks to install")
+      return
+    end
+
     local r = result.ok(true)
     local opts = {capture_output = jobs.floating_term_table(nil, nil, "Luarocks Installation")}
-    print(string.format(
-                "bash -c '%s && %s install %s'",
-                neorocks._source_string(neorocks._hererocks_install_location),
-                util.join_paths(neorocks._hererocks_install_location, "bin", "luarocks"),
-                'lua-cjson'
-              ))
 
     local install_outputs = {}
     for _, v in ipairs(rocks) do
@@ -274,8 +306,8 @@ neorocks.install_rocks = function(rocks)
       -- TODO: Fix to run async etc.
       r = r:and_then(await, jobs.run(
               {
-                'bash',
-                '-c',
+                "bash",
+                "-c",
                 string.format(
                   "%s && %s install %s",
                   neorocks._source_string(neorocks._hererocks_install_location),

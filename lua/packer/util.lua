@@ -117,4 +117,17 @@ util.deep_extend = function(policy, ...)
   return result
 end
 
+util.system_output = function(command)
+  local runner = io.popen(command)
+
+  local results = {}
+  for v in runner:lines() do
+    table.insert(results, v)
+  end
+
+  runner:close()
+
+  return results
+end
+
 return util
