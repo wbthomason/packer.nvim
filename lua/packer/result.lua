@@ -4,7 +4,10 @@ local result = {}
 local ok_result_mt = {
   and_then = function(self, f, ...)
     local r = f(...)
-    if r.ok then
+    if not r then
+      return result.err('Nil result in and_then: ' .. vim.inspect(debug.getinfo(f)) .. ' '
+                          .. vim.inspect({...}))
+    elseif r.ok then
       self.ok = r.ok
       return self
     elseif r.err then
@@ -25,7 +28,10 @@ local err_result_mt = {
   and_then = function(self) return self end,
   or_else = function(self, f, ...)
     local r = f(...)
-    if r.ok then
+    if not r then
+      return result.err('Nil result in or_else: ' .. vim.inspect(debug.getinfo(f)) .. ' '
+                          .. vim.inspect({...}))
+    elseif r.ok then
       return r
     elseif r.err then
       self.err = r.err
