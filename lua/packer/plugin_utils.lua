@@ -91,7 +91,7 @@ plugin_utils.load_plugin = function(plugin)
     vim.o.runtimepath = vim.o.runtimepath .. ',' .. plugin.install_path
     for _, pat in ipairs({'plugin/**/*.vim', 'after/plugin/**/*.vim'}) do
       local path = util.join_paths(plugin.install_path, pat)
-      local glob_ok, files = pcall(vim.fn.glob, path)
+      local glob_ok, files = pcall(vim.fn.glob, path, false, true)
       if not glob_ok then
         if string.find(files, 'E77') then
           vim.cmd('silent exe "source ' .. path .. '"')
@@ -99,7 +99,7 @@ plugin_utils.load_plugin = function(plugin)
           error(files)
         end
       elseif #files > 0 then
-        vim.cmd('silent exe "source ' .. path .. '"')
+        for _, file in ipairs(files) do vim.cmd('silent exe "source ' .. file .. '"') end
       end
     end
   end
