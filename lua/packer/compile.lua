@@ -152,7 +152,7 @@ local function make_loaders(_, plugins)
         if type(config_item) == 'function' then
           local stringified = string.dump(config_item, true)
           if not plugin.opt then
-            stringified = 'loadstring(' .. vim.inspect(stringified) .. ')'
+            stringified = 'loadstring(' .. vim.inspect(stringified) .. ')()'
           end
 
           plugin.config[i] = stringified

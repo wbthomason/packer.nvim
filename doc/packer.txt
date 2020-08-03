@@ -1,0 +1,384 @@
+*packer.txt*                      A use-package inspired Neovim plugin manager
+*packer.nvim*
+
+Author: Wil Thomason <wil.thomason@gmail.com>
+
+CONTENTS                                        *packer-contents*
+Introduction                                    |packer-introduction|
+  Features                                      |packer-intro-features|
+  Requirements                                  |packer-intro-requirements|
+  Quickstart                                    |packer-intro-quickstart|
+Usage                                           |packer-usage|
+API                                             |packer-api|
+==============================================================================
+INTRODUCTION                                    *packer-introduction*
+
+This is a Neovim plugin manager. It is written in Lua, uses the native
+|packages| feature, and has features for declarative plugin configuration
+inspired by the `use-package` library from Emacs.
+
+==============================================================================
+REQUIREMENTS                                     *packer-intro-requirements*
+
+You need to be running Neovim v0.5.0+; `packer` makes use of extmarks and
+other newly-added Neovim features.
+
+==============================================================================
+FEATURES                                         *packer-intro-features*
+
+- Declarative plugin specification
+- Support for dependencies
+- (soon) Support for Luarocks dependencies
+- Expressive configuration and lazy-loading options
+- Automatically compiles efficient lazy-loading code to improve startup time
+- Uses native packages
+- Extensible
+- Written in Lua, configured in Lua
+- Post-install/update hooks
+- Uses jobs for async installation
+- Support for `git` tags, branches, revisions, submodules
+- Support for local plugins
+
+==============================================================================
+QUICKSTART                                       *packer-intro-quickstart*
+
+To get started, first clone this repository to somewhere on your `packpath`, e.g.: >
+  git clone https://github.com/wbthomason/packer.nvim\
+   ~/.local/share/nvim/site/pack/packer/opt/packer.nvim
+
+
+Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lua/plugins.lua`): >
+
+  -- This file can be loaded by calling `lua require('plugins')` from your init.vim
+
+  -- Only required if you have packer in your `opt` pack
+  vim.cmd [[packadd packer.nvim]]
+  -- Temporary until https://github.com/neovim/neovim/pull/12632 is merged
+  vim._update_package_paths()
+
+  return require('packer').startup(function()
+    -- Packer can manage itself as an optional plugin
+    use {'wbthomason/packer.nvim', opt = true}
+
+    -- Simple plugins can be specified as strings
+    use '9mm/vim-closer'
+
+    -- Lazy loading:
+    -- Load on specific commands
+    use {'tpope/vim-dispatch', opt = true, cmd = {'Dispatch', 'Make', 'Focus', 'Start'}}
+
+    -- Load on an autocommand event
+    use {'andymass/vim-matchup', event = 'VimEnter *'}
+
+    -- Load on a combination of conditions: specific filetypes or commands
+    -- Also run code after load (see the "config" key)
+    use {
+      'w0rp/ale',
+      ft = {'sh', 'zsh', 'bash', 'c', 'cpp', 'cmake', 'html', 'markdown', 'racket', 'vim', 'tex'},
+      cmd = 'ALEEnable',
+      config = 'vim.cmd[[ALEEnable]]
+    }
+
+    -- Plugins can have dependencies on other plugins
+    use {
+      'haorenW1025/completion-nvim',
+      opt = true,
+      requires = {{'hrsh7th/vim-vsnip', opt = true}, {'hrsh7th/vim-vsnip-integ', opt = true}}
+    }
+
+    -- Local plugins can be included
+    use '~/projects/personal/hover.nvim'
+
+    -- Plugins can have post-install/update hooks
+    use {'iamcco/markdown-preview.nvim', run = 'cd app && yarn install', cmd = 'MarkdownPreview'}
+
+    -- You can specify multiple plugins in a single call
+    use {'tjdevries/colorbuddy.vim', {'nvim-treesitter/nvim-treesitter', opt = true}}
+  end)
+
+`packer` provides the following commands after you've run and configured `packer` with `require('packer').startup(...)`: *packer-default-commands* *packer-commands*
+
+`PackerCompile`                                 *packer-commands-compile*
+You must run this whenever you make changes to your plugin configuration.
+
+`PackerInstall`                                 *packer-commands-install*
+Install any missing plugins.
+
+`PackerUpdate`                                  *packer-commands-update*
+Update and install plugins.
+
+`PackerClean`                                   *packer-commands-clean*
+Remove any disabled or unused plugins.
+
+`PackerSync`                                    *packer-commands-sync*
+Perform `PackerClean` and then `PackerUpdate`.
+
+==============================================================================
+USAGE                                          *packer-usage*
+
+Although the example in |packer-intro-quickstart| will be enough to get you
+going for basic usage, `packer` has a number of other features and options
+detailed in this section.
+
+STARTUP                                        *packer-startup*
+
+The easiest way to use `packer` is via the |packer.startup()| function. In
+short, `startup` is a convenience function for simple setup, and is invoked as
+`packer.startup(spec)`, where:
+
+- `spec` can be a function: >
+  packer.startup(function() use 'tjdevries/colorbuddy.vim' end)
+- `spec` can be a table with a function as its first element and config
+  overrides as another element: >
+  packer.startup({
+    function() use 'tjdevries/colorbuddy.vim' end, config = { ... }
+    })
+- `spec` can be a table with a table of plugin specifications as its first
+  element and config overrides as another element: >
+  packer.startup({{'tjdevries/colorbuddy.vim'}, config = { ... }})
+
+See |packer-configuration| for the allowed configuration keys.
+
+`startup` will handle calling |packer.init()| and |packer.reset()| for you, as
+well as creating the commands given in |packer-commands|.
+
+CUSTOM INITIALIZATION                          *packer-custom-initialization*
+If you prefer a more manual setup with finer control over configuration and
+loading, you may use custom initialization for `packer`. This approach has the
+benefit of not requiring that the `packer` plugin be loaded unless you want to
+perform plugin management operations, but it is more involved to use.
+
+To take this approach, load `packer` like any other Lua module. You must call
+|packer.init()| before performing any operations; it is recommended to call
+|packer.reset()| if you may be re-running your specification code (e.g. by
+sourcing your plugin specification file with `luafile`).
+
+See |packer.init()| for more details on initialization; in short, `init` takes
+a table of configuration values like that which can be passed to `startup`.
+
+If you use custom initialization, you'll probably want to define commands to
+load `packer` and perform common package management operations. The following
+commands work well for this purpose: >
+
+  command! PackerInstall packadd packer.nvim | lua require('plugins').install()
+  command! PackerUpdate packadd packer.nvim | lua require('plugins').update()
+  command! PackerSync packadd packer.nvim | lua require('plugins').sync()
+  command! PackerClean packadd packer.nvim | lua require('plugins').clean()
+  command! PackerCompile packadd packer.nvim | lua require('plugins').compile('~/.config/nvim/plugin/packer_load.vim')
+
+CONFIGURATION                                  *packer-configuration*
+`packer` provides the following configuration variables, presented in the
+structure of the `config` table expected by `startup` or `init`, with their
+default values: >
+  {
+    ensure_dependencies   = true, -- Should packer install plugin dependencies?
+    package_root   = util.is_windows and '~\\AppData\\Local\\nvim-data\\site\\pack' or '~/.local/share/nvim/site/pack',
+    compile_path = vim.fn.stdpath('config') .. '/plugin/packer_compiled.vim',
+    plugin_package = 'packer', -- The default package for plugins
+    max_jobs = nil, -- Limit the number of simultaneous jobs. nil means no limit
+    auto_clean = true, -- During sync(), remove unused plugins
+    disable_commands = false, -- During `startup`, disable creating commands
+    git = {
+      cmd = 'git', -- The base command for git operations
+      subcommands = { -- Format strings for git subcommands
+        update         = '-C %s pull --ff-only --progress --rebase=false',
+        install        = 'clone %s %s --depth %i --no-single-branch --progress',
+        fetch          = '-C %s fetch --depth 999999 --progress',
+        checkout       = '-C %s checkout %s --',
+        update_branch  = '-C %s merge --ff-only @{u}',
+        current_branch = '-C %s branch --show-current',
+        diff           = '-C %s log --color=never --pretty=format:FMT --no-show-signature HEAD@{1}...HEAD',
+        diff_fmt       = '%%h %%s (%%cr)',
+        get_rev        = '-C %s rev-parse --short HEAD',
+        get_msg        = '-C %s log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',
+        submodules     = '-C %s submodule update --init --recursive --progress'
+      },
+      depth = 1, -- Git clone depth
+    },
+    display = {
+      open_fn  = nil, -- An optional function to open a window for packer's display
+      open_cmd = '65vnew [packer]', -- An optional command to open a window for packer's display
+      working_sym = '⟳', -- The symbol for a plugin being installed/updated
+      error_sym = '✗', -- The symbol for a plugin with an error in installation/updating
+      done_sym = '✓', -- The symbol for a plugin which has completed installation/updating
+      removed_sym = '-', -- The symbol for an unused plugin which was removed
+      moved_sym = '→', -- The symbol for a plugin which was moved (e.g. from opt to start)
+      header_sym = '━', -- The symbol for the header line in packer's display
+    }
+  }
+
+SPECIFYING PLUGINS                             *packer-specifying-plugins*
+`packer` is based around declarative specification of plugins. You can declare
+a plugin using the function |packer.use()|, which I highly recommend locally
+binding to `use` for conciseness.
+
+`use` takes either a string or a table. If a string is provided, it is treated
+as a plugin location for a non-optional plugin with no additional
+configuration. Plugin locations may be specified as:
+  1. Absolute paths to a local plugin
+  2. Full URLs (treated as plugins managed with `git`)
+  3. `username/repo` paths (treated as Github `git` plugins)
+
+A table given to `use` can take two forms:
+  1. A list of plugin specifications (strings or tables)
+  2. A table specifying a single plugin. It must have a plugin location string
+  as its first element, and may additionally have a number of optional keyword
+  elements, detailed in |packer.use()|
+
+CONFIGURING PLUGINS                            *packer-plugin-configuration*
+`packer` allows you to configure plugins either before they are loaded (the
+`setup` key described in |packer.use()|) or after they are loaded (the
+`config` key described in |packer.use()|).
+
+CUSTOM INSTALLERS                              *packer-custom-installers*
+You may specify a custom installer & updater for a plugin using the
+`installer` and `updater` keys in a plugin specification. Note that either
+both or none of these keys are required. These keys should be functions which
+take as an argument a `display` object (from `lua/packer/display.lua`) and
+return an async function (per `lua/packer/async.lua`) which (respectively)
+installs/updates the given plugin.
+
+Providing the `installer`/`updater` keys overrides plugin type detection, but
+you still need to provide a location string for the name of the plugin.
+
+POST-UPDATE HOOKS                              *packer-plugin-hooks* 
+You may specify operations to be run after successful installs/updates of a
+plugin with the `run` key in a plugin specification. This key may either be a
+Lua function, which will be called with the `plugin` table for this plugin
+(containing the information passed to |packer.use()| as well as output from
+the installation/update commands, the installation path of the plugin, etc.),
+or a string.
+
+DEPENDENCIES                                   *packer-plugin-dependencies*
+Plugins may specify dependencies via the `requires` key in their specification
+table. This key can be a string or a list (table).
+
+If `requires` is a string, it is treated as specifying a single plugin. If a
+plugin with the name given in `requires` is already known in the managed set,
+nothing happens. Otherwise, the string is treated as a plugin location string
+and the corresponding plugin is added to the managed set.
+
+If `requires` is a list, it is treated as a list of plugin specifications
+following the format given above.
+
+If `ensure_dependencies` is true, the plugins specified in `requires` will be
+installed.
+
+Plugins specified in `requires` are removed when no active plugins require
+them.
+
+KEYBINDINGS                                    *packer-plugin-keybindings*
+Plugins may be lazy-loaded on the use of keybindings/maps. Individual
+keybindings are specified under the `keys` key in a plugin specification
+either as a string (in which case they are treated as normal mode maps) or a
+table in the format `{mode, map}`.
+
+LAZY-LOADING                                   *packer-lazy-load*
+To optimize startup time, `packer.nvim` compiles code to perform the
+lazy-loading operations you specify. This means that you do not need to load
+`packer.nvim` unless you want to perform some plugin management operations.
+
+To generate the compiled code, call `packer.compile(path)`, where `path` is
+some file path on your `runtimepath`, with a `.vim` extension. This will
+generate a blend of Lua and Vimscript to load and configure all your
+lazy-loaded plugins (e.g. generating commands, autocommands, etc.) and save it
+to `path`. Then, when you start vim, the file at `path` is loaded (because
+`path` must be on your `runtimepath`), and lazy-loading works.
+
+If `path` is not provided to |packer.compile()|, the output file will default
+to the value of `config.compile_path`.
+
+Note that you **must** run `packer.compile` yourself to generate this file.
+
+EXTENDING PACKER                               *packer-extending*
+You can add custom key handlers to `packer` by calling
+`packer.set_handler(name, func)` where `name` is the key you wish to handle
+and `func` is a function with the signature `func(plugins, plugin, value)`
+where `plugins` is the global table of managed plugins, `plugin` is the table
+for a specific plugin, and `value` is the value associated with key `name` in
+`plugin`.
+
+==============================================================================
+API                                            *packer-api*
+
+clean()		                                     *packer.clean()*
+`clean` scans for and removes all disabled or no longer managed plugins. It is
+invoked without arguments.
+
+compile()		                                   *packer.compile()*
+`compile` builds lazy-loader code from your plugin specification and saves it
+to either `config.compile_path` if it is invoked with no argument, or to the
+path it is invoked with if it is given a single argument. This path should end
+in `.vim` and be on your |runtimepath| in order for lazy-loading to work. You
+**must** call `compile` to update lazy-loaders after your configuration
+changes.
+
+init()		                                     *packer.init()*
+Initializes `packer`; must be called before any calls to any other `packer`
+function. Takes an optional table of configuration values as described in
+|packer-configuration|.
+
+install()		                                   *packer.install()*
+`install` installs any missing plugins, runs post-update hooks, and updates
+rplugins (|remote-plugin|) and helptags.
+
+It can be invoked with no arguments or with a list of plugin names to install.
+These plugin names must already be managed by `packer` via a call to
+|packer.use()|.
+
+reset()		                                     *packer.reset()*
+`reset` empties the set of managed plugins. Called with no arguments; used to
+ensure plugin specifications are reinitialized if the specification file is
+reloaded. Called by |packer.startup()| or manually before calling
+|packer.use()|.
+
+set_handler()		                               *packer.set_handler()*
+`set_handler` allows custom extension of `packer`. See |packer-extending| for
+details.
+
+startup()		                                   *packer.startup()*
+`startup` is a convenience function for simple setup. See |packer-startup| for
+details.
+
+sync()		                                     *packer.sync()*
+`sync` runs |packer.clean()| followed by |packer.update()|.
+
+update()		                                   *packer.update()*
+`update` installs any missing plugins, updates all installed plugins, runs
+post-update hooks, and updates rplugins (|remote-plugin|) and helptags.
+
+It can be invoked with no arguments or with a list of plugin names to update.
+These plugin names must already be managed by `packer` via a call to
+|packer.use()|.
+
+use()		                                       *packer.use()*
+`use` allows you to add one or more plugins to the managed set. It can be
+invoked as follows:
+- With a single plugin location string, e.g. `use <STRING>`
+- With a single plugin specification table, e.g. >
+  use {
+    'myusername/example',   -- The plugin location string
+    -- The following keys are all optional
+    disable = boolean,           -- Mark a plugin as inactive
+    installer = function,        -- Specifies custom installer. See "custom installers" below.
+    updater = function,          -- Specifies custom updater. See "custom installers" below.
+    after = string or list,      -- Specifies plugins to load before this plugin.
+    rtp = string,                -- Specifies a subdirectory of the plugin to add to runtimepath.
+    opt = boolean,               -- Manually marks a plugin as optional.
+    branch = string,             -- Specifies a git branch to use
+    tag = string,                -- Specifies a git tag to use
+    commit = string,             -- Specifies a git commit to use
+    run = string or function,    -- Post-update/install hook. See "update/install hooks".
+    requires = string or list -- Specifies plugin dependencies. See "dependencies".
+    config = string or function, -- Specifies code to run after this plugin is loaded.
+    -- The following keys all imply lazy-loading
+    cmd = string or list,        -- Specifies commands which load this plugin.
+    ft = string or list,         -- Specifies filetypes which load this plugin.
+    keys = string or list,       -- Specifies maps which load this plugin. See "Keybindings".
+    event = string or list,      -- Specifies autocommand events which load this plugin.
+    cond = string or function,   -- Specifies a conditional test to load this plugin
+    setup = string or function,  -- Specifies code to run before this plugin is loaded.
+  }
+- With a list of plugins specified in either of the above two forms
+
+ vim:tw=78:ts=2:ft=help:norl:

@@ -1,6 +1,6 @@
-local api  = vim.api
-local log  = require('packer.log')
-local a    = require('packer.async')
+local api = vim.api
+local log = require('packer.log')
+local a = require('packer.async')
 
 local config = nil
 local keymaps = {
@@ -13,23 +13,24 @@ local keymaps = {
 
 local display = {}
 local display_mt = {
+  --- Update the text of the display buffer
   set_lines = function(self, start_idx, end_idx, lines)
     api.nvim_buf_set_option(self.buf, 'modifiable', true)
     api.nvim_buf_set_lines(self.buf, start_idx, end_idx, true, lines)
     api.nvim_buf_set_option(self.buf, 'modifiable', false)
   end,
+  --- Start displaying a new task
   task_start = vim.schedule_wrap(function(self, plugin, message)
     if not api.nvim_buf_is_valid(self.buf) then return end
-
     display.status.running = true
     self:set_lines(config.header_lines, config.header_lines,
                    {string.format(' %s %s: %s', config.working_sym, plugin, message)})
     self.marks[plugin] = api.nvim_buf_set_extmark(self.buf, self.ns, 0, config.header_lines, 0, {})
   end),
 
+  --- Decrement the count of active operations in the headline
   decrement_headline_count = vim.schedule_wrap(function(self)
     if not api.nvim_win_is_valid(self.win) then return end
-
     local cursor_pos = api.nvim_win_get_cursor(self.win)
     api.nvim_win_set_cursor(self.win, {1, 0})
     api.nvim_buf_set_option(self.buf, 'modifiable', true)
@@ -38,9 +39,9 @@ local display_mt = {
     api.nvim_win_set_cursor(self.win, cursor_pos)
   end),
 
+  --- Update a task as having successfully completed
   task_succeeded = vim.schedule_wrap(function(self, plugin, message)
     if not api.nvim_buf_is_valid(self.buf) then return end
-
     local line, _ = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
     self:set_lines(line[1], line[1] + 1,
                    {string.format(' %s %s: %s', config.done_sym, plugin, message)})
@@ -49,9 +50,9 @@ local display_mt = {
     self:decrement_headline_count()
   end),
 
+  --- Update a task as having unsuccessfully failed
   task_failed = vim.schedule_wrap(function(self, plugin, message)
     if not api.nvim_buf_is_valid(self.buf) then return end
-
     local line, _ = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
     self:set_lines(line[1], line[1] + 1,
                    {string.format(' %s %s: %s', config.error_sym, plugin, message)})
@@ -60,18 +61,18 @@ local display_mt = {
     self:decrement_headline_count()
   end),
 
+  --- Update the status message of a task in progress
   task_update = vim.schedule_wrap(function(self, plugin, message)
     if not api.nvim_buf_is_valid(self.buf) then return end
-
     local line, _ = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
     self:set_lines(line[1], line[1] + 1,
                    {string.format(' %s %s: %s', config.working_sym, plugin, message)})
     api.nvim_buf_set_extmark(self.buf, self.ns, self.marks[plugin], line[1], 0, {})
   end),
 
+  --- Update the text of the headline message
   update_headline_message = vim.schedule_wrap(function(self, message)
     if not api.nvim_buf_is_valid(self.buf) or not api.nvim_win_is_valid(self.win) then return end
-
     local headline = config.title .. ' - ' .. message
     local width = api.nvim_win_get_width(self.win) - 2
     local pad_width = math.max(math.floor((width - string.len(headline)) / 2.0), 0)
@@ -79,20 +80,9 @@ local display_mt = {
                    {string.rep(' ', pad_width) .. headline .. string.rep(' ', pad_width)})
   end),
 
-  increment_headline_count = vim.schedule_wrap(function(self)
-    if not api.nvim_win_is_valid(self.win) then return end
-
-    local cursor_pos = api.nvim_win_get_cursor(self.win)
-    api.nvim_win_set_cursor(self.win, {1, 0})
-    api.nvim_buf_set_option(self.buf, 'modifiable', true)
-    vim.fn.execute('normal! ')
-    api.nvim_buf_set_option(self.buf, 'modifiable', false)
-    api.nvim_win_set_cursor(self.win, cursor_pos)
-  end),
-
+  --- Display the final results of an operation
   final_results = vim.schedule_wrap(function(self, results, time)
     if not api.nvim_buf_is_valid(self.buf) or not api.nvim_win_is_valid(self.win) then return end
-
     display.status.running = false
     time = tonumber(time)
     self:update_headline_message(string.format('finished in %.3fs', time))
@@ -181,9 +171,9 @@ local display_mt = {
     self.plugins = plugins
   end),
 
+  --- Toggle the display of detailed information for a plugin in the final results display
   toggle_info = function(self)
     if not api.nvim_buf_is_valid(self.buf) or not api.nvim_win_is_valid(self.win) then return end
-
     if next(self.plugins) == nil then
       log.info('Operations are still running; plugin info is not ready yet')
       return
@@ -207,6 +197,7 @@ local display_mt = {
     end
   end,
 
+  --- Heuristically find the plugin nearest to the cursor for displaying detailed information
   find_nearest_plugin = function(self)
     local cursor_pos = api.nvim_win_get_cursor(0)
     -- TODO: this is a dumb hack
@@ -250,6 +241,7 @@ display.cfg = function(_config)
   config.filetype_cmds = make_filetype_cmds(config.working_sym, config.done_sym, config.error_sym)
 end
 
+--- Utility to make the initial display buffer header
 local function make_header(disp)
   local width = api.nvim_win_get_width(0)
   local pad_width = math.floor((width - string.len(config.title)) / 2.0)
@@ -259,13 +251,15 @@ local function make_header(disp)
   })
 end
 
+--- Initialize options, settings, and keymaps for display windows
 local function setup_window(disp)
   api.nvim_buf_set_option(disp.buf, 'filetype', 'packer')
   for _, m in ipairs(keymaps) do api.nvim_buf_set_keymap(disp.buf, m[1], m[2], m[3], m[4]) end
-
   for _, c in ipairs(config.filetype_cmds) do vim.cmd(c) end
 end
 
+--- Open a new display window
+-- Takes either a string representing a command or a function returning a (window, buffer) pair
 display.open = function(opener)
   if display.status.disp then
     if api.nvim_win_is_valid(display.status.disp.win) then
@@ -304,6 +298,7 @@ end
 
 display.status = {running = false, disp = nil}
 
+--- Close a display window and signal that any running operations should terminate
 display.quit = function()
   display.status.running = false
   vim.fn.execute('q!', 'silent')
@@ -312,6 +307,7 @@ end
 display.toggle_info =
   function() if display.status.disp then display.status.disp:toggle_info() end end
 
+--- Utility function to prompt a user with a question in a floating window
 display.ask_user = a.wrap(function(headline, body, callback)
   local buf = api.nvim_create_buf(false, true)
   local longest_line = 0

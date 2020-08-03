@@ -273,7 +273,7 @@ To optimize startup time, `packer.nvim` compiles code to perform the lazy-loadin
 specify. This means that you do not need to load `packer.nvim` unless you want to perform some
 plugin management operations.
 
-To generate the compiled code, call `packer.compile(path)`, where `path` is some file path on you r
+To generate the compiled code, call `packer.compile(path)`, where `path` is some file path on your
 `runtimepath`, with a `.vim` extension. This will generate a blend of Lua and Vimscript to load and
 configure all your lazy-loaded plugins (e.g. generating commands, autocommands, etc.) and save it to
 `path`. Then, when you start vim, the file at `path` is loaded (because `path` must be on your
