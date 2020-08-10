@@ -67,7 +67,7 @@ local function update_plugin(plugin, display_win, results)
   return async(function()
     display_win:task_start(plugin_name, 'updating...')
     local r = await(plugin.updater(display_win))
-    if r.ok then
+    if r ~= nil and r.ok then
       local msg = 'up to date'
       if plugin.type == 'git' then
         local info = r.info
