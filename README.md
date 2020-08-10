@@ -71,6 +71,9 @@ return require('packer').startup(function()
 
   -- You can specify multiple plugins in a single call
   use {'tjdevries/colorbuddy.vim', {'nvim-treesitter/nvim-treesitter', opt = true}}
+
+  -- You can alias plugin names
+  use {'dracula/vim', as = 'dracula'}
 end)
 ```
 
@@ -188,6 +191,7 @@ use {
   'myusername/example',   -- The plugin location string
   -- The following keys are all optional
   disable = boolean,           -- Mark a plugin as inactive
+  as = string,                 -- Specifies an alias under which to install the plugin
   installer = function,        -- Specifies custom installer. See "custom installers" below.
   updater = function,          -- Specifies custom updater. See "custom installers" below.
   after = string or list,      -- Specifies plugins to load before this plugin.
@@ -204,7 +208,7 @@ use {
   ft = string or list,         -- Specifies filetypes which load this plugin.
   keys = string or list,       -- Specifies maps which load this plugin. See "Keybindings".
   event = string or list,      -- Specifies autocommand events which load this plugin.
-  cond = string or function,   -- Specifies a conditional test to load this plugin
+  cond = string, function, or list of strings/functions,   -- Specifies a conditional test to load this plugin
   setup = string or function,  -- Specifies code to run before this plugin is loaded.
 }
 ```

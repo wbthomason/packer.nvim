@@ -111,7 +111,8 @@ manage = function(plugin)
     return
   end
 
-  plugin.short_name = name
+  -- Handle aliases
+  plugin.short_name = plugin.as or name
   plugin.name = path
   plugin.path = path
 
