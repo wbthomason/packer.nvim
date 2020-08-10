@@ -211,10 +211,14 @@ local function make_loaders(_, plugins)
       if plugin.cond then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        if type(plugin.cond) == 'string' then plugin.cond = {plugin.cond} end
+        if type(plugin.cond) == 'string' or type(plugin.cond) == 'function' then
+          plugin.cond = {plugin.cond}
+        end
 
         for _, condition in ipairs(plugin.cond) do
-          if type(condition) == 'function' then condition = string.dump(condition, true) end
+          if type(condition) == 'function' then
+            condition = 'loadstring(' .. vim.inspect(string.dump(condition, true)) .. ')()'
+          end
 
           conditions[condition] = conditions[condition] or {}
           table.insert(conditions[condition], name)
@@ -296,12 +300,7 @@ local function make_loaders(_, plugins)
   end
 
   local conditionals = {}
-
   for condition, names in pairs(conditions) do
-    local conditional_block = [[do
-    ]] .. condition .. [[
-    end]]
-
     local conditional_loads = {}
     for _, name in ipairs(names) do
       table.insert(conditional_loads, 'vim.cmd("packadd ' .. name .. '")')
@@ -314,10 +313,13 @@ local function make_loaders(_, plugins)
     end
 
     local conditional = [[if
-    ]] .. conditional_block .. [[
+    ]] .. condition .. [[
+
 then
     ]] .. table.concat(conditional_loads, '\n\t') .. [[
-    end]]
+
+  end
+]]
 
     table.insert(conditionals, conditional)
   end
