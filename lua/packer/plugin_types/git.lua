@@ -73,6 +73,7 @@ local handle_checkouts = function(plugin, dest, disp)
           }
         end
 
+        err.output = output
         return err
       end)
   end)
