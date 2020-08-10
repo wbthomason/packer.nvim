@@ -72,6 +72,8 @@ plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins
     opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
   end
 
+  -- NOTE/TODO: In the case of a plugin gaining/losing an alias, this will force a clean and
+  -- reinstall
   local missing_plugins = {}
   for _, plugin_name in ipairs(vim.tbl_keys(plugins)) do
     local plugin = plugins[plugin_name]
