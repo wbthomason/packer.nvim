@@ -111,6 +111,12 @@ manage = function(plugin)
     return
   end
 
+  if plugin.as and plugins[plugin.as] then
+    log.error('The alias ' .. plugin.as .. ', specified for ' .. path
+                .. ', is already used as another plugin name!')
+    return
+  end
+
   -- Handle aliases
   plugin.short_name = plugin.as or name
   plugin.name = path
