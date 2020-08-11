@@ -1,7 +1,7 @@
 local plugin_utils = require('packer.plugin_utils')
-local a            = require('packer.async')
-local display      = require('packer.display')
-local log          = require('packer.log')
+local a = require('packer.async')
+local display = require('packer.display')
+local log = require('packer.log')
 
 local await = a.wait
 local async = a.sync
@@ -15,11 +15,16 @@ local clean_plugins = function(_, plugins, results)
     results.removals = results.removals or {}
     local opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
     local dirty_plugins = {}
+    local aliases = {}
+    for _, plugin in pairs(plugins) do
+      if plugin.as and not plugin.disable then aliases[plugin.as] = true end
+    end
+
     for _, plugin_list in ipairs({opt_plugins, start_plugins}) do
       for plugin_path, _ in pairs(plugin_list) do
         local plugin_name = vim.fn.fnamemodify(plugin_path, ":t")
         local plugin_data = plugins[plugin_name]
-        if (plugin_data == nil) or (plugin_data.disable) then
+        if (plugin_data == nil and not aliases[plugin_name]) or (plugin_data and plugin_data.disable) then
           dirty_plugins[plugin_name] = plugin_path
         end
       end
