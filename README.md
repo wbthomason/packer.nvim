@@ -53,7 +53,7 @@ return require('packer').startup(function()
     'w0rp/ale',
     ft = {'sh', 'zsh', 'bash', 'c', 'cpp', 'cmake', 'html', 'markdown', 'racket', 'vim', 'tex'},
     cmd = 'ALEEnable',
-    config = 'vim.cmd[[ALEEnable]]
+    config = 'vim.cmd[[ALEEnable]]'
   }
 
   -- Plugins can have dependencies on other plugins
