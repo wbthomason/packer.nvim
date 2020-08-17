@@ -44,7 +44,8 @@ local config_defaults = {
       diff_fmt = '%%h %%s (%%cr)',
       get_rev = '-C %s rev-parse --short HEAD',
       get_msg = '-C %s log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',
-      submodules = '-C %s submodule update --init --recursive --progress'
+      submodules = '-C %s submodule update --init --recursive --progress',
+      revert = '-C %s reset --hard HEAD@{1}'
     },
     depth = 1
   },

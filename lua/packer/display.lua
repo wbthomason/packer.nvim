@@ -8,8 +8,53 @@ local keymaps = {
   {
     'n', '<cr>', '<cmd>lua require"packer.display".toggle_info()<cr>',
     {nowait = true, silent = true}
-  }
+  },
+  {'n', 'r', '<cmd>lua require"packer.display".prompt_revert()<cr>', {nowait = true, silent = true}}
 }
+
+--- Utility function to prompt a user with a question in a floating window
+local function prompt_user(headline, body, callback)
+  local buf = api.nvim_create_buf(false, true)
+  local longest_line = 0
+  for _, line in ipairs(body) do
+    local line_length = string.len(line)
+    if line_length > longest_line then longest_line = line_length end
+  end
+
+  local width = math.min(longest_line + 2, math.floor(0.9 * vim.o.columns))
+  local height = #body + 3
+  local x = (vim.o.columns - width) / 2.0
+  local y = (vim.o.lines - height) / 2.0
+  local pad_width = math.max(math.floor((width - string.len(headline)) / 2.0), 0)
+  api.nvim_buf_set_lines(buf, 0, -1, true, vim.list_extend(
+                           {
+      string.rep(' ', pad_width) .. headline .. string.rep(' ', pad_width), ''
+    }, body))
+  api.nvim_buf_set_option(buf, 'modifiable', false)
+  local opts = {
+    relative = 'editor',
+    width = width,
+    height = height,
+    col = x,
+    row = y,
+    focusable = false,
+    style = 'minimal'
+  }
+
+  local win = api.nvim_open_win(buf, false, opts)
+  local check = vim.loop.new_prepare()
+  local prompted = false
+  vim.loop.prepare_start(check, vim.schedule_wrap(function()
+    if not api.nvim_win_is_valid(win) then return end
+    vim.loop.prepare_stop(check)
+    if not prompted then
+      prompted = true
+      local ans = string.lower(vim.fn.input('OK to remove? [y/N] ')) == 'y'
+      api.nvim_win_close(win, true)
+      callback(ans)
+    end
+  end))
+end
 
 local display = {}
 local display_mt = {
@@ -116,6 +161,7 @@ local display_mt = {
         local plugin = results.plugins[plugin_name]
         local message = {}
         local actual_update = true
+        local failed_update = false
         if result.ok then
           if plugin.type ~= 'git' or plugin.revs[1] == plugin.revs[2] then
             actual_update = false
@@ -127,11 +173,14 @@ local display_mt = {
                                        plugin.revs[1], plugin.revs[2]))
           end
         else
+          failed_update = true
+          actual_update = false
           table.insert(message, string.format(' %s Failed to update %s: %s', config.error_sym,
                                               plugin_name, vim.inspect(result.err)))
         end
 
-        if actual_update then vim.list_extend(raw_lines, message) end
+        plugin.actual_update = actual_update
+        if actual_update or failed_update then vim.list_extend(raw_lines, message) end
       end
     end
 
@@ -146,7 +195,7 @@ local display_mt = {
     self:set_lines(config.header_lines, -1, lines)
     local plugins = {}
     for plugin_name, plugin in pairs(results.plugins) do
-      local plugin_data = {displayed = false, lines = {}}
+      local plugin_data = {displayed = false, lines = {}, spec = plugin}
       if plugin.output then
         if plugin.output.err and #plugin.output.err > 0 then
           table.insert(plugin_data.lines, '  Errors:')
@@ -181,7 +230,7 @@ local display_mt = {
 
     local plugin_name, cursor_pos = self:find_nearest_plugin()
     if plugin_name == nil then
-      log.warning('nil plugin name!')
+      log.warning('No plugin selected!')
       return
     end
 
@@ -194,6 +243,40 @@ local display_mt = {
       plugin_data.displayed = true
     else
       log.info('No further information for ' .. plugin_name)
+    end
+  end,
+
+  --- Prompt a user to revert the latest update for a plugin
+  prompt_revert = function(self)
+    if not api.nvim_buf_is_valid(self.buf) or not api.nvim_win_is_valid(self.win) then return end
+    if next(self.plugins) == nil then
+      log.info('Operations are still running; plugin info is not ready yet')
+      return
+    end
+
+    local plugin_name, _ = self:find_nearest_plugin()
+    if plugin_name == nil then
+      log.warning('No plugin selected!')
+      return
+    end
+
+    local plugin_data = self.plugins[plugin_name].spec
+    if plugin_data.actual_update then
+      prompt_user('Revert update for ' .. plugin_name .. '?', {
+        'Do you want to revert ' .. plugin_name .. ' from ' .. plugin_data.revs[2] .. ' to '
+          .. plugin_data.revs[1] .. '?'
+      }, function(ans)
+        if ans then
+          local r = plugin_data.revert_last()
+          if r.ok then
+            log.info('Reverted update for ' .. plugin_name)
+          else
+            log.error('Reverting update for ' .. plugin_name .. ' failed!')
+          end
+        end
+      end)
+    else
+      log.warning(plugin_name .. " wasn't updated; can't revert!")
     end
   end,
 
@@ -307,48 +390,11 @@ end
 display.toggle_info =
   function() if display.status.disp then display.status.disp:toggle_info() end end
 
---- Utility function to prompt a user with a question in a floating window
-display.ask_user = a.wrap(function(headline, body, callback)
-  local buf = api.nvim_create_buf(false, true)
-  local longest_line = 0
-  for _, line in ipairs(body) do
-    local line_length = string.len(line)
-    if line_length > longest_line then longest_line = line_length end
-  end
+display.prompt_revert = function()
+  if display.status.disp then display.status.disp:prompt_revert() end
+end
 
-  local width = math.min(longest_line + 2, math.floor(0.9 * vim.o.columns))
-  local height = #body + 3
-  local x = (vim.o.columns - width) / 2.0
-  local y = (vim.o.lines - height) / 2.0
-  local pad_width = math.max(math.floor((width - string.len(headline)) / 2.0), 0)
-  api.nvim_buf_set_lines(buf, 0, -1, true, vim.list_extend(
-                           {
-      string.rep(' ', pad_width) .. headline .. string.rep(' ', pad_width), ''
-    }, body))
-  api.nvim_buf_set_option(buf, 'modifiable', false)
-  local opts = {
-    relative = 'editor',
-    width = width,
-    height = height,
-    col = x,
-    row = y,
-    focusable = false,
-    style = 'minimal'
-  }
-
-  local win = api.nvim_open_win(buf, false, opts)
-  local check = vim.loop.new_prepare()
-  local prompted = false
-  vim.loop.prepare_start(check, vim.schedule_wrap(function()
-    if not api.nvim_win_is_valid(win) then return end
-    vim.loop.prepare_stop(check)
-    if not prompted then
-      prompted = true
-      local ans = string.lower(vim.fn.input('OK to remove? [y/N] ')) == 'y'
-      api.nvim_win_close(win, true)
-      callback(ans)
-    end
-  end))
-end)
+--- Async prompt_user
+display.ask_user = a.wrap(prompt_user)
 
 return display

@@ -21,7 +21,7 @@ end
 local handle_checkouts = function(plugin, dest, disp)
   local plugin_name = util.get_plugin_full_name(plugin)
   return async(function()
-    disp:task_update(plugin_name, 'fetching reference...')
+    if disp ~= nil then disp:task_update(plugin_name, 'fetching reference...') end
     local output = jobs.output_table()
     local callbacks = {
       stdout = jobs.logging_callback(output.err.stdout, output.data.stdout, nil, disp, plugin_name),
@@ -34,8 +34,10 @@ local handle_checkouts = function(plugin, dest, disp)
 
     if plugin.branch or plugin.tag then
       local branch_or_tag = plugin.branch and plugin.branch or plugin.tag
-      disp:task_update(plugin_name, fmt('checking out %s %s...',
-                                        plugin.branch and 'branch' or 'tag', branch_or_tag))
+      if disp ~= nil then
+        disp:task_update(plugin_name, fmt('checking out %s %s...',
+                                          plugin.branch and 'branch' or 'tag', branch_or_tag))
+      end
       r = r:and_then(await, jobs.run(config.exec_cmd
                                        .. fmt(config.subcommands.checkout, dest, branch_or_tag),
                                      opts)):map_err(
@@ -50,7 +52,9 @@ local handle_checkouts = function(plugin, dest, disp)
     end
 
     if plugin.commit then
-      disp:task_update(plugin_name, fmt('checking out %s...', plugin.commit))
+      if disp ~= nil then
+        disp:task_update(plugin_name, fmt('checking out %s...', plugin.commit))
+      end
       r = r:and_then(await, jobs.run(config.exec_cmd
                                        .. fmt(config.subcommands.checkout, dest, plugin.commit),
                                      opts)):map_err(
@@ -109,6 +113,8 @@ git.setup = function(plugin)
   if plugin.branch or plugin.tag then
     install_cmd = fmt('%s --branch %s', install_cmd, plugin.branch and plugin.branch or plugin.tag)
   end
+
+  local needs_checkout = plugin.tag ~= nil or plugin.commit ~= nil or plugin.branch ~= nil
 
   plugin.installer = function(disp)
     local output = jobs.output_table()
@@ -195,7 +201,6 @@ git.setup = function(plugin)
             }
           end)
 
-      local needs_checkout = plugin.tag ~= nil or plugin.commit ~= nil or plugin.branch ~= nil
       if not needs_checkout and branch ~= 'master' then
         needs_checkout = true
         plugin.branch = 'master'
@@ -277,6 +282,17 @@ git.setup = function(plugin)
       r.info = update_info
       return r
     end)
+  end
+
+  plugin.revert_last = function()
+    local r = result.ok(true)
+    async(function()
+      local revert_cmd = config.exec_cmd .. fmt(config.subcommands.revert, install_to)
+      r = r:and_then(await, jobs.run(revert_cmd, {capture_output = true}))
+      if needs_checkout then r = r:and_then(await, handle_checkouts(plugin, install_to, nil)) end
+      return r
+    end)()
+    return r
   end
 end
 

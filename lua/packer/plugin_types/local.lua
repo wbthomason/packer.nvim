@@ -1,7 +1,7 @@
-local a      = require('packer.async')
-local jobs   = require('packer.jobs')
-local log    = require('packer.log')
-local util   = require('packer.util')
+local a = require('packer.async')
+local jobs = require('packer.jobs')
+local log = require('packer.log')
+local util = require('packer.util')
 local result = require('packer.result')
 
 local async = a.sync
@@ -32,6 +32,10 @@ local function setup_local(plugin)
   end
 
   plugin.updater = function(_) return async(function() return result.ok(true) end) end
+  plugin.revert_last = function(_)
+    log.warning("Can't revert a local plugin!")
+    return result.ok(true)
+  end
 end
 
 local local_plugin = {setup = setup_local, cfg = cfg}
