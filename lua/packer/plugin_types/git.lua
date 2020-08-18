@@ -218,7 +218,7 @@ git.setup = function(plugin)
         r:map_ok(merge_output)
         r:map_err(function(err)
           merge_output(err)
-          plugin.output = {err = vim.list.extend(update_info.err, update_info.output), data = {}}
+          plugin.output = {err = vim.list_extend(update_info.err, update_info.output), data = {}}
           return {msg = err.msg .. ' ' .. table.concat(update_info.output, '\n'), data = err.data}
         end)
       end
