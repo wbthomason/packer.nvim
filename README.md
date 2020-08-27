@@ -138,6 +138,7 @@ default configuration values (and structure of the configuration table) are:
   plugin_package = 'packer', -- The default package for plugins
   max_jobs = nil, -- Limit the number of simultaneous jobs. nil means no limit
   auto_clean = true, -- During sync(), remove unused plugins
+  compile_on_sync = true, -- During sync(), run packer.compile()
   disable_commands = false, -- During `startup`, disable creating commands
   git = {
     cmd = 'git', -- The base command for git operations
@@ -286,7 +287,9 @@ configure all your lazy-loaded plugins (e.g. generating commands, autocommands, 
 If `path` is not provided to `packer.compile`, the output file will default to the value of
 `config.compile_path`.
 
-Note that you **must** run `packer.compile` yourself to generate this file.
+The option `compile_on_sync`, which defaults to `true`, will run `packer.compile()` during
+`packer.sync()`, if set to `true`. Note that otherwise, you **must** run `packer.compile` yourself
+to generate the lazy-loader file!
 
 ## Status
 **tl;dr**: Beta. Things seem to work and most features are complete, but certainly not every edge
