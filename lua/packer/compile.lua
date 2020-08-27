@@ -123,7 +123,7 @@ _packer_load = function(names, cause)
 
     -- NOTE: I'm not sure if the below substitution is correct; it might correspond to the literal
     -- characters \<Plug> rather than the special <Plug> key.
-    vim.fn.feedkeys(string.gsub(cause.keys, '^<Plug>', '\\<Plug>') .. extra)
+    vim.fn.feedkeys(string.gsub(string.gsub(cause.keys, '^<Plug>', '\\<Plug>') .. extra, '<[cC][rR]>', '\r'))
   elseif cause.event then
     vim.cmd(fmt('doautocmd <nomodeline> %s', cause.event))
   elseif cause.ft then
@@ -242,11 +242,9 @@ local function make_loaders(_, plugins)
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
         if type(plugin.keys) == 'string' then plugin.keys = {plugin.keys} end
-
         loaders[name].keys = {}
         for _, keymap in ipairs(plugin.keys) do
           if type(keymap) == 'string' then keymap = {'', keymap} end
-
           keymaps[keymap] = keymaps[keymap] or {}
           table.insert(loaders[name].keys, keymap)
           table.insert(keymaps[keymap], quote_name)
@@ -336,10 +334,10 @@ then
   for keymap, names in pairs(keymaps) do
     local prefix = nil
     if keymap[1] ~= 'i' then prefix = '' end
-
+    local cr_escaped_map = string.gsub(keymap[2], '<[cC][rR]>', '\\<CR\\>')
     local keymap_line = fmt(
                           '%snoremap <silent> %s <cmd>call <SID>load([%s], { "keys": "%s"%s })<cr>',
-                          keymap[1], keymap[2], table.concat(names, ', '), keymap[2],
+                          keymap[1], keymap[2], table.concat(names, ', '), cr_escaped_map,
                           prefix == nil and '' or (', "prefix": "' .. prefix .. '"'))
 
     table.insert(keymap_defs, keymap_line)
