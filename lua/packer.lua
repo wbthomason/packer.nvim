@@ -107,7 +107,18 @@ manage = function(plugin)
 
   local path = vim.fn.expand(plugin[1])
   local name_segments = vim.split(path, '/')
-  local name = name_segments[#name_segments]
+  local segment_idx = #name_segments
+  local name = name_segments[segment_idx]
+  while name == '' and segment_idx > 0 do
+    name = name_segments[segment_idx]
+    segment_idx = segment_idx - 1
+  end
+
+  if name == '' then
+    log.warning('\\"' .. plugin[1] .. '\\" is an invalid plugin name!')
+    return
+  end
+
   if plugins[name] then
     log.warning('Plugin "' .. name .. '" is used twice!')
     return
