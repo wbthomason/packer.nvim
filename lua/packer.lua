@@ -109,7 +109,7 @@ manage = function(plugin)
   local name_segments = vim.split(path, '/')
   local name = name_segments[#name_segments]
   if plugins[name] then
-    log.warning('Plugin ' .. name .. ' is used twice!')
+    log.warning('Plugin "' .. name .. '" is used twice!')
     return
   end
 
