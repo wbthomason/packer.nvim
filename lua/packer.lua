@@ -120,7 +120,7 @@ manage = function(plugin)
   end
 
   if plugins[name] then
-    log.warning('Plugin "' .. name .. '" is used twice!')
+    log.warning('Plugin \\"' .. name .. '\\" is used twice!')
     return
   end
 
