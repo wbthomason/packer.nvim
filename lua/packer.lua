@@ -105,6 +105,11 @@ manage = function(plugin)
     return
   end
 
+  if plugin[1] == vim.NIL or plugin[1] == nil then
+    log.warning('Nil plugin name provided!')
+    return
+  end
+
   local path = vim.fn.expand(plugin[1])
   local name_segments = vim.split(path, '/')
   local segment_idx = #name_segments
