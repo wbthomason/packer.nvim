@@ -34,7 +34,6 @@ end
 util.is_windows = jit.os == 'Windows'
 local function get_separator()
   if util.is_windows then return '\\' end
-
   return '/'
 end
 
