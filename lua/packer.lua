@@ -23,10 +23,8 @@ local await = a.wait
 local packer = {}
 local config_defaults = {
   ensure_dependencies = true,
-  package_root = util.is_windows and '~\\AppData\\Local\\nvim-data\\site\\pack'
-    or '~/.local/share/nvim/site/pack',
-  compile_path = util.is_windows and (vim.fn.stdpath('config') .. '\\plugin\\packer_compiled.vim')
-    or (vim.fn.stdpath('config') .. '/plugin/packer_compiled.vim'),
+  package_root = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
+  compile_path = util.join_paths(vim.fn.stdpath('config'), 'plugin', 'packer_compiled.vim'),
   plugin_package = 'packer',
   max_jobs = nil,
   auto_clean = true,
