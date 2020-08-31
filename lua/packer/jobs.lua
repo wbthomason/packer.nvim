@@ -45,8 +45,14 @@ end
 --  before calling the callback
 local spawn = a.wrap(function(cmd, options, callback)
   local handle = nil
+  local timer = nil
   handle = loop.spawn(cmd, options, function(exit_code, signal)
     handle:close()
+    if timer ~= nil then
+      timer:stop()
+      timer:close()
+    end
+
     local check = loop.new_check()
     loop.check_start(check, function()
       for _, pipe in pairs(options.stdio) do if not loop.is_closing(pipe) then return end end
@@ -60,7 +66,7 @@ local spawn = a.wrap(function(cmd, options, callback)
   end
 
   if options.timeout then
-    local timer = loop.new_timer()
+    timer = loop.new_timer()
     timer:start(options.timeout, 0, function ()
       timer:stop()
       timer:close()
