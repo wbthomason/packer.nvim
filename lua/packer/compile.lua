@@ -9,7 +9,7 @@ local function cfg(_config) config = _config end
 
 local vim_loader = [[
 function! s:load(names, cause) abort
-  call luaeval('_packer_load(_A[1], _A[2])', [a:names, a:cause])
+call luaeval('_packer_load(_A[1], _A[2])', [a:names, a:cause])
 endfunction
 ]]
 
@@ -145,120 +145,122 @@ local function make_loaders(_, plugins)
   local keymaps = {}
   local after = {}
   for name, plugin in pairs(plugins) do
-    local quote_name = "'" .. name .. "'"
-    if plugin.config then
-      if type(plugin.config) ~= 'table' then plugin.config = {plugin.config} end
-      for i, config_item in ipairs(plugin.config) do
-        if type(config_item) == 'function' then
-          local stringified = string.dump(config_item, true)
-          if not plugin.opt then
-            stringified = 'loadstring(' .. vim.inspect(stringified) .. ')()'
-          end
+    if not plugin.disable then
+      local quote_name = "'" .. name .. "'"
+      if plugin.config then
+        if type(plugin.config) ~= 'table' then plugin.config = {plugin.config} end
+        for i, config_item in ipairs(plugin.config) do
+          if type(config_item) == 'function' then
+            local stringified = string.dump(config_item, true)
+            if not plugin.opt then
+              stringified = 'loadstring(' .. vim.inspect(stringified) .. ')()'
+            end
 
-          plugin.config[i] = stringified
-        end
-      end
-    end
-
-    if plugin.config and not plugin.opt then configs[name] = plugin.config end
-
-    if plugin.rtp then table.insert(rtps, util.join_paths(plugin.install_path, plugin.rtp)) end
-
-    if plugin.opt then
-      loaders[name] = {
-        loaded = false,
-        config = plugin.config,
-        path = plugin.install_path .. (plugin.rtp and plugin.rtp or ''),
-        only_sequence = plugin.manual_opt == nil,
-        only_setup = false
-      }
-
-      if plugin.setup then
-        if type(plugin.setup) ~= 'table' then plugin.setup = {plugin.setup} end
-        for i, setup_item in ipairs(plugin.setup) do
-          if type(setup_item) == 'function' then
-            local stringified = vim.inspect(string.dump(setup_item, true))
-            plugin.setup[i] = 'loadstring(' .. stringified .. ')()'
+            plugin.config[i] = stringified
           end
         end
-
-        loaders[name].only_setup = plugin.manual_opt == nil
-        setup[name] = plugin.setup
       end
 
-      if plugin.ft then
-        loaders[name].only_sequence = false
-        loaders[name].only_setup = false
-        if type(plugin.ft) == 'string' then plugin.ft = {plugin.ft} end
+      if plugin.config and not plugin.opt then configs[name] = plugin.config end
 
-        for _, ft in ipairs(plugin.ft) do
-          fts[ft] = fts[ft] or {}
-          table.insert(fts[ft], quote_name)
-        end
-      end
+      if plugin.rtp then table.insert(rtps, util.join_paths(plugin.install_path, plugin.rtp)) end
 
-      if plugin.event then
-        loaders[name].only_sequence = false
-        loaders[name].only_setup = false
-        if type(plugin.event) == 'string' then plugin.event = {plugin.event} end
+      if plugin.opt then
+        loaders[name] = {
+          loaded = false,
+          config = plugin.config,
+          path = plugin.install_path .. (plugin.rtp and plugin.rtp or ''),
+          only_sequence = plugin.manual_opt == nil,
+          only_setup = false
+        }
 
-        for _, event in ipairs(plugin.event) do
-          events[event] = events[event] or {}
-          table.insert(events[event], quote_name)
-        end
-      end
-
-      if plugin.cond then
-        loaders[name].only_sequence = false
-        loaders[name].only_setup = false
-        if type(plugin.cond) == 'string' or type(plugin.cond) == 'function' then
-          plugin.cond = {plugin.cond}
-        end
-
-        for _, condition in ipairs(plugin.cond) do
-          if type(condition) == 'function' then
-            condition = 'loadstring(' .. vim.inspect(string.dump(condition, true)) .. ')()'
+        if plugin.setup then
+          if type(plugin.setup) ~= 'table' then plugin.setup = {plugin.setup} end
+          for i, setup_item in ipairs(plugin.setup) do
+            if type(setup_item) == 'function' then
+              local stringified = vim.inspect(string.dump(setup_item, true))
+              plugin.setup[i] = 'loadstring(' .. stringified .. ')()'
+            end
           end
 
-          conditions[condition] = conditions[condition] or {}
-          table.insert(conditions[condition], name)
+          loaders[name].only_setup = plugin.manual_opt == nil
+          setup[name] = plugin.setup
         end
-      end
 
-      if plugin.cmd then
-        loaders[name].only_sequence = false
-        loaders[name].only_setup = false
-        if type(plugin.cmd) == 'string' then plugin.cmd = {plugin.cmd} end
+        if plugin.ft then
+          loaders[name].only_sequence = false
+          loaders[name].only_setup = false
+          if type(plugin.ft) == 'string' then plugin.ft = {plugin.ft} end
 
-        loaders[name].commands = {}
-        for _, command in ipairs(plugin.cmd) do
-          commands[command] = commands[command] or {}
-          table.insert(loaders[name].commands, command)
-          table.insert(commands[command], quote_name)
+          for _, ft in ipairs(plugin.ft) do
+            fts[ft] = fts[ft] or {}
+            table.insert(fts[ft], quote_name)
+          end
         end
-      end
 
-      if plugin.keys then
-        loaders[name].only_sequence = false
-        loaders[name].only_setup = false
-        if type(plugin.keys) == 'string' then plugin.keys = {plugin.keys} end
-        loaders[name].keys = {}
-        for _, keymap in ipairs(plugin.keys) do
-          if type(keymap) == 'string' then keymap = {'', keymap} end
-          keymaps[keymap] = keymaps[keymap] or {}
-          table.insert(loaders[name].keys, keymap)
-          table.insert(keymaps[keymap], quote_name)
+        if plugin.event then
+          loaders[name].only_sequence = false
+          loaders[name].only_setup = false
+          if type(plugin.event) == 'string' then plugin.event = {plugin.event} end
+
+          for _, event in ipairs(plugin.event) do
+            events[event] = events[event] or {}
+            table.insert(events[event], quote_name)
+          end
         end
-      end
 
-      if plugin.after then
-        loaders[name].only_setup = false
+        if plugin.cond then
+          loaders[name].only_sequence = false
+          loaders[name].only_setup = false
+          if type(plugin.cond) == 'string' or type(plugin.cond) == 'function' then
+            plugin.cond = {plugin.cond}
+          end
 
-        if type(plugin.after) == 'string' then plugin.after = {plugin.after} end
+          for _, condition in ipairs(plugin.cond) do
+            if type(condition) == 'function' then
+              condition = 'loadstring(' .. vim.inspect(string.dump(condition, true)) .. ')()'
+            end
 
-        for _, other_plugin in ipairs(plugin.after) do
-          after[other_plugin] = after[other_plugin] or {}
-          table.insert(after[other_plugin], name)
+            conditions[condition] = conditions[condition] or {}
+            table.insert(conditions[condition], name)
+          end
+        end
+
+        if plugin.cmd then
+          loaders[name].only_sequence = false
+          loaders[name].only_setup = false
+          if type(plugin.cmd) == 'string' then plugin.cmd = {plugin.cmd} end
+
+          loaders[name].commands = {}
+          for _, command in ipairs(plugin.cmd) do
+            commands[command] = commands[command] or {}
+            table.insert(loaders[name].commands, command)
+            table.insert(commands[command], quote_name)
+          end
+        end
+
+        if plugin.keys then
+          loaders[name].only_sequence = false
+          loaders[name].only_setup = false
+          if type(plugin.keys) == 'string' then plugin.keys = {plugin.keys} end
+          loaders[name].keys = {}
+          for _, keymap in ipairs(plugin.keys) do
+            if type(keymap) == 'string' then keymap = {'', keymap} end
+            keymaps[keymap] = keymaps[keymap] or {}
+            table.insert(loaders[name].keys, keymap)
+            table.insert(keymaps[keymap], quote_name)
+          end
+        end
+
+        if plugin.after then
+          loaders[name].only_setup = false
+
+          if type(plugin.after) == 'string' then plugin.after = {plugin.after} end
+
+          for _, other_plugin in ipairs(plugin.after) do
+            after[other_plugin] = after[other_plugin] or {}
+            table.insert(after[other_plugin], name)
+          end
         end
       end
     end
@@ -267,13 +269,13 @@ local function make_loaders(_, plugins)
   local ft_aucmds = {}
   for ft, names in pairs(fts) do
     table.insert(ft_aucmds, fmt('  au FileType %s ++once call s:load([%s], { "ft": "%s" })', ft,
-                                table.concat(names, ', '), ft))
+    table.concat(names, ', '), ft))
   end
 
   local event_aucmds = {}
   for event, names in pairs(events) do
     table.insert(event_aucmds, fmt('  au %s ++once call s:load([%s], { "event": "%s" })', event,
-                                   table.concat(names, ', '), event))
+    table.concat(names, ', '), event))
   end
 
   local config_lines = {}
@@ -313,11 +315,11 @@ local function make_loaders(_, plugins)
     local conditional = [[if
     ]] .. condition .. [[
 
-then
-    ]] .. table.concat(conditional_loads, '\n\t') .. [[
+    then
+      ]] .. table.concat(conditional_loads, '\n\t') .. [[
 
-  end
-]]
+    end
+    ]]
 
     table.insert(conditionals, conditional)
   end
@@ -325,8 +327,8 @@ then
   local command_defs = {}
   for command, names in pairs(commands) do
     local command_line = fmt(
-                           'command! -nargs=* -range -bang -complete=file %s call s:load([%s], { "cmd": "%s", "l1": <line1>, "l2": <line2>, "bang": <q-bang>, "args": <q-args> })',
-                           command, table.concat(names, ', '), command)
+    'command! -nargs=* -range -bang -complete=file %s call s:load([%s], { "cmd": "%s", "l1": <line1>, "l2": <line2>, "bang": <q-bang>, "args": <q-args> })',
+    command, table.concat(names, ', '), command)
     table.insert(command_defs, command_line)
   end
 
@@ -336,9 +338,9 @@ then
     if keymap[1] ~= 'i' then prefix = '' end
     local cr_escaped_map = string.gsub(keymap[2], '<[cC][rR]>', '\\<CR\\>')
     local keymap_line = fmt(
-                          '%snoremap <silent> %s <cmd>call <SID>load([%s], { "keys": "%s"%s })<cr>',
-                          keymap[1], keymap[2], table.concat(names, ', '), cr_escaped_map,
-                          prefix == nil and '' or (', "prefix": "' .. prefix .. '"'))
+    '%snoremap <silent> %s <cmd>call <SID>load([%s], { "keys": "%s"%s })<cr>',
+    keymap[1], keymap[2], table.concat(names, ', '), cr_escaped_map,
+    prefix == nil and '' or (', "prefix": "' .. prefix .. '"'))
 
     table.insert(keymap_defs, keymap_line)
   end
