@@ -46,7 +46,8 @@ local config_defaults = {
       submodules = '-C %s submodule update --init --recursive --progress',
       revert = '-C %s reset --hard HEAD@{1}'
     },
-    depth = 1
+    depth = 1,
+    clone_timeout = 60
   },
   display = {
     open_fn = nil,

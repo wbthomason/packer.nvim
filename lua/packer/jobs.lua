@@ -58,6 +58,19 @@ local spawn = a.wrap(function(cmd, options, callback)
   if options.stdio then
     for i, pipe in pairs(options.stdio) do loop.read_start(pipe, options.stdio_callbacks[i]) end
   end
+
+  if options.timeout then
+    local timer = loop.new_timer()
+    timer:start(options.timeout, 0, function ()
+      timer:stop()
+      timer:close()
+      if loop.is_active(handle) then
+        loop.process_kill(handle, 'sigint')
+        handle:close()
+        callback(-9999, 'sigint')
+      end
+    end)
+  end
 end)
 
 --- Utility function to perform a common check for process success and return a result object
@@ -150,6 +163,10 @@ local run_job = function(task, opts)
     end
 
     local cmd = task[1]
+    if opts.timeout then
+      options.timeout = 1000 * opts.timeout
+    end
+
     options.args = {unpack(task, 2)}
     options.stdio = {nil, stdout, stderr}
     options.stdio_callbacks = {nil, callbacks.stdout, callbacks.stderr}
