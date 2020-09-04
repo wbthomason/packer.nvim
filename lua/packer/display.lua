@@ -2,6 +2,23 @@ local api = vim.api
 local log = require('packer.log')
 local a = require('packer.async')
 
+-- Temporary wrappers to compensate for the updated extmark API, until most people have updated to
+-- the latest HEAD (2020-09-04)
+local function set_extmark(buf, ns, id, line, col)
+  local opts = {id = id}
+  local result, mark_id = pcall(api.nvim_buf_set_extmark, buf, ns, line, col, opts)
+  if result then return mark_id end
+  -- We must be in an older version of Neovim
+  return api.nvim_buf_set_extmark(buf, ns, id, line, col, {})
+end
+
+local function get_extmark_by_id(buf, ns, id)
+  local result, line, col = pcall(api.nvim_buf_get_extmark_by_id, buf, ns, id, {})
+  if result then return line, col end
+  -- We must be in an older version of Neovim
+  return api.nvim_buf_get_extmark_by_id(buf, ns, id)
+end
+
 local config = nil
 local keymaps = {
   {'n', 'q', '<cmd>lua require"packer.display".quit()<cr>', {nowait = true, silent = true}},
@@ -70,7 +87,7 @@ local display_mt = {
     display.status.running = true
     self:set_lines(config.header_lines, config.header_lines,
                    {string.format(' %s %s: %s', config.working_sym, plugin, message)})
-    self.marks[plugin] = api.nvim_buf_set_extmark(self.buf, self.ns, 0, config.header_lines, 0, {})
+    self.marks[plugin] = set_extmark(self.buf, self.ns, nil, config.header_lines, 0)
   end),
 
   --- Decrement the count of active operations in the headline
@@ -87,7 +104,7 @@ local display_mt = {
   --- Update a task as having successfully completed
   task_succeeded = vim.schedule_wrap(function(self, plugin, message)
     if not api.nvim_buf_is_valid(self.buf) then return end
-    local line, _ = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
+    local line, _ = get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
     self:set_lines(line[1], line[1] + 1,
                    {string.format(' %s %s: %s', config.done_sym, plugin, message)})
     api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin])
@@ -98,7 +115,7 @@ local display_mt = {
   --- Update a task as having unsuccessfully failed
   task_failed = vim.schedule_wrap(function(self, plugin, message)
     if not api.nvim_buf_is_valid(self.buf) then return end
-    local line, _ = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
+    local line, _ = get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
     self:set_lines(line[1], line[1] + 1,
                    {string.format(' %s %s: %s', config.error_sym, plugin, message)})
     api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin])
@@ -109,10 +126,10 @@ local display_mt = {
   --- Update the status message of a task in progress
   task_update = vim.schedule_wrap(function(self, plugin, message)
     if not api.nvim_buf_is_valid(self.buf) then return end
-    local line, _ = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
+    local line, _ = get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
     self:set_lines(line[1], line[1] + 1,
                    {string.format(' %s %s: %s', config.working_sym, plugin, message)})
-    api.nvim_buf_set_extmark(self.buf, self.ns, self.marks[plugin], line[1], 0, {})
+    set_extmark(self.buf, self.ns, self.marks[plugin], line[1], 0)
   end),
 
   --- Update the text of the headline message
