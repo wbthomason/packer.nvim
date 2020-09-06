@@ -163,6 +163,7 @@ default configuration values (and structure of the configuration table) are:
       submodules     = '-C %s submodule update --init --recursive --progress'
     },
     depth = 1, -- Git clone depth
+    clone_timeout = 60, -- Timeout, in seconds, for git clones
   },
   display = {
     open_fn  = nil, -- An optional function to open a window for packer's display
