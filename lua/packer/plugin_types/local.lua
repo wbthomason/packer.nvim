@@ -14,10 +14,11 @@ local function setup_local(plugin)
   local from = plugin.path
   local to = plugin.install_path
   local task
-  if vim.fn.executable('ln') then
+
+  if vim.fn.executable('ln') == 1 then
     task = {'ln', '-sf', from, to}
   elseif util.is_windows and vim.fn.executable('mklink') then
-    task = {'mklink', from, to}
+    task = {'cmd', '/C', 'mklink', '/d', to, from}
   else
     log.error('No executable symlink command found!')
     return
@@ -27,6 +28,7 @@ local function setup_local(plugin)
   plugin.installer = function(disp)
     return async(function()
       disp:task_update(plugin_name, 'making symlink...')
+      jobs.run(task, {capture_output = true})
       return await(jobs.run(task, {capture_output = true}))
     end)
   end

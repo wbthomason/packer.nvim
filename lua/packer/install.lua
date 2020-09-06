@@ -1,4 +1,5 @@
 local a            = require('packer.async')
+local log          = require('packer.log')
 local util         = require('packer.util')
 local display      = require('packer.display')
 local plugin_utils = require('packer.plugin_utils')
