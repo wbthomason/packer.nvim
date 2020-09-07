@@ -9,6 +9,7 @@ local function set_extmark(buf, ns, id, line, col)
   local result, mark_id = pcall(api.nvim_buf_set_extmark, buf, ns, line, col, opts)
   if result then return mark_id end
   -- We must be in an older version of Neovim
+  if not id then id = 0 end
   return api.nvim_buf_set_extmark(buf, ns, id, line, col, {})
 end
 
