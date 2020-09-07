@@ -2,6 +2,7 @@ local plugin_utils = require('packer.plugin_utils')
 local a = require('packer.async')
 local display = require('packer.display')
 local log = require('packer.log')
+local util = require('packer.util')
 
 local await = a.wait
 local async = a.sync
@@ -35,7 +36,13 @@ local clean_plugins = function(_, plugins, results)
       for _, path in pairs(dirty_plugins) do table.insert(lines, '  - ' .. path) end
       if await(display.ask_user('Removing the following directories. OK? (y/N)', lines)) then
         results.removals = dirty_plugins
-        return os.execute('rm -rf ' .. table.concat(vim.tbl_values(dirty_plugins), ' '))
+        if util.is_windows then
+          for _, x in ipairs(vim.tbl_values(dirty_plugins)) do
+            os.execute('cmd /C rmdir /S /Q ' .. x)
+          end
+        else
+          os.execute('rm -rf ' .. table.concat(vim.tbl_values(dirty_plugins), ' '))
+        end
       else
         log.warning('Cleaning cancelled!')
       end

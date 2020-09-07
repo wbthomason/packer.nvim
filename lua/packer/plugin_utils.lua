@@ -19,7 +19,8 @@ plugin_utils.guess_type = function(plugin)
     plugin.url = plugin.path
     plugin.type = 'git'
   else
-    plugin.url = 'https://github.com/' .. plugin.path
+    local path = table.concat(vim.split(plugin.path, "\\", true), "/")
+    plugin.url = 'https://github.com/' .. path
     plugin.type = 'git'
   end
 end
@@ -91,7 +92,10 @@ plugin_utils.load_plugin = function(plugin)
     vim.cmd('packadd ' .. plugin.short_name)
   else
     vim.o.runtimepath = vim.o.runtimepath .. ',' .. plugin.install_path
-    for _, pat in ipairs({'plugin/**/*.vim', 'after/plugin/**/*.vim'}) do
+    for _, pat in ipairs({
+      table.concat({'plugin', '**', '*.vim'}, util.get_separator()),
+      table.concat({'after', 'plugin', '**', '*.vim'}, util.get_separator()),
+    }) do
       local path = util.join_paths(plugin.install_path, pat)
       local glob_ok, files = pcall(vim.fn.glob, path, false, true)
       if not glob_ok then

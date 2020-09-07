@@ -23,6 +23,14 @@ Neovim.
 - Support for `git` tags, branches, revisions, submodules
 - Support for local plugins
 
+## Requirements
+- You need to be running Neovim v0.5.0+; `packer` makes use of extmarks and other newly-added Neovim
+  features.
+- Your version of Neovim must be compiled with LuaJIT support; `packer` relies on this to detect
+  whether you are running Windows or a Unix-like OS (for path separators)
+- If you are on Windows 10, you need developer mode enabled in order to use local plugins (`packer`
+  needs to use `mklink`, which requires admin privileges - credit to @TimUntersberger for this note)
+
 ## Quickstart
 To get started, first clone this repository to somewhere on your `packpath`, e.g.:
 ```shell

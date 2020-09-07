@@ -78,7 +78,7 @@ packer.init = function(user_config)
 
   config.package_root = vim.fn.fnamemodify(config.package_root, ':p')
   local _
-  config.package_root, _ = string.gsub(config.package_root, '/$', '', 1)
+  config.package_root, _ = string.gsub(config.package_root, util.get_separator() .. '$', '', 1)
   config.pack_dir = util.join_paths(config.package_root, config.plugin_package)
   config.opt_dir = util.join_paths(config.pack_dir, 'opt')
   config.start_dir = util.join_paths(config.pack_dir, 'start')
@@ -110,7 +110,8 @@ manage = function(plugin)
   end
 
   local path = vim.fn.expand(plugin[1])
-  local name_segments = vim.split(path, '/')
+  local name_segments = vim.split(path, util.get_separator())
+
   local segment_idx = #name_segments
   local name = name_segments[segment_idx]
   while name == '' and segment_idx > 0 do

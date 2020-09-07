@@ -32,19 +32,21 @@ util.nonempty_or = function(opt, alt)
 end
 
 util.is_windows = jit.os == 'Windows'
-local function get_separator()
+
+util.get_separator = function()
   if util.is_windows then return '\\' end
   return '/'
 end
 
 util.join_paths = function(...)
-  local separator = get_separator()
+  local separator = util.get_separator()
   return table.concat({...}, separator)
 end
 
 util.get_plugin_full_name = function(plugin)
   local plugin_name = plugin.name
   if plugin.branch and plugin.branch ~= 'master' then
+    -- NOTE: maybe have to change the seperator here too
     plugin_name = plugin_name .. '/' .. plugin.branch
   end
 
