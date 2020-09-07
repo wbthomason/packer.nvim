@@ -17,7 +17,7 @@ local function setup_local(plugin)
 
   if vim.fn.executable('ln') == 1 then
     task = {'ln', '-sf', from, to}
-  elseif util.is_windows and vim.fn.executable('mklink') then
+  elseif util.is_windows and vim.fn.executable('mklink') == 1 then
     task = {'cmd', '/C', 'mklink', '/d', to, from}
   else
     log.error('No executable symlink command found!')
