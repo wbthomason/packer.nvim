@@ -53,6 +53,7 @@ local spawn = a.wrap(function(cmd, options, callback)
       timer:close()
     end
 
+    loop.close(options.stdio[1])
     local check = loop.new_check()
     loop.check_start(check, function()
       for _, pipe in pairs(options.stdio) do if not loop.is_closing(pipe) then return end end
@@ -62,7 +63,9 @@ local spawn = a.wrap(function(cmd, options, callback)
   end)
 
   if options.stdio then
-    for i, pipe in pairs(options.stdio) do loop.read_start(pipe, options.stdio_callbacks[i]) end
+    for i, pipe in pairs(options.stdio) do
+      if options.stdio_callbacks[i] then loop.read_start(pipe, options.stdio_callbacks[i]) end
+    end
   end
 
   if options.timeout then
@@ -73,6 +76,9 @@ local spawn = a.wrap(function(cmd, options, callback)
       if loop.is_active(handle) then
         loop.process_kill(handle, 'sigint')
         handle:close()
+        for _, pipe in pairs(options.stdio) do
+          loop.close(pipe)
+        end
         callback(-9999, 'sigint')
       end
     end)
@@ -173,8 +179,9 @@ local run_job = function(task, opts)
       options.timeout = 1000 * opts.timeout
     end
 
+    local stdin = loop.new_pipe(false)
     options.args = {unpack(task, 2)}
-    options.stdio = {nil, stdout, stderr}
+    options.stdio = {stdin, stdout, stderr}
     options.stdio_callbacks = {nil, callbacks.stdout, callbacks.stderr}
 
     local exit_code, signal = a.wait(spawn(cmd, options))
