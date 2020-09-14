@@ -32,6 +32,7 @@ local config_defaults = {
   disable_commands = false,
   opt_default = false,
   transitive_opt = true,
+  transitive_disable = true,
   git = {
     cmd = 'git',
     subcommands = {
@@ -182,6 +183,10 @@ manage = function(plugin)
           elseif req.after == nil then
             req.after = plugin.short_name
           end
+        end
+
+        if config.transitive_disable and plugin.disable then
+          req.disable = true
         end
 
         manage(req)
