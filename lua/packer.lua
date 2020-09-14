@@ -30,6 +30,7 @@ local config_defaults = {
   auto_clean = true,
   compile_on_sync = true,
   disable_commands = false,
+  opt_default = false,
   git = {
     cmd = 'git',
     subcommands = {
@@ -141,7 +142,7 @@ manage = function(plugin)
   plugin.path = path
 
   -- Some config keys modify a plugin type
-  if plugin.opt then plugin.manual_opt = true end
+  if plugin.opt or (plugin.opt == nil and config.opt_default) then plugin.manual_opt = true end
 
   for _, key in ipairs(compile.opt_keys) do
     if plugin[key] then
