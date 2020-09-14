@@ -179,7 +179,13 @@ manage = function(plugin)
           if type(req.after) == 'string' then
             req.after = {req.after, plugin.short_name}
           elseif type(req.after) == 'table' then
-            table.insert(req.after, plugin.short_name)
+            local already_after = false
+            for _, name in ipairs(req.after) do
+              already_after = already_after or (name == plugin.short_name)
+            end
+            if not already_after then
+              table.insert(req.after, plugin.short_name)
+            end
           elseif req.after == nil then
             req.after = plugin.short_name
           end
