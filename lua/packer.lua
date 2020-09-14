@@ -31,6 +31,7 @@ local config_defaults = {
   compile_on_sync = true,
   disable_commands = false,
   opt_default = false,
+  transitive_opt = true,
   git = {
     cmd = 'git',
     subcommands = {
@@ -142,7 +143,12 @@ manage = function(plugin)
   plugin.path = path
 
   -- Some config keys modify a plugin type
-  if plugin.opt or (plugin.opt == nil and config.opt_default) then plugin.manual_opt = true end
+  if plugin.opt then
+    plugin.manual_opt = true
+  elseif plugin.opt == nil and config.opt_default then
+    plugin.manual_opt = true
+    plugin.opt = true
+  end
 
   for _, key in ipairs(compile.opt_keys) do
     if plugin[key] then
@@ -166,7 +172,20 @@ manage = function(plugin)
       if type(req) == 'string' then req = {req} end
       local req_name_segments = vim.split(req[1], '/')
       local req_name = req_name_segments[#req_name_segments]
-      if not plugins[req_name] then manage(req) end
+      if not plugins[req_name] then
+        if config.transitive_opt and plugin.opt then
+          req.opt = true
+          if type(req.after) == 'string' then
+            req.after = {req.after, plugin.short_name}
+          elseif type(req.after) == 'table' then
+            table.insert(req.after, plugin.short_name)
+          elseif req.after == nil then
+            req.after = plugin.short_name
+          end
+        end
+
+        manage(req)
+      end
     end
   end
 end
