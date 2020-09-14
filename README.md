@@ -155,6 +155,8 @@ default configuration values (and structure of the configuration table) are:
   auto_clean = true, -- During sync(), remove unused plugins
   compile_on_sync = true, -- During sync(), run packer.compile()
   disable_commands = false, -- During `startup`, disable creating commands
+  opt_default = false, -- Default to using opt (as opposed to start) plugins
+  transitive_opt = true, -- Make dependencies of opt plugins also opt by default
   git = {
     cmd = 'git', -- The base command for git operations
     subcommands = { -- Format strings for git subcommands
@@ -217,6 +219,7 @@ use {
   branch = string,             -- Specifies a git branch to use
   tag = string,                -- Specifies a git tag to use
   commit = string,             -- Specifies a git commit to use
+  lock = boolean,              -- Skip this plugin in updates/syncs
   run = string or function,    -- Post-update/install hook. See "update/install hooks".
   requires = string or list -- Specifies plugin dependencies. See "dependencies".
   config = string or function, -- Specifies code to run after this plugin is loaded.
