@@ -174,7 +174,7 @@ manage = function(plugin)
       local req_name_segments = vim.split(req[1], '/')
       local req_name = req_name_segments[#req_name_segments]
       if not plugins[req_name] then
-        if config.transitive_opt and plugin.opt then
+        if config.transitive_opt and plugin.manual_opt then
           req.opt = true
           if type(req.after) == 'string' then
             req.after = {req.after, plugin.short_name}
