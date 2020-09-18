@@ -143,9 +143,18 @@ local display_mt = {
                    {string.rep(' ', pad_width) .. headline .. string.rep(' ', pad_width)})
   end),
 
+  --- Setup new syntax group links for the status window
+  setup_status_syntax = function(self)
+    local highlights = {'hi def link packerStatus         Type',
+    'hi def link packerStatusCommit   Constant', 'hi def link packerStatusSuccess  Constant',
+    'hi def link packerStatusFail     WarningMsg'}
+    for _, c in ipairs(highlights) do vim.cmd(c) end
+  end,
+
   --- Display the final results of an operation
   final_results = vim.schedule_wrap(function(self, results, time)
     if not api.nvim_buf_is_valid(self.buf) or not api.nvim_win_is_valid(self.win) then return end
+    self:setup_status_syntax()
     display.status.running = false
     time = tonumber(time)
     self:update_headline_message(string.format('finished in %.3fs', time))
@@ -352,16 +361,14 @@ local function make_filetype_cmds(working_sym, done_sym, error_sym)
     'syn match packerSuccess /^ ' .. done_sym .. '/',
     'syn match packerFail /^ ' .. error_sym .. '/',
     'syn match packerStatus /\\(^+.*—\\)\\@<=\\s.*$/',
-    'syn match packerStatusSuccess /\\(^ ' .. done_sym .. '.*—\\)\\@<=\\s.*$/',
-    'syn match packerStatusFail /\\(^ ' .. error_sym .. '.*—\\)\\@<=\\s.*$/',
+    'syn match packerStatusSuccess /\\(^ ' .. done_sym .. '.*\\)\\@<=\\s.*$/',
+    'syn match packerStatusFail /\\(^ ' .. error_sym .. '.*\\)\\@<=\\s.*$/',
     'syn match packerStatusCommit /\\(^\\*.*—\\)\\@<=\\s.*$/',
     'syn match packerHash /\\(\\s\\)[0-9a-f]\\{7,8}\\(\\s\\)/',
     'syn match packerRelDate /([^)]*)$/', 'syn match packerProgress /\\(\\[\\)\\@<=[\\=]*/',
     'syn match packerOutput /\\(Output:\\)\\|\\(Commits:\\)\\|\\(Errors:\\)/',
     'hi def link packerWorking        SpecialKey', 'hi def link packerSuccess        Question',
-    'hi def link packerFail           ErrorMsg', 'hi def link packerStatus         Constant',
-    'hi def link packerStatusCommit   Constant', 'hi def link packerStatusSuccess  Function',
-    'hi def link packerStatusFail     WarningMsg', 'hi def link packerHash           Identifier',
+    'hi def link packerFail           ErrorMsg', 'hi def link packerHash           Identifier',
     'hi def link packerRelDate        Comment', 'hi def link packerProgress       Boolean',
     'hi def link packerOutput         Type'
   }
