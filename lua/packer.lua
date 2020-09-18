@@ -62,7 +62,8 @@ local config_defaults = {
     moved_sym = '→',
     header_sym = '━',
     header_lines = 2,
-    title = 'packer.nvim'
+    title = 'packer.nvim',
+    show_all_info = true,
   }
 }
 

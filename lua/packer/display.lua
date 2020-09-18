@@ -150,14 +150,17 @@ local display_mt = {
     time = tonumber(time)
     self:update_headline_message(string.format('finished in %.3fs', time))
     local raw_lines = {}
+    local plugin_order = {}
     if results.removals then
-      for _, plugin_dir in pairs(results.removals) do
+      for plugin, plugin_dir in pairs(results.removals) do
+        table.insert(plugin_order, plugin)
         table.insert(raw_lines, string.format(' %s Removed %s', config.removed_sym, plugin_dir))
       end
     end
 
     if results.moves then
       for plugin, result in pairs(results.moves) do
+        table.insert(plugin_order, plugin)
         table.insert(raw_lines,
                      string.format(' %s %s %s: %s %s %s',
                                    result.result.ok and config.done_sym or config.error_sym,
@@ -168,6 +171,7 @@ local display_mt = {
 
     if results.installs then
       for plugin, result in pairs(results.installs) do
+        table.insert(plugin_order, plugin)
         table.insert(raw_lines,
                      string.format(' %s %s %s', result.ok and config.done_sym or config.error_sym,
                                    result.ok and 'Installed' or 'Failed to install', plugin))
@@ -186,6 +190,7 @@ local display_mt = {
             table.insert(message, string.format(' %s %s is already up to date', config.done_sym,
                                                 plugin_name))
           else
+            table.insert(plugin_order, plugin_name)
             table.insert(message,
                          string.format(' %s Updated %s: %s..%s', config.done_sym, plugin_name,
                                        plugin.revs[1], plugin.revs[2]))
@@ -193,6 +198,7 @@ local display_mt = {
         else
           failed_update = true
           actual_update = false
+          table.insert(plugin_order, plugin_name)
           table.insert(message, string.format(' %s Failed to update %s: %s', config.error_sym,
                                               plugin_name, vim.inspect(result.err)))
         end
@@ -224,7 +230,7 @@ local display_mt = {
         end
       end
 
-      if plugin.messages then
+      if plugin.messages and #plugin.messages > 0 then
         table.insert(plugin_data.lines, '  Commits:')
         for _, msg in ipairs(plugin.messages) do
           for _, line in ipairs(vim.split(msg, '\n')) do
@@ -232,11 +238,35 @@ local display_mt = {
           end
         end
       end
+
       plugins[plugin_name] = plugin_data
     end
 
     self.plugins = plugins
+    self.plugin_order = plugin_order
+    if config.show_all_info then self:show_all_info() end
   end),
+
+  --- Toggle the display of detailed information for all plugins in the final results display
+  show_all_info = function(self)
+    if not api.nvim_buf_is_valid(self.buf) or not api.nvim_win_is_valid(self.win) then return end
+    if next(self.plugins) == nil then
+      log.info('Operations are still running; plugin info is not ready yet')
+      return
+    end
+
+    local line = config.header_lines + 1
+    for _, plugin_name in pairs(self.plugin_order) do
+      local plugin_data = self.plugins[plugin_name]
+      if plugin_data and plugin_data.spec.actual_update and #plugin_data.lines > 0 then
+        self:set_lines(line, line, plugin_data.lines)
+        line = line + #plugin_data.lines + 1
+        plugin_data.displayed = true
+      else
+        line = line + 1
+      end
+    end
+  end,
 
   --- Toggle the display of detailed information for a plugin in the final results display
   toggle_info = function(self)
