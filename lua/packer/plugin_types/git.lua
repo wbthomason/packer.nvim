@@ -145,7 +145,7 @@ git.setup = function(plugin)
       end
 
       r = r:and_then(await, jobs.run(commit_cmd, installer_opts)):map_ok(
-            function(ok) plugin.messages = output.data.stdout end):map_err(
+            function(_) plugin.messages = output.data.stdout end):map_err(
             function(err)
           plugin.output = {err = output.data.stderr}
           if not err.msg then
@@ -209,10 +209,12 @@ git.setup = function(plugin)
       if needs_checkout then
         r = r:and_then(await, handle_checkouts(plugin, install_to, disp))
         local function merge_output(res)
-          vim.list_extend(update_info.err, res.output.err.stderr)
-          vim.list_extend(update_info.err, res.output.err.stdout)
-          vim.list_extend(update_info.output, res.output.data.stdout)
-          vim.list_extend(update_info.output, res.output.data.stderr)
+          if res.output ~= nil then
+            vim.list_extend(update_info.err, res.output.err.stderr)
+            vim.list_extend(update_info.err, res.output.err.stdout)
+            vim.list_extend(update_info.output, res.output.data.stdout)
+            vim.list_extend(update_info.output, res.output.data.stderr)
+          end
         end
 
         r:map_ok(merge_output)
