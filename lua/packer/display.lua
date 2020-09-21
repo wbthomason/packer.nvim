@@ -246,6 +246,8 @@ local display_mt = {
             table.insert(plugin_data.lines, string.rep(' ', 4) .. line)
           end
         end
+
+        table.insert(plugin_data.lines, '')
       end
 
       plugins[plugin_name] = plugin_data
