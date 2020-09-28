@@ -444,8 +444,9 @@ display.quit = function()
   vim.fn.execute('q!', 'silent')
 end
 
-display.toggle_info =
-  function() if display.status.disp then display.status.disp:toggle_info() end end
+display.toggle_info = function()
+  if display.status.disp then display.status.disp:toggle_info() end
+end
 
 display.prompt_revert = function()
   if display.status.disp then display.status.disp:prompt_revert() end
