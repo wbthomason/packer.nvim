@@ -428,6 +428,7 @@ display.open = function(opener)
   disp.marks = {}
   disp.plugins = {}
   disp.ns = api.nvim_create_namespace('')
+  vim.wo.modifiable = true
   make_header(disp)
   setup_window(disp)
 
