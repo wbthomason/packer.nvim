@@ -383,6 +383,7 @@ end
 
 --- Utility to make the initial display buffer header
 local function make_header(disp)
+  api.nvim_buf_set_option(buf, 'modifiable', true)
   local width = api.nvim_win_get_width(0)
   local pad_width = math.floor((width - string.len(config.title)) / 2.0)
   api.nvim_buf_set_lines(disp.buf, 0, 1, true, {
@@ -428,7 +429,6 @@ display.open = function(opener)
   disp.marks = {}
   disp.plugins = {}
   disp.ns = api.nvim_create_namespace('')
-  vim.o.modifiable = true
   make_header(disp)
   setup_window(disp)
 
