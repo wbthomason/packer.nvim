@@ -380,9 +380,9 @@ local function make_loaders(_, plugins)
     if loaders[plugin].only_sequence and not loaders[plugin].only_setup then
       table.insert(sequence_lines, 'packadd ' .. plugin)
       if plugins[plugin].config then
-        local lines = {'', '-- Config for: ' .. plugin}
+        local lines = {'lua << END', '-- Config for: ' .. plugin}
         vim.list_extend(lines, plugins[plugin].config)
-        table.insert(lines, '')
+        table.insert(lines, 'END')
         vim.list_extend(sequence_lines, lines)
       end
     end
