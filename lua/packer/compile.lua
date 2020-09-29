@@ -420,25 +420,25 @@ local function make_loaders(_, plugins)
   local result = {'" Automatically generated packer.nvim plugin loader code\n', 'lua << END'}
   table.insert(result, fmt('local plugins = %s\n', vim.inspect(loaders)))
   table.insert(result, lua_loader)
+  -- Then the runtimepath line
+  table.insert(result, '-- Runtimepath customization')
+  table.insert(result, rtp_line)
   table.insert(result, '-- Pre-load configuration')
   vim.list_extend(result, setup_lines)
   table.insert(result, '-- Post-load configuration')
   vim.list_extend(result, config_lines)
   table.insert(result, '-- Conditional loads')
   vim.list_extend(result, conditionals)
+
+  -- The sequenced loads
+  table.insert(result, '-- Load plugins in order defined by `after`')
+  vim.list_extend(result, sequence_lines)
+
   table.insert(result, 'vim._update_package_paths()')
   table.insert(result, 'END\n')
 
   -- Then the Vim loader function
   table.insert(result, vim_loader)
-
-  -- Then the runtimepath line
-  table.insert(result, '" Runtimepath customization')
-  table.insert(result, rtp_line)
-
-  -- The sequenced loads
-  table.insert(result, '" Load plugins in order defined by `after`')
-  vim.list_extend(result, sequence_lines)
 
   -- The command and keymap definitions
   table.insert(result, '\n" Command lazy-loads')
