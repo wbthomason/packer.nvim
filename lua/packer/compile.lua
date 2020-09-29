@@ -290,7 +290,7 @@ local function make_loaders(_, plugins)
   local rtp_line = ''
   for _, rtp in ipairs(rtps) do rtp_line = rtp_line .. '",' .. vim.fn.escape(rtp, '\\,') .. '"' end
 
-  if rtp_line ~= '' then rtp_line = 'let &runtimepath .=' .. rtp_line end
+  if rtp_line ~= '' then rtp_line = 'vim.o.runtimepath = vim.o.runtimepath .. ' .. rtp_line end
 
   local setup_lines = {}
   for name, plugin_setup in pairs(setup) do
@@ -378,7 +378,7 @@ local function make_loaders(_, plugins)
   while next(frontier) ~= nil do
     local plugin = table.remove(frontier)
     if loaders[plugin].only_sequence and not loaders[plugin].only_setup then
-      table.insert(sequence_lines, 'packadd ' .. plugin)
+      table.insert(sequence_lines, 'vim.cmd [[ packadd ' .. plugin .. ' ]]')
       if plugins[plugin].config then
         local lines = {'', '-- Config for: ' .. plugin}
         vim.list_extend(lines, plugins[plugin].config)
@@ -405,11 +405,10 @@ local function make_loaders(_, plugins)
     -- TODO: This should actually just output the cycle, then continue with toposort. But I'm too
     -- lazy to do that right now, so.
     for plugin, _ in pairs(graph) do
-      table.insert(sequence_lines, 'packadd ' .. plugin)
+      table.insert(sequence_lines, 'vim.cmd [[ packadd ' .. plugin .. ' ]]')
       if plugins[plugin].config then
-        local lines = {'lua << END', '-- Config for: ' .. plugin}
+        local lines = {'-- Config for: ' .. plugin}
         vim.list_extend(lines, plugins[plugin].config)
-        table.insert(lines, 'END')
         vim.list_extend(sequence_lines, lines)
       end
     end
@@ -421,25 +420,25 @@ local function make_loaders(_, plugins)
   local result = {'" Automatically generated packer.nvim plugin loader code\n', 'lua << END'}
   table.insert(result, fmt('local plugins = %s\n', vim.inspect(loaders)))
   table.insert(result, lua_loader)
+  -- Then the runtimepath line
+  table.insert(result, '-- Runtimepath customization')
+  table.insert(result, rtp_line)
   table.insert(result, '-- Pre-load configuration')
   vim.list_extend(result, setup_lines)
   table.insert(result, '-- Post-load configuration')
   vim.list_extend(result, config_lines)
   table.insert(result, '-- Conditional loads')
   vim.list_extend(result, conditionals)
+
+  -- The sequenced loads
+  table.insert(result, '-- Load plugins in order defined by `after`')
+  vim.list_extend(result, sequence_lines)
+
   table.insert(result, 'vim._update_package_paths()')
   table.insert(result, 'END\n')
 
   -- Then the Vim loader function
   table.insert(result, vim_loader)
-
-  -- Then the runtimepath line
-  table.insert(result, '" Runtimepath customization')
-  table.insert(result, rtp_line)
-
-  -- The sequenced loads
-  table.insert(result, '" Load plugins in order defined by `after`')
-  vim.list_extend(result, sequence_lines)
 
   -- The command and keymap definitions
   table.insert(result, '\n" Command lazy-loads')
