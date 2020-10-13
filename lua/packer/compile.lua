@@ -7,6 +7,12 @@ local config = nil
 
 local function cfg(_config) config = _config end
 
+local feature_guard = [[
+if !has('nvim')
+  finish
+endif
+]]
+
 local vim_loader = [[
 function! s:load(names, cause) abort
 call luaeval('_packer_load(_A[1], _A[2])', [a:names, a:cause])
@@ -417,7 +423,9 @@ local function make_loaders(_, plugins)
   -- Output everything:
 
   -- First, the Lua code
-  local result = {'" Automatically generated packer.nvim plugin loader code\n', 'lua << END'}
+  local result = {'" Automatically generated packer.nvim plugin loader code\n'}
+  table.insert(result, feature_guard)
+  table.insert(result, 'lua << END')
   table.insert(result, fmt('local plugins = %s\n', vim.inspect(loaders)))
   table.insert(result, lua_loader)
   -- Then the runtimepath line
