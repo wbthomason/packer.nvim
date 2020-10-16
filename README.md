@@ -8,7 +8,7 @@ Neovim.
   to update to a version of Neovim **after** the aforementioned PR was merged. There are currently
   shims around the changed functions which should maintain support for earlier versions of Neovim,
   but these are intended to be temporary and will be removed by **2020-10-04**. Therefore
-  Packer will not work with Neovim v0.4.4, which was relased before the `extmark` change.
+  Packer will not work with Neovim v0.4.4, which was released before the `extmark` change.
 
 ## Features
 - Declarative plugin specification
