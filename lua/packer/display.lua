@@ -208,8 +208,8 @@ local display_mt = {
           failed_update = true
           actual_update = false
           table.insert(plugin_order, plugin_name)
-          table.insert(message, string.format(' %s Failed to update %s: %s', config.error_sym,
-                                              plugin_name, vim.inspect(result.err)))
+          table.insert(message, string.format(' %s Failed to update %s', config.error_sym,
+                       plugin_name))
         end
 
         plugin.actual_update = actual_update
@@ -233,8 +233,14 @@ local display_mt = {
         if plugin.output.err and #plugin.output.err > 0 then
           table.insert(plugin_data.lines, '  Errors:')
           for _, line in ipairs(plugin.output.err) do
-            line = string.gsub(vim.trim(line), '\n', ' ')
-            table.insert(plugin_data.lines, '    ' .. line)
+	    line = vim.trim(line)
+	    if line:find('\n') then
+              for sub_line in line:gmatch("[^\r\n]+") do
+                table.insert(plugin_data.lines, '    ' .. sub_line)
+              end
+            else
+              table.insert(plugin_data.lines, '    ' .. line)
+            end
           end
         end
       end
