@@ -81,7 +81,6 @@ _packer_load = function(names, cause)
   for _, name in ipairs(names) do
     if not plugins[name].loaded then
       vim.cmd('packadd ' .. name)
-      vim._update_package_paths()
       if plugins[name].config then
         for _i, config_line in ipairs(plugins[name].config) do
           loadstring(config_line)()
@@ -442,7 +441,6 @@ local function make_loaders(_, plugins)
   table.insert(result, '-- Load plugins in order defined by `after`')
   vim.list_extend(result, sequence_lines)
 
-  table.insert(result, 'vim._update_package_paths()')
   table.insert(result, 'END\n')
 
   -- Then the Vim loader function

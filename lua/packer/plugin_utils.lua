@@ -109,8 +109,6 @@ plugin_utils.load_plugin = function(plugin)
       end
     end
   end
-
-  vim._update_package_paths()
 end
 
 plugin_utils.post_update_hook = function(plugin, disp)
