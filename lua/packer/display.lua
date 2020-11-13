@@ -161,7 +161,7 @@ local display_mt = {
     local raw_lines = {}
     local plugin_order = {}
     if results.removals then
-      for plugin, plugin_dir in pairs(results.removals) do
+      for plugin_dir, plugin in pairs(results.removals) do
         table.insert(plugin_order, plugin)
         table.insert(raw_lines, string.format(' %s Removed %s', config.removed_sym, plugin_dir))
       end
