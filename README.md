@@ -3,6 +3,8 @@
 Neovim.
 
 ## Notices
+- **2020-11-13**: There is now a default implementation for a floating window `open_fn` in
+  `packer.util`.
 - **2020-09-04:** Due to changes to the Neovim `extmark` api (see:
   https://github.com/neovim/neovim/commit/3853276d9cacc99a2698117e904475dbf7033383), users will need
   to update to a version of Neovim **after** the aforementioned PR was merged. There are currently
