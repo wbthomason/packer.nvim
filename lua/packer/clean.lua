@@ -29,7 +29,8 @@ local clean_plugins = function(_, plugins, results)
       for plugin_path, _ in pairs(plugin_list) do
         local plugin_name = vim.fn.fnamemodify(plugin_path, ":t")
         local plugin_data = plugins[plugin_name]
-        if (plugin_data == nil and not aliases[plugin_name]) or is_dirty(plugin_data, typ) then
+        if (plugin_data == nil and not aliases[plugin_name])
+          or (plugin_data and is_dirty(plugin_data, typ)) then
           dirty_plugins[plugin_path] = plugin_name
         end
       end
