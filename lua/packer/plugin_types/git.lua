@@ -123,7 +123,13 @@ git.setup = function(plugin)
       stderr = jobs.logging_callback(output.err.stderr, output.data.stderr, nil, disp, plugin_name)
     }
 
-    local installer_opts = {capture_output = callbacks, timeout = config.clone_timeout}
+    local installer_opts = {
+      capture_output = callbacks,
+      timeout = config.clone_timeout,
+      options = {
+        env = {'GIT_TERMINAL_PROMPT=0'},
+      },
+    }
 
     return async(function()
       disp:task_update(plugin_name, 'cloning...')
