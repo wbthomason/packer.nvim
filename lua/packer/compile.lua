@@ -168,8 +168,6 @@ local function make_loaders(_, plugins)
         end
       end
 
-      if plugin.config and not plugin.opt then configs[name] = plugin.config end
-
       if plugin.rtp then table.insert(rtps, util.join_paths(plugin.install_path, plugin.rtp)) end
 
       if plugin.opt then
@@ -269,6 +267,10 @@ local function make_loaders(_, plugins)
             table.insert(after[other_plugin], name)
           end
         end
+      end
+
+      if plugin.config and (not plugin.opt or loaders[name].only_setup) then
+        configs[name] = plugin.executable_config
       end
     end
   end
