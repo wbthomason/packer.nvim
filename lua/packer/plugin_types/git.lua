@@ -123,7 +123,13 @@ git.setup = function(plugin)
       stderr = jobs.logging_callback(output.err.stderr, output.data.stderr, nil, disp, plugin_name)
     }
 
-    local installer_opts = {capture_output = callbacks, timeout = config.clone_timeout}
+    local installer_opts = {
+      capture_output = callbacks,
+      timeout = config.clone_timeout,
+      options = {
+        env = {'GIT_TERMINAL_PROMPT=0'},
+      },
+    }
 
     return async(function()
       disp:task_update(plugin_name, 'cloning...')
@@ -187,10 +193,10 @@ git.setup = function(plugin)
             }
           end)
 
-      local branch
+      local current_branch
       disp:task_update(plugin_name, 'checking current branch...')
       r = r:and_then(await, jobs.run(branch_cmd, {success_test = exit_ok, capture_output = true}))
-            :map_ok(function(ok) branch = ok.output.data.stdout[1] end):map_err(
+            :map_ok(function(ok) current_branch = ok.output.data.stdout[1] end):map_err(
               function(err)
             plugin.output = {err = vim.list_extend(update_info.err, update_info.revs), data = {}}
 
@@ -201,9 +207,25 @@ git.setup = function(plugin)
             }
           end)
 
-      if not needs_checkout and branch ~= 'master' then
-        needs_checkout = true
-        plugin.branch = 'master'
+      if not needs_checkout then
+        local origin_branch = ''
+        disp:task_update(plugin_name, 'checking origin branch...')
+        local origin_refs_path = util.join_paths(install_to, '.git', 'refs', 'remotes', 'origin', 'HEAD')
+        local origin_refs_file = vim.loop.fs_open(origin_refs_path, 'r', 438)
+        if origin_refs_file ~= nil then
+          local origin_refs_stat = vim.loop.fs_fstat(origin_refs_file)
+          -- NOTE: This should check for errors
+          local origin_refs = vim.split(vim.loop.fs_read(origin_refs_file, origin_refs_stat.size, 0), '\n')
+          vim.loop.fs_close(origin_refs_file)
+          if #origin_refs > 0 then
+            origin_branch = string.match(origin_refs[1], [[^ref: refs/remotes/origin/(.*)]])
+          end
+        end
+
+        if current_branch ~= origin_branch then
+          needs_checkout = true
+          plugin.branch = origin_branch
+        end
       end
 
       if needs_checkout then

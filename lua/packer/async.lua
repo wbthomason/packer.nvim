@@ -61,7 +61,7 @@ local function pool(n, interrupt_check, ...)
   local thunks = {...}
   return function(s)
     if #thunks == 0 then return s() end
-    local remaining = select(n, thunks)
+    local remaining = {select(n + 1, unpack(thunks))}
     local results = {}
     local to_go = #thunks
     local make_callback = nil

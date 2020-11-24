@@ -7,7 +7,11 @@ local util = require('packer.util')
 local await = a.wait
 local async = a.sync
 
-local config = nil
+local config
+
+local function is_dirty(plugin, typ)
+  return plugin.disable or (plugin.opt and typ == 2) or (not plugin.opt and typ == 1)
+end
 
 -- Find and remove any plugins not currently configured for use
 local clean_plugins = function(_, plugins, results)
@@ -21,27 +25,28 @@ local clean_plugins = function(_, plugins, results)
       if plugin.as and not plugin.disable then aliases[plugin.as] = true end
     end
 
-    for _, plugin_list in ipairs({opt_plugins, start_plugins}) do
+    for typ, plugin_list in ipairs({opt_plugins, start_plugins}) do
       for plugin_path, _ in pairs(plugin_list) do
         local plugin_name = vim.fn.fnamemodify(plugin_path, ":t")
         local plugin_data = plugins[plugin_name]
-        if (plugin_data == nil and not aliases[plugin_name]) or (plugin_data and plugin_data.disable) then
-          dirty_plugins[plugin_name] = plugin_path
+        if (plugin_data == nil and not aliases[plugin_name])
+          or (plugin_data and is_dirty(plugin_data, typ)) then
+          dirty_plugins[plugin_path] = plugin_name
         end
       end
     end
 
     if next(dirty_plugins) then
       local lines = {}
-      for _, path in pairs(dirty_plugins) do table.insert(lines, '  - ' .. path) end
+      for path, _ in pairs(dirty_plugins) do table.insert(lines, '  - ' .. path) end
       if await(display.ask_user('Removing the following directories. OK? (y/N)', lines)) then
         results.removals = dirty_plugins
         if util.is_windows then
-          for _, x in ipairs(vim.tbl_values(dirty_plugins)) do
+          for _, x in ipairs(vim.tbl_keys(dirty_plugins)) do
             os.execute('cmd /C rmdir /S /Q ' .. x)
           end
         else
-          os.execute('rm -rf ' .. table.concat(vim.tbl_values(dirty_plugins), ' '))
+          os.execute('rm -rf ' .. table.concat(vim.tbl_keys(dirty_plugins), ' '))
         end
       else
         log.warning('Cleaning cancelled!')

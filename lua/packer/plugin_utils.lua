@@ -109,8 +109,6 @@ plugin_utils.load_plugin = function(plugin)
       end
     end
   end
-
-  vim._update_package_paths()
 end
 
 plugin_utils.post_update_hook = function(plugin, disp)
@@ -123,7 +121,7 @@ plugin_utils.post_update_hook = function(plugin, disp)
     if plugin.run then
       disp:task_update(plugin_name, 'running post update hook...')
       if type(plugin.run) == 'function' then
-        if pcall(plugin.run(plugin)) then
+        if pcall(plugin.run, plugin) then
           return result.ok(true)
         else
           return result.err({msg = 'Error running post update hook'})

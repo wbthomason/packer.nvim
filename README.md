@@ -3,11 +3,14 @@
 Neovim.
 
 ## Notices
+- **2020-11-13**: There is now a default implementation for a floating window `open_fn` in
+  `packer.util`.
 - **2020-09-04:** Due to changes to the Neovim `extmark` api (see:
   https://github.com/neovim/neovim/commit/3853276d9cacc99a2698117e904475dbf7033383), users will need
   to update to a version of Neovim **after** the aforementioned PR was merged. There are currently
   shims around the changed functions which should maintain support for earlier versions of Neovim,
-  but these are intended to be temporary and will be removed by **2020-10-04**.
+  but these are intended to be temporary and will be removed by **2020-10-04**. Therefore
+  Packer will not work with Neovim v0.4.4, which was released before the `extmark` change.
 
 ## Features
 - Declarative plugin specification
@@ -110,6 +113,12 @@ end)
 -- Performs `PackerClean` and then `PackerUpdate`
 :PackerSync
 ```
+
+You can configure Neovim to automatically run `:PackerCompile` whenever `plugins.lua` is updated with an autocommand:
+```
+autocmd BufWritePost plugins.lua PackerCompile
+```
+This autocommand can be placed in your `init.vim`, or any other startup file as per your setup.
 
 ## Usage
 
