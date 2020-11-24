@@ -120,6 +120,26 @@ autocmd BufWritePost plugins.lua PackerCompile
 ```
 This autocommand can be placed in your `init.vim`, or any other startup file as per your setup.
 
+## Bootstrapping
+
+If you want to automatically ensure that `packer.nvim` is installed on any machine you clone your
+configuration to, add the following snippet (which is due to @Iron-E) somewhere in your config **before** your first usage of
+`packer`:
+```lua
+local execute = vim.api.nvim_command
+local fn = vim.fn
+
+local install_path = fn.stdpath('data')..'/site/pack/packer/opt/packer.nvim'
+
+if fn.empty(fn.glob(install_path)) > 0 then
+	execute('!git clone https://github.com/wbthomason/packer.nvim '..install_path)
+    execute 'packadd packer.nvim'
+end
+```
+
+Note that this will install `packer` as an `opt` plugin; if you want `packer` to be a `start`
+plugin, you must modify the value of `install_path` in the above snippet.
+
 ## Usage
 
 The above snippets give some examples of `packer` features and use. Examples include:
