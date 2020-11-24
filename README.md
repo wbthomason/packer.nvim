@@ -2,6 +2,19 @@
 [`use-package`](https://github.com/jwiegley/use-package) inspired plugin/package management for
 Neovim.
 
+<details>
+  <summary>
+    Table of Contents
+  </summary>
+  1. [Notices](#notices)
+  2. [Features](#features)
+  3. [Requirements](#requirements)
+  4. [Quickstart](#quickstart)
+  5. [Bootstrapping](#bootstrapping)
+  6. [Usage](#usage)
+  7. [Status](#status)
+</details>
+
 ## Notices
 - **2020-11-13**: There is now a default implementation for a floating window `open_fn` in
   `packer.util`.
@@ -353,7 +366,4 @@ case has been tested. People willing to give it a try and report bugs/errors are
 
 ## Current work-in-progress
 - Luarocks support
-
-## TODO
-- Allow multiple packages
-- Optimizations?
+- Playing with ideas to make manual compilation less necessary
