@@ -41,7 +41,7 @@ local config_defaults = {
       fetch = '-C %s fetch --depth 999999 --progress',
       checkout = '-C %s checkout %s --',
       update_branch = '-C %s merge --ff-only @{u}',
-      current_branch = '-C %s branch --show-current',
+      current_branch = '-C %s rev-parse --abbrev-ref HEAD',
       diff = '-C %s log --color=never --pretty=format:FMT --no-show-signature HEAD@{1}...HEAD',
       diff_fmt = '%%h %%s (%%cr)',
       get_rev = '-C %s rev-parse --short HEAD',
