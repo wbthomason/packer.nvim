@@ -9,6 +9,12 @@ Neovim.
 4. [Quickstart](#quickstart)
 5. [Bootstrapping](#bootstrapping)
 6. [Usage](#usage)
+  1. [The startup function](#the-startup-function)
+  2. [Custom Initialization](#custom-initialization)
+  3. [Specifying Plugins](#specifying-plugins)
+  4. [Performing plugin management operations](#performing-plugin-management-operations)
+  5. [Extending packer](#extending-packer)
+  6. [Compiling Lazy-Loaders](#compiling-lazy-loaders)
 7. [Status](#status)
 
 ## Notices
