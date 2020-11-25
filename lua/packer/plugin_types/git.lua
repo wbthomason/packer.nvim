@@ -123,11 +123,13 @@ git.setup = function(plugin)
       stderr = jobs.logging_callback(output.err.stderr, output.data.stderr, nil, disp, plugin_name)
     }
 
+    local job_env = vim.loop.os_environ()
+    job_env['GIT_TERMINAL_PROMPT'] = 0
     local installer_opts = {
       capture_output = callbacks,
       timeout = config.clone_timeout,
       options = {
-        env = {'GIT_TERMINAL_PROMPT=0'},
+        env = job_env,
       },
     }
 
