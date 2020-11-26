@@ -123,14 +123,15 @@ git.setup = function(plugin)
       stderr = jobs.logging_callback(output.err.stderr, output.data.stderr, nil, disp, plugin_name)
     }
 
-    local job_env = vim.loop.os_environ()
-    job_env['GIT_TERMINAL_PROMPT'] = 0
+    if git.job_env == nil then
+      git.job_env = vim.fn.environ()
+      git.job_env['GIT_TERMINAL_PROMPT'] = 0
+    end
+
     local installer_opts = {
       capture_output = callbacks,
       timeout = config.clone_timeout,
-      options = {
-        env = job_env,
-      },
+      options = {env = git.job_env}
     }
 
     return async(function()
@@ -212,12 +213,14 @@ git.setup = function(plugin)
       if not needs_checkout then
         local origin_branch = ''
         disp:task_update(plugin_name, 'checking origin branch...')
-        local origin_refs_path = util.join_paths(install_to, '.git', 'refs', 'remotes', 'origin', 'HEAD')
+        local origin_refs_path = util.join_paths(install_to, '.git', 'refs', 'remotes', 'origin',
+                                                 'HEAD')
         local origin_refs_file = vim.loop.fs_open(origin_refs_path, 'r', 438)
         if origin_refs_file ~= nil then
           local origin_refs_stat = vim.loop.fs_fstat(origin_refs_file)
           -- NOTE: This should check for errors
-          local origin_refs = vim.split(vim.loop.fs_read(origin_refs_file, origin_refs_stat.size, 0), '\n')
+          local origin_refs = vim.split(
+                                vim.loop.fs_read(origin_refs_file, origin_refs_stat.size, 0), '\n')
           vim.loop.fs_close(origin_refs_file)
           if #origin_refs > 0 then
             origin_branch = string.match(origin_refs[1], [[^ref: refs/remotes/origin/(.*)]])
