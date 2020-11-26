@@ -88,7 +88,7 @@ packer.init = function(user_config)
   config.start_dir = util.join_paths(config.pack_dir, 'start')
 
   for _, mod in ipairs({
-    clean, compile, display, handlers, install, plugin_types, plugin_utils, update
+    clean, compile, display, handlers, install, plugin_types, plugin_utils, update, log
   }) do mod.cfg(config) end
 
   plugin_utils.ensure_dirs()
