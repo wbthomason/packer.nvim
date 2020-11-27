@@ -146,5 +146,6 @@ end
 -- TODO: Add uninstall
 -- TODO: Add logic (here or in another module?) to handle collecting the set of required packages,
 -- diffing against installed, and handling running installs/uninstalls
+-- TODO: also add logic to compiler to output necessary path modifications
 
 return luarocks
