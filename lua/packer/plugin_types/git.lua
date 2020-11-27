@@ -124,8 +124,13 @@ git.setup = function(plugin)
     }
 
     if git.job_env == nil then
-      git.job_env = vim.fn.environ()
-      git.job_env['GIT_TERMINAL_PROMPT'] = 0
+      local job_env = {}
+      for k, v in pairs(vim.fn.environ()) do
+        if k ~= 'GIT_TERMINAL_PROMPT' then table.insert(job_env, k .. '=' .. v) end
+      end
+
+      table.insert(job_env, 'GIT_TERMINAL_PROMPT=0')
+      git.job_env = job_env
     end
 
     local installer_opts = {
