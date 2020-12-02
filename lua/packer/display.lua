@@ -2,9 +2,12 @@ local api = vim.api
 local log = require('packer.log')
 local a = require('packer.async')
 
+local in_headless = #api.nvim_list_uis() == 0
+
 -- Temporary wrappers to compensate for the updated extmark API, until most people have updated to
 -- the latest HEAD (2020-09-04)
 local function set_extmark(buf, ns, id, line, col)
+  if not api.nvim_buf_is_valid(buf) then return end
   local opts = {id = id}
   local result, mark_id = pcall(api.nvim_buf_set_extmark, buf, ns, line, col, opts)
   if result then return mark_id end
@@ -76,15 +79,20 @@ end
 
 local display = {}
 local display_mt = {
+  --- Check if we have a valid display window
+  valid_display = function(self)
+    return not in_headless and self and api.nvim_buf_is_valid(self.buf) and api.nvim_win_is_valid(self.win)
+  end,
   --- Update the text of the display buffer
   set_lines = function(self, start_idx, end_idx, lines)
+    if not self:valid_display() then return end
     api.nvim_buf_set_option(self.buf, 'modifiable', true)
     api.nvim_buf_set_lines(self.buf, start_idx, end_idx, true, lines)
     api.nvim_buf_set_option(self.buf, 'modifiable', false)
   end,
   --- Start displaying a new task
   task_start = vim.schedule_wrap(function(self, plugin, message)
-    if not api.nvim_buf_is_valid(self.buf) then return end
+    if not self:valid_display() then return end
     display.status.running = true
     self:set_lines(config.header_lines, config.header_lines,
                    {string.format(' %s %s: %s', config.working_sym, plugin, message)})
@@ -93,7 +101,7 @@ local display_mt = {
 
   --- Decrement the count of active operations in the headline
   decrement_headline_count = vim.schedule_wrap(function(self)
-    if not api.nvim_win_is_valid(self.win) then return end
+    if not self:valid_display() then return end
     local cursor_pos = api.nvim_win_get_cursor(self.win)
     api.nvim_win_set_cursor(self.win, {1, 0})
     api.nvim_buf_set_option(self.buf, 'modifiable', true)
@@ -104,7 +112,7 @@ local display_mt = {
 
   --- Update a task as having successfully completed
   task_succeeded = vim.schedule_wrap(function(self, plugin, message)
-    if not api.nvim_buf_is_valid(self.buf) then return end
+    if not self:valid_display() then return end
     local line, _ = get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
     self:set_lines(line[1], line[1] + 1,
                    {string.format(' %s %s: %s', config.done_sym, plugin, message)})
@@ -115,7 +123,7 @@ local display_mt = {
 
   --- Update a task as having unsuccessfully failed
   task_failed = vim.schedule_wrap(function(self, plugin, message)
-    if not api.nvim_buf_is_valid(self.buf) then return end
+    if not self:valid_display() then return end
     local line, _ = get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
     self:set_lines(line[1], line[1] + 1,
                    {string.format(' %s %s: %s', config.error_sym, plugin, message)})
@@ -126,7 +134,7 @@ local display_mt = {
 
   --- Update the status message of a task in progress
   task_update = vim.schedule_wrap(function(self, plugin, message)
-    if not api.nvim_buf_is_valid(self.buf) then return end
+    if not self:valid_display() then return end
     local line, _ = get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
     self:set_lines(line[1], line[1] + 1,
                    {string.format(' %s %s: %s', config.working_sym, plugin, message)})
@@ -135,7 +143,7 @@ local display_mt = {
 
   --- Update the text of the headline message
   update_headline_message = vim.schedule_wrap(function(self, message)
-    if not api.nvim_buf_is_valid(self.buf) or not api.nvim_win_is_valid(self.win) then return end
+    if not self:valid_display() then return end
     local headline = config.title .. ' - ' .. message
     local width = api.nvim_win_get_width(self.win) - 2
     local pad_width = math.max(math.floor((width - string.len(headline)) / 2.0), 0)
@@ -153,7 +161,7 @@ local display_mt = {
 
   --- Display the final results of an operation
   final_results = vim.schedule_wrap(function(self, results, time)
-    if not api.nvim_buf_is_valid(self.buf) or not api.nvim_win_is_valid(self.win) then return end
+    if not self:valid_display() then return end
     self:setup_status_syntax()
     display.status.running = false
     time = tonumber(time)
@@ -266,7 +274,7 @@ local display_mt = {
 
   --- Toggle the display of detailed information for all plugins in the final results display
   show_all_info = function(self)
-    if not api.nvim_buf_is_valid(self.buf) or not api.nvim_win_is_valid(self.win) then return end
+    if not self:valid_display() then return end
     if next(self.plugins) == nil then
       log.info('Operations are still running; plugin info is not ready yet')
       return
@@ -287,7 +295,7 @@ local display_mt = {
 
   --- Toggle the display of detailed information for a plugin in the final results display
   toggle_info = function(self)
-    if not api.nvim_buf_is_valid(self.buf) or not api.nvim_win_is_valid(self.win) then return end
+    if not self:valid_display() then return end
     if next(self.plugins) == nil then
       log.info('Operations are still running; plugin info is not ready yet')
       return
@@ -313,7 +321,7 @@ local display_mt = {
 
   --- Prompt a user to revert the latest update for a plugin
   prompt_revert = function(self)
-    if not api.nvim_buf_is_valid(self.buf) or not api.nvim_win_is_valid(self.win) then return end
+    if not self:valid_display() then return end
     if next(self.plugins) == nil then
       log.info('Operations are still running; plugin info is not ready yet')
       return
@@ -347,6 +355,7 @@ local display_mt = {
 
   --- Heuristically find the plugin nearest to the cursor for displaying detailed information
   find_nearest_plugin = function(self)
+    if not self:valid_display() then return end
     local cursor_pos = api.nvim_win_get_cursor(0)
     -- TODO: this is a dumb hack
     for i = cursor_pos[1], 1, -1 do
