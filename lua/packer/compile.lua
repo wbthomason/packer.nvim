@@ -270,6 +270,7 @@ local function make_loaders(_, plugins)
       end
 
       if plugin.config and (not plugin.opt or loaders[name].only_setup) then
+        plugin.only_config = true
         configs[name] = plugin.executable_config
       end
     end
@@ -358,6 +359,11 @@ local function make_loaders(_, plugins)
   for pre, posts in pairs(after) do
     if plugins[pre].opt then
       loaders[pre].after = posts
+    elseif plugins[pre].only_config then
+      loaders[pre] = {after = posts, only_sequence = true, only_config = true}
+    end
+
+    if plugins[pre].opt or plugins[pre].only_config then
       for _, name in ipairs(posts) do
         loaders[name].load_after = {}
         sequence_loads[name] = sequence_loads[name] or {}
@@ -384,11 +390,11 @@ local function make_loaders(_, plugins)
 
   while next(frontier) ~= nil do
     local plugin = table.remove(frontier)
-    if loaders[plugin].only_sequence and not loaders[plugin].only_setup then
+    if loaders[plugin].only_sequence and not (loaders[plugin].only_setup or loaders[plugin].only_config) then
       table.insert(sequence_lines, 'vim.cmd [[ packadd ' .. plugin .. ' ]]')
       if plugins[plugin].config then
         local lines = {'', '-- Config for: ' .. plugin}
-        vim.list_extend(lines, plugins[plugin].config)
+        vim.list_extend(lines, plugins[plugin].executable_config)
         table.insert(lines, '')
         vim.list_extend(sequence_lines, lines)
       end

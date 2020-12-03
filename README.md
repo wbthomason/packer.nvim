@@ -259,7 +259,7 @@ use {
   as = string,                 -- Specifies an alias under which to install the plugin
   installer = function,        -- Specifies custom installer. See "custom installers" below.
   updater = function,          -- Specifies custom updater. See "custom installers" below.
-  after = string or list,      -- Specifies plugins to load before this plugin.
+  after = string or list,      -- Specifies plugins to load before this plugin. See "sequencing" below
   rtp = string,                -- Specifies a subdirectory of the plugin to add to runtimepath.
   opt = boolean,               -- Manually marks a plugin as optional.
   branch = string,             -- Specifies a git branch to use
@@ -316,6 +316,22 @@ above.
 If `ensure_dependencies` is true, the plugins specified in `requires` will be installed.
 
 Plugins specified in `requires` are removed when no active plugins require them.
+
+#### Sequencing
+
+You may specify a loading order for plugins using the `after` key. This key can be a string or a
+list (table).
+
+If `after` is a string, it must be the name of another plugin managed by `packer` (e.g. the final segment of a plugin's path - for a Github plugin `FooBar/Baz`, the name would be just `Baz`). If `after` is a table, it must be a list of plugin names. If a plugin has an alias (i.e. uses the `as` key), this alias is its name.
+
+The set of plugins specified in a plugin's `after` key must **all** be loaded before the plugin
+using `after` will be loaded. For example, in the specification
+```lua
+  use {'FooBar/Baz', ft = 'bax'}
+  use {'Something/Else', after = 'Baz'}
+```
+the plugin `Else` will only be loaded after the plugin `Baz`, which itself is only loaded for files
+with `bax` filetype.
 
 #### Keybindings
 

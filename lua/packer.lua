@@ -166,7 +166,7 @@ manage = function(plugin)
   if not plugin.type then plugin_utils.guess_type(plugin) end
   if plugin.type ~= 'custom' then plugin_types[plugin.type].setup(plugin) end
   for k, v in pairs(plugin) do if handlers[k] then handlers[k](plugins, plugin, v) end end
-  plugins[name] = plugin
+  plugins[plugin.short_name] = plugin
 
   if plugin.requires and config.ensure_dependencies then
     if type(plugin.requires) == 'string' then plugin.requires = {plugin.requires} end
