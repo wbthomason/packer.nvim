@@ -8,7 +8,7 @@ local config = nil
 local function cfg(_config) config = _config end
 
 local feature_guard = [[
-if !has('nvim')
+if !has('nvim-0.5')
   finish
 endif
 ]]
