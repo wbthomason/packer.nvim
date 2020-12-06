@@ -53,6 +53,7 @@ local config_defaults = {
     clone_timeout = 60
   },
   display = {
+    non_interactive = false,
     open_fn = nil,
     open_cmd = '65vnew [packer]',
     working_sym = '⟳',
