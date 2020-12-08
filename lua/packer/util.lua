@@ -97,6 +97,7 @@ end
 
 -- Credit to @crs for the original function
 util.float = function()
+  local last_win, last_pos = vim.fn.winnr(), vim.fn.getpos('.')
   local columns = vim.o.columns
   local rows = vim.o.lines
   local width = math.min(columns - 4, math.max(80, columns - 20))
@@ -120,7 +121,15 @@ util.float = function()
   opts.width = opts.width - 4
   local buf = vim.api.nvim_create_buf(false, true)
   local win = vim.api.nvim_open_win(buf, true, opts)
-  vim.cmd([[autocmd! BufWipeout <buffer> lua vim.api.nvim_buf_delete(]] .. bg_buf .. ', {})')
+  
+  function restore_cursor()
+      vim.api.nvim_buf_delete(bg_buf, {})
+      vim.cmd(last_win..' wincmd w')
+      vim.fn.setpos('.', last_pos)
+  end
+
+  vim.cmd('autocmd! BufWipeout <buffer> lua restore_cursor()')
+
   return true, win, buf
 end
 
