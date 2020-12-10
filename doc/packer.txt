@@ -187,7 +187,7 @@ default values: >
     max_jobs = nil, -- Limit the number of simultaneous jobs. nil means no limit
     auto_clean = true, -- During sync(), remove unused plugins
     compile_on_sync = true, -- During sync(), run packer.compile()
-    disable_commands = false, -- During `startup`, disable creating commands
+    disable_commands = false, -- Disable creating commands
     opt_default = false, -- Default to using opt (as opposed to start) plugins
     transitive_opt = true, -- Make dependencies of opt plugins also opt by default
     transitive_disable = true, -- Automatically disable dependencies of disabled plugins
