@@ -93,6 +93,14 @@ packer.init = function(user_config)
   }) do mod.cfg(config) end
 
   plugin_utils.ensure_dirs()
+
+  if not config.disable_commands then
+    vim.cmd [[command! PackerInstall  lua require('packer').install()]]
+    vim.cmd [[command! PackerUpdate   lua require('packer').update()]]
+    vim.cmd [[command! PackerSync     lua require('packer').sync()]]
+    vim.cmd [[command! PackerClean    lua require('packer').clean()]]
+    vim.cmd [[command! PackerCompile  lua require('packer').compile()]]
+  end
 end
 
 packer.reset = function() plugins = {} end
@@ -418,14 +426,6 @@ packer.startup = function(spec)
     end
   else
     packer.use(user_plugins)
-  end
-
-  if not config.disable_commands then
-    vim.cmd [[command! PackerInstall  lua require('packer').install()]]
-    vim.cmd [[command! PackerUpdate   lua require('packer').update()]]
-    vim.cmd [[command! PackerSync     lua require('packer').sync()]]
-    vim.cmd [[command! PackerClean    lua require('packer').clean()]]
-    vim.cmd [[command! PackerCompile  lua require('packer').compile()]]
   end
 
   return packer
