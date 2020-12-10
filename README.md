@@ -18,6 +18,8 @@ Neovim.
 7. [Status](#status)
 
 ## Notices
+- **2020-12-10**: The `disable_commands` configuration flag now affects non-`startup` use as well.
+  This means that, by default, `packer` will create commands for basic operations for you.
 - **2020-11-13**: There is now a default implementation for a floating window `open_fn` in
   `packer.util`.
 - **2020-09-04:** Due to changes to the Neovim `extmark` api (see:
@@ -198,7 +200,7 @@ default configuration values (and structure of the configuration table) are:
   max_jobs = nil, -- Limit the number of simultaneous jobs. nil means no limit
   auto_clean = true, -- During sync(), remove unused plugins
   compile_on_sync = true, -- During sync(), run packer.compile()
-  disable_commands = false, -- During `startup`, disable creating commands
+  disable_commands = false, -- Disable creating commands
   opt_default = false, -- Default to using opt (as opposed to start) plugins
   transitive_opt = true, -- Make dependencies of opt plugins also opt by default
   transitive_disable = true, -- Automatically disable dependencies of disabled plugins
