@@ -47,16 +47,16 @@ local function hererocks_installer(disp)
 
     local opts = {capture_output = callbacks}
     return r:and_then(await, jobs.run(command, opts)):map_err(
-    function(err)
-      return {msg = 'Error installing hererocks', data = err, output = output}
-    end)
+             function(err)
+        return {msg = 'Error installing hererocks', data = err, output = output}
+      end)
   end)
 end
 
 local function package_patterns(dir) return fmt('%s?.lua;%s&/init.lua', dir, dir) end
 local package_paths = (function()
   local install_path = util.join_paths(hererocks_install_dir, 'lib', 'luarocks',
-  fmt('rocks-%s', lua_version.lua))
+                                       fmt('rocks-%s', lua_version.lua))
   local share_path = util.join_paths(hererocks_install_dir, 'share', 'lua', lua_version.lua)
   return package_patterns(share_path) .. ';' .. package_patterns(install_path)
 end)()
@@ -84,6 +84,19 @@ local function setup_nvim_paths()
   end
 
   nvim_paths_are_setup = true
+end
+
+local function generate_path_setup_code()
+  local package_path_str = vim.inspect(package_paths)
+  local install_cpath = util.join_paths(hererocks_install_dir, 'lib', 'lua', lua_version.lua)
+  local install_cpath_pattern = fmt('%s?.so', install_cpath)
+  return [[if not string.find(package.path, ]] .. package_path_str .. [[, 1, true) then
+    package.path = package.path .. ';' .. ]] .. package_path_str .. [[
+  end
+
+  if not string.find(package.cpath, ]] .. install_cpath_pattern .. [[, 1, true) then
+    package.cpath = package.cpath .. ';' .. ]] .. install_cpath_pattern .. [[
+  end]]
 end
 
 local function activate_hererocks_cmd(install_path)
@@ -114,9 +127,9 @@ local function run_luarocks(args, disp)
     local opts = {capture_output = callbacks}
     local r = result.ok()
     return r:and_then(await, jobs.run(cmd, opts)):map_err(
-    function(err)
-      return {msg = fmt('Error running luarocks %s', args), data = err, output = output}
-    end):map_ok(function(data) return {data = data, output = output} end)
+             function(err)
+        return {msg = fmt('Error running luarocks %s', args), data = err, output = output}
+      end):map_ok(function(data) return {data = data, output = output} end)
   end)
 end
 
@@ -131,9 +144,7 @@ local function install_packages(packages, disp)
   return async(function()
     if not hererocks_is_setup() then return result.ok() end
     local r = result.ok()
-    for _, name in ipairs(packages) do
-      r = r.and_then(await, luarocks_install(name, disp))
-    end
+    for _, name in ipairs(packages) do r = r.and_then(await, luarocks_install(name, disp)) end
 
     return r
   end)
@@ -146,7 +157,8 @@ local function luarocks_list(disp)
     return r.map_ok(function(data)
       local results = {}
       for _, line in ipairs(data.output.stdout) do
-        for l_package, version, status, install_path in string.gmatch(line, "([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)") do
+        for l_package, version, status, install_path in
+          string.gmatch(line, "([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)") do
           table.insert(results, {
             name = l_package,
             version = version,
@@ -172,9 +184,7 @@ local function uninstall_packages(packages, disp)
   return async(function()
     if not hererocks_is_setup() then return result.ok() end
     local r = result.ok()
-    for _, name in ipairs(packages) do
-      r = r.and_then(await, luarocks_remove(name, disp))
-    end
+    for _, name in ipairs(packages) do r = r.and_then(await, luarocks_remove(name, disp)) end
 
     return r
   end)
@@ -186,14 +196,12 @@ local function clean_packages(plugins, disp)
     local r = await(luarocks_list(disp))
     r = r.map_ok(function(installed_packages)
       local to_remove = {}
-      for _, package in ipairs(installed_packages) do
-        to_remove[package.name] = package
-      end
+      for _, package in ipairs(installed_packages) do to_remove[package.name] = package end
 
       for _, plugin in pairs(plugins) do
         if plugin.rocks then
           for _, rock in ipairs(plugin.rocks) do
-            if type(rock) == 'table'  then
+            if type(rock) == 'table' then
               if to_remove[rock[1]] and to_remove[rock[1]].version == rock[2] then
                 to_remove[rock[1]] = nil
               end
@@ -233,9 +241,7 @@ local function ensure_packages(plugins, disp)
         local spec = to_install[package.name]
         if spec then
           if type(spec) == 'table' then
-            if  spec[2] == package.version then
-              to_install[package.name] = nil
-            end
+            if spec[2] == package.version then to_install[package.name] = nil end
           else
             to_install[package.name] = nil
           end
@@ -267,5 +273,6 @@ return {
   uninstall = uninstall_packages,
   clean = clean_packages,
   install = install_packages,
-  ensure = ensure_packages
+  ensure = ensure_packages,
+  generate_path_setup = generate_path_setup_code
 }
