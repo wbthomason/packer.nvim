@@ -89,14 +89,20 @@ end
 local function generate_path_setup_code()
   local package_path_str = vim.inspect(package_paths)
   local install_cpath = util.join_paths(hererocks_install_dir, 'lib', 'lua', lua_version.lua)
-  local install_cpath_pattern = fmt('%s?.so', install_cpath)
-  return [[if not string.find(package.path, ]] .. package_path_str .. [[, 1, true) then
-    package.path = package.path .. ';' .. ]] .. package_path_str .. [[
+  local install_cpath_pattern = fmt('"%s?.so"', install_cpath)
+  return [[
+  local package_path_str = ]] .. package_path_str .. [[
+
+  local install_cpath_pattern = ]] .. install_cpath_pattern .. [[
+
+  if not string.find(package.path, package_path_str, 1, true) then
+    package.path = package.path .. ';' .. package_path_str
   end
 
-  if not string.find(package.cpath, ]] .. install_cpath_pattern .. [[, 1, true) then
-    package.cpath = package.cpath .. ';' .. ]] .. install_cpath_pattern .. [[
-  end]]
+  if not string.find(package.cpath, install_cpath_pattern, 1, true) then
+    package.cpath = package.cpath .. ';' .. install_cpath_pattern
+  end
+]]
 end
 
 local function activate_hererocks_cmd(install_path)
