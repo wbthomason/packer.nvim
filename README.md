@@ -18,6 +18,8 @@ Neovim.
 7. [Status](#status)
 
 ## Notices
+- **2020-12-10**: The `disable_commands` configuration flag now affects non-`startup` use as well.
+  This means that, by default, `packer` will create commands for basic operations for you.
 - **2020-11-13**: There is now a default implementation for a floating window `open_fn` in
   `packer.util`.
 - **2020-09-04:** Due to changes to the Neovim `extmark` api (see:
@@ -164,7 +166,7 @@ The above snippets give some examples of `packer` features and use. Examples inc
   - [Specification file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/lua/plugins.lua)
   - [Loading file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/plugin/plugins.vim)
   - [Generated lazy-loader file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/plugin/packer_load.vim)
-- An example using the `startup` method: [tjdevries](https://github.com/tjdevries/config_manager/blob/master/xdg_config/nvim/lua/plugins.lua)
+- An example using the `startup` method: [tjdevries](https://github.com/tjdevries/config_manager/blob/master/xdg_config/nvim/lua/tj/plugins.lua)
     - Using this method, you do not require a "loading" file. You can simply `lua require('plugins')` from your `init.vim`
 
 The following is a more in-depth explanation of `packer`'s features and use.
@@ -198,7 +200,7 @@ default configuration values (and structure of the configuration table) are:
   max_jobs = nil, -- Limit the number of simultaneous jobs. nil means no limit
   auto_clean = true, -- During sync(), remove unused plugins
   compile_on_sync = true, -- During sync(), run packer.compile()
-  disable_commands = false, -- During `startup`, disable creating commands
+  disable_commands = false, -- Disable creating commands
   opt_default = false, -- Default to using opt (as opposed to start) plugins
   transitive_opt = true, -- Make dependencies of opt plugins also opt by default
   transitive_disable = true, -- Automatically disable dependencies of disabled plugins
@@ -221,6 +223,7 @@ default configuration values (and structure of the configuration table) are:
     clone_timeout = 60, -- Timeout, in seconds, for git clones
   },
   display = {
+    non_interactive = false, -- If true, disable display windows for all operations
     open_fn  = nil, -- An optional function to open a window for packer's display
     open_cmd = '65vnew [packer]', -- An optional command to open a window for packer's display
     working_sym = '⟳', -- The symbol for a plugin being installed/updated

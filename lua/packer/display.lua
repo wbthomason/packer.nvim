@@ -35,6 +35,11 @@ local keymaps = {
 
 --- Utility function to prompt a user with a question in a floating window
 local function prompt_user(headline, body, callback)
+  if config.non_interactive then
+    callback(true)
+    return
+  end
+
   local buf = api.nvim_create_buf(false, true)
   local longest_line = 0
   for _, line in ipairs(body) do
@@ -81,7 +86,7 @@ local display = {}
 local display_mt = {
   --- Check if we have a valid display window
   valid_display = function(self)
-    return not in_headless and self and api.nvim_buf_is_valid(self.buf) and api.nvim_win_is_valid(self.win)
+    return self and self.interactive and api.nvim_buf_is_valid(self.buf) and api.nvim_win_is_valid(self.win)
   end,
   --- Update the text of the display buffer
   set_lines = function(self, start_idx, end_idx, lines)
@@ -414,7 +419,7 @@ local function setup_window(disp)
 end
 
 --- Open a new display window
--- Takes either a string representing a command or a function returning a (window, buffer) pair
+-- Takes either a string representing a command or a function returning a (window, buffer) pair.
 display.open = function(opener)
   if display.status.disp then
     if api.nvim_win_is_valid(display.status.disp.win) then
@@ -425,28 +430,31 @@ display.open = function(opener)
   end
 
   local disp = setmetatable({}, display_mt)
-  if type(opener) == 'string' then
-    vim.cmd(opener)
-    disp.win = api.nvim_get_current_win()
-    disp.buf = api.nvim_get_current_buf()
-  else
-    local status, win, buf = opener('[packer]')
-    if not status then
-      log.error('Failure running opener function: ' .. vim.inspect(win))
-      error(win)
-    end
-
-    disp.win = win
-    disp.buf = buf
-  end
-
   disp.marks = {}
   disp.plugins = {}
-  disp.ns = api.nvim_create_namespace('')
-  make_header(disp)
-  setup_window(disp)
+  disp.interactive = not config.non_interactive and not in_headless
 
-  display.status.disp = disp
+  if disp.interactive then
+    if type(opener) == 'string' then
+      vim.cmd(opener)
+      disp.win = api.nvim_get_current_win()
+      disp.buf = api.nvim_get_current_buf()
+    else
+      local status, win, buf = opener('[packer]')
+      if not status then
+        log.error('Failure running opener function: ' .. vim.inspect(win))
+        error(win)
+      end
+
+      disp.win = win
+      disp.buf = buf
+    end
+
+    disp.ns = api.nvim_create_namespace('')
+    make_header(disp)
+    setup_window(disp)
+    display.status.disp = disp
+  end
 
   return disp
 end
