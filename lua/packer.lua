@@ -11,6 +11,7 @@ local display = require('packer.display')
 local handlers = require('packer.handlers')
 local install = require('packer.install')
 local log = require('packer.log')
+local luarocks = require('packer.luarocks')
 local plugin_types = require('packer.plugin_types')
 local plugin_utils = require('packer.plugin_utils')
 local update = require('packer.update')
@@ -219,7 +220,12 @@ packer.use = manage
 
 --- Clean operation:
 -- Finds plugins present in the `packer` package but not in the managed set
-packer.clean = function(results) async(function() await(clean(plugins, results)) end)() end
+packer.clean = function(results)
+  async(function()
+    await(luarocks.clean(plugins, nil))
+    await(clean(plugins, results))
+  end)()
+end
 
 local function args_or_all(...) return util.nonempty_or({...}, vim.tbl_keys(plugins)) end
 
@@ -245,6 +251,7 @@ packer.install = function(...)
     local results = {}
     local tasks, display_win = install(plugins, install_plugins, results)
     if next(tasks) then
+      table.insert(tasks, luarocks.ensure(plugins, display_win))
       table.insert(tasks, 1, function() return not display.status.running end)
       table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
       display_win:update_headline_message('installing ' .. #tasks - 2 .. ' / ' .. #tasks - 2
@@ -287,6 +294,7 @@ packer.update = function(...)
     local update_tasks
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
+    table.insert(tasks, luarocks.ensure(plugins, display_win))
     table.insert(tasks, 1, function() return not display.status.running end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     display_win:update_headline_message('updating ' .. #tasks - 2 .. ' / ' .. #tasks - 2
@@ -338,6 +346,8 @@ packer.sync = function(...)
     local update_tasks
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
+    table.insert(tasks, luarocks.clean(plugins, display_win))
+    table.insert(tasks, luarocks.ensure(plugins, display_win))
     table.insert(tasks, 1, function() return not display.status.running end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     display_win:update_headline_message(
