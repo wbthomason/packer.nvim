@@ -18,6 +18,7 @@ local clean_plugins = function(_, plugins, results)
   return async(function()
     results = results or {}
     results.removals = results.removals or {}
+    await(a.main)
     local opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
     local dirty_plugins = {}
     local aliases = {}
