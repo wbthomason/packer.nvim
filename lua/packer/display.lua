@@ -98,6 +98,10 @@ local display_mt = {
   --- Start displaying a new task
   task_start = vim.schedule_wrap(function(self, plugin, message)
     if not self:valid_display() then return end
+    if self.marks[plugin] then
+      self:task_update(plugin, message)
+      return
+    end
     display.status.running = true
     self:set_lines(config.header_lines, config.header_lines,
                    {string.format(' %s %s: %s', config.working_sym, plugin, message)})
