@@ -86,7 +86,8 @@ local display = {}
 local display_mt = {
   --- Check if we have a valid display window
   valid_display = function(self)
-    return self and self.interactive and api.nvim_buf_is_valid(self.buf) and api.nvim_win_is_valid(self.win)
+    return self and self.interactive and api.nvim_buf_is_valid(self.buf)
+             and api.nvim_win_is_valid(self.win)
   end,
   --- Update the text of the display buffer
   set_lines = function(self, start_idx, end_idx, lines)
@@ -162,9 +163,10 @@ local display_mt = {
 
   --- Setup new syntax group links for the status window
   setup_status_syntax = function(self)
-    local highlights = {'hi def link packerStatus         Type',
-    'hi def link packerStatusCommit   Constant', 'hi def link packerStatusSuccess  Constant',
-    'hi def link packerStatusFail     WarningMsg'}
+    local highlights = {
+      'hi def link packerStatus         Type', 'hi def link packerStatusCommit   Constant',
+      'hi def link packerStatusSuccess  Constant', 'hi def link packerStatusFail     WarningMsg'
+    }
     for _, c in ipairs(highlights) do vim.cmd(c) end
   end,
 
@@ -225,8 +227,8 @@ local display_mt = {
           failed_update = true
           actual_update = false
           table.insert(plugin_order, plugin_name)
-          table.insert(message, string.format(' %s Failed to update %s', config.error_sym,
-                       plugin_name))
+          table.insert(message,
+                       string.format(' %s Failed to update %s', config.error_sym, plugin_name))
         end
 
         plugin.actual_update = actual_update
@@ -250,8 +252,8 @@ local display_mt = {
         if plugin.output.err and #plugin.output.err > 0 then
           table.insert(plugin_data.lines, '  Errors:')
           for _, line in ipairs(plugin.output.err) do
-	    line = vim.trim(line)
-	    if line:find('\n') then
+            line = vim.trim(line)
+            if line:find('\n') then
               for sub_line in line:gmatch("[^\r\n]+") do
                 table.insert(plugin_data.lines, '    ' .. sub_line)
               end
@@ -471,9 +473,8 @@ display.quit = function()
   vim.fn.execute('q!', 'silent')
 end
 
-display.toggle_info = function()
-  if display.status.disp then display.status.disp:toggle_info() end
-end
+display.toggle_info =
+  function() if display.status.disp then display.status.disp:toggle_info() end end
 
 display.prompt_revert = function()
   if display.status.disp then display.status.disp:prompt_revert() end

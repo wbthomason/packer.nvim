@@ -65,7 +65,7 @@ local config_defaults = {
     header_sym = '━',
     header_lines = 2,
     title = 'packer.nvim',
-    show_all_info = true,
+    show_all_info = true
   }
 }
 
@@ -194,17 +194,13 @@ manage = function(plugin)
             for _, name in ipairs(req.after) do
               already_after = already_after or (name == plugin.short_name)
             end
-            if not already_after then
-              table.insert(req.after, plugin.short_name)
-            end
+            if not already_after then table.insert(req.after, plugin.short_name) end
           elseif req.after == nil then
             req.after = plugin.short_name
           end
         end
 
-        if config.transitive_disable and plugin.disable then
-          req.disable = true
-        end
+        if config.transitive_disable and plugin.disable then req.disable = true end
 
         manage(req)
       end
@@ -364,9 +360,7 @@ packer.sync = function(...)
 
     await(a.main)
 
-    if config.compile_on_sync then
-      packer.compile()
-    end
+    if config.compile_on_sync then packer.compile() end
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
