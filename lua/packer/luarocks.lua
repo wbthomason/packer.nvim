@@ -1,5 +1,5 @@
 -- Add support for installing and cleaning Luarocks dependencies
--- Based originally off of plenary/neorocks/init.lua in https://github.com/nvim-lua/plenary.nvim
+-- Based off of plenary/neorocks/init.lua in https://github.com/nvim-lua/plenary.nvim
 local a = require('packer.async')
 local jobs = require('packer.jobs')
 local log = require('packer.log')
@@ -18,38 +18,49 @@ end
 
 local cache_path = vim.fn.stdpath('cache')
 local rocks_path = util.join_paths(cache_path, 'packer_hererocks')
-local hererocks_file = util.join_paths(cache_path, 'hererocks.py')
+local hererocks_file = util.join_paths(rocks_path, 'hererocks.py')
 local hererocks_install_dir = util.join_paths(rocks_path, lua_version.dir)
+local _hererocks_setup_done = false
 local function hererocks_is_setup()
-  return vim.fn.isdirectory(util.join_paths(hererocks_install_dir, 'lib')) > 0
+  if _hererocks_setup_done then return true end
+  await(a.main)
+  _hererocks_setup_done = vim.fn.isdirectory(util.join_paths(hererocks_install_dir, 'lib')) > 0
+  return _hererocks_setup_done
 end
 
 local function hererocks_installer(disp)
   return async(function()
     local hererocks_url = 'https://raw.githubusercontent.com/luarocks/hererocks/latest/hererocks.py'
-    local command
+    local hererocks_cmd
+    await(a.main)
+    vim.fn.mkdir(rocks_path, 'p')
     if vim.fn.executable('curl') > 0 then
-      command = 'curl ' .. hererocks_url .. ' -o ' .. hererocks_file
+      hererocks_cmd = 'curl ' .. hererocks_url .. ' -o ' .. hererocks_file
     elseif vim.fn.executable('wget') > 0 then
-      command = 'wget ' .. hererocks_url .. ' -O ' .. hererocks_file .. ' --verbose'
+      hererocks_cmd = 'wget ' .. hererocks_url .. ' -O ' .. hererocks_file .. ' --verbose'
     else
       return result.err('"curl" or "wget" is required to install hererocks')
     end
 
-    local r = result.ok()
-    if disp ~= nil then disp:task_update('luarocks', 'installing hererocks...') end
+    if disp ~= nil then disp:task_start('luarocks', 'installing hererocks...') end
 
-    local output = jobs.make_output_table()
+    local output = jobs.output_table()
     local callbacks = {
       stdout = jobs.logging_callback(output.err.stdout, output.data.stdout, nil, disp, 'luarocks'),
       stderr = jobs.logging_callback(output.err.stderr, output.data.stderr)
     }
 
     local opts = {capture_output = callbacks}
-    return r:and_then(await, jobs.run(command, opts)):map_err(
-             function(err)
+    local r = await(jobs.run(hererocks_cmd, opts)):map_err(
+                function(err)
         return {msg = 'Error installing hererocks', data = err, output = output}
       end)
+
+    local luarocks_cmd = 'python ' .. hererocks_file .. ' --verbose -j ' .. lua_version.jit
+                           .. ' -r latest ' .. hererocks_install_dir
+    r = r:and_then(await, jobs.run(luarocks_cmd, opts)):map_err(
+          function(err) return {msg = 'Error installing luarocks', data = err, output = output} end)
+    return r
   end)
 end
 
@@ -124,45 +135,52 @@ local function run_luarocks(args, disp)
     fmt('%s && luarocks %s', activate_hererocks_cmd(hererocks_install_dir), args)
   }
   return async(function()
-    local output = jobs.make_output_table()
+    local output = jobs.output_table()
     local callbacks = {
       stdout = jobs.logging_callback(output.err.stdout, output.data.stdout, nil, disp, 'luarocks'),
       stderr = jobs.logging_callback(output.err.stderr, output.data.stderr)
     }
 
     local opts = {capture_output = callbacks}
-    local r = result.ok()
-    return r:and_then(await, jobs.run(cmd, opts)):map_err(
-             function(err)
-        return {msg = fmt('Error running luarocks %s', args), data = err, output = output}
-      end):map_ok(function(data) return {data = data, output = output} end)
+    return await(jobs.run(cmd, opts)):map_err(function(err)
+      return {msg = fmt('Error running luarocks %s', args), data = err, output = output}
+    end):map_ok(function(data) return {data = data, output = output} end)
   end)
 end
 
 local function luarocks_install(package, disp)
   return async(function()
-    local r = await(hererocks_installer(disp))
-    return r.and_then(await, run_luarocks('install ' .. package, disp))
+    if disp then disp:task_update('luarocks', 'installing ' .. package) end
+    return await(run_luarocks('install ' .. package, disp))
   end)
 end
 
 local function install_packages(packages, disp)
   return async(function()
-    if not hererocks_is_setup() then return result.ok() end
     local r = result.ok()
-    for _, name in ipairs(packages) do r = r.and_then(await, luarocks_install(name, disp)) end
-
+    if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
+    if disp then disp:task_start('luarocks', 'installing rocks...') end
+    for _, name in ipairs(packages) do r = r:and_then(await, luarocks_install(name, disp)) end
+    r:map_ok(function() if disp then disp:task_succeeded('luarocks', 'rocks all installed!') end end)
+      :map_err(function()
+        if disp then disp:task_failed('luarocks', 'installing rocks failed!') end
+      end)
     return r
   end)
 end
 
 local function luarocks_list(disp)
   return async(function()
-    if not hererocks_is_setup() then return result.ok({}) end
-    local r = await(run_luarocks('list --porcelain', disp))
-    return r.map_ok(function(data)
+    local r = result.ok()
+    if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
+    r = r:and_then(await, run_luarocks('list --porcelain'))
+    return r:map_ok(function(data)
       local results = {}
-      for _, line in ipairs(data.output.stdout) do
+      -- Merge the output to a single line, then split again. Helps to deal with inconsistent
+      -- chunking in the output collection
+      local output = table.concat(data.output.data.stdout, '\n')
+      output = vim.split(output, '\n')
+      for _, line in ipairs(output) do
         for l_package, version, status, install_path in
           string.gmatch(line, "([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)") do
           table.insert(results, {
@@ -181,29 +199,30 @@ end
 
 local function luarocks_remove(package, disp)
   return async(function()
-    if not hererocks_is_setup() then return result.ok() end
-    return await(run_luarocks('remove ' .. package, disp))
+    local r = result.ok()
+    if disp then disp:task_update('luarocks', 'removing ' .. package) end
+    return r:and_then(await, run_luarocks('remove ' .. package, disp))
   end)
 end
 
 local function uninstall_packages(packages, disp)
   return async(function()
-    if not hererocks_is_setup() then return result.ok() end
     local r = result.ok()
-    for _, name in ipairs(packages) do r = r.and_then(await, luarocks_remove(name, disp)) end
-
+    if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
+    if disp then disp:task_start('luarocks', 'uninstalling rocks...') end
+    for _, name in ipairs(packages) do r = r:and_then(await, luarocks_remove(name, disp)) end
     return r
   end)
 end
 
 local function clean_packages(plugins, disp)
   return async(function()
-    if not hererocks_is_setup() then return result.ok() end
-    local r = await(luarocks_list(disp))
-    r = r.map_ok(function(installed_packages)
+    local r = result.ok()
+    if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
+    r = r:and_then(await, luarocks_list(disp))
+    r = r:map_ok(function(installed_packages)
       local to_remove = {}
       for _, package in ipairs(installed_packages) do to_remove[package.name] = package end
-
       for _, plugin in pairs(plugins) do
         if plugin.rocks then
           for _, rock in ipairs(plugin.rocks) do
@@ -221,18 +240,20 @@ local function clean_packages(plugins, disp)
       return vim.tbl_keys(to_remove)
     end)
 
-    return r.and_then(await, uninstall_packages(r.ok, disp))
+    return r:and_then(await, uninstall_packages(r.ok, disp))
   end)
 end
 
 local function ensure_packages(plugins, disp)
   return async(function()
-    if not hererocks_is_setup() then return result.ok() end
-    local r = await(luarocks_list(disp))
-    r = r.map_ok(function(installed_packages)
+    local r = result.ok()
+    if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
+    r = r:and_then(await, luarocks_list(disp))
+    r = r:map_ok(function(installed_packages)
       local to_install = {}
       for _, plugin in pairs(plugins) do
         if plugin.rocks then
+          if type(plugin.rocks) == 'string' then plugin.rocks = {plugin.rocks} end
           for _, rock in ipairs(plugin.rocks) do
             if type(rock) == 'table' then
               to_install[rock[1]] = rock
@@ -266,7 +287,7 @@ local function ensure_packages(plugins, disp)
       return package_names
     end)
 
-    return r.and_then(await, install_packages(r.ok, disp))
+    return r:and_then(await, install_packages(r.ok, disp))
   end)
 end
 
