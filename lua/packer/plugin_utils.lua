@@ -45,8 +45,14 @@ plugin_utils.helptags_stale = function(dir)
   vim.list_extend(txts, vim.fn.glob(util.join_paths(dir, '*.[a-z][a-z]x'), true, true))
   local tags = vim.fn.glob(util.join_paths(dir, 'tags'), true, true)
   vim.list_extend(tags, vim.fn.glob(util.join_paths(dir, 'tags-[a-z][a-z]'), true, true))
-  local txt_newest = math.max(unpack(util.map(vim.fn.getftime, txts)))
-  local tag_oldest = math.min(unpack(util.map(vim.fn.getftime, tags)))
+  local txt_ftimes = util.map(vim.fn.getftime, txts)
+  local tag_ftimes = util.map(vim.fn.getftime, tags)
+  if #txt_ftimes == 0 or #tag_ftimes == 0 then
+    return false
+  end
+
+  local txt_newest = math.max(unpack(txt_ftimes))
+  local tag_oldest = math.min(unpack(tag_ftimes))
   return txt_newest > tag_oldest
 end
 
