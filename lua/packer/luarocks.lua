@@ -10,6 +10,8 @@ local fmt = string.format
 local async = a.sync
 local await = a.wait
 
+local config = nil
+
 local lua_version = nil
 if jit then
   local jit_version = string.gsub(jit.version, 'LuaJIT ', '')
@@ -23,8 +25,8 @@ local hererocks_install_dir = util.join_paths(rocks_path, lua_version.dir)
 local _hererocks_setup_done = false
 local function hererocks_is_setup()
   if _hererocks_setup_done then return true end
-  await(a.main)
-  _hererocks_setup_done = vim.fn.isdirectory(util.join_paths(hererocks_install_dir, 'lib')) > 0
+  local path_info = vim.loop.fs_stat(util.join_paths(hererocks_install_dir, 'lib'))
+  _hererocks_setup_done = (path_info ~= nil) and (path_info['type'] == 'directory')
   return _hererocks_setup_done
 end
 
@@ -56,15 +58,19 @@ local function hererocks_installer(disp)
         return {msg = 'Error installing hererocks', data = err, output = output}
       end)
 
-    local luarocks_cmd = 'python ' .. hererocks_file .. ' --verbose -j ' .. lua_version.jit
-                           .. ' -r latest ' .. hererocks_install_dir
+    local luarocks_cmd = config.python_cmd .. ' ' .. hererocks_file .. ' --verbose -j '
+                           .. lua_version.jit .. ' -r latest ' .. hererocks_install_dir
     r = r:and_then(await, jobs.run(luarocks_cmd, opts)):map_err(
           function(err) return {msg = 'Error installing luarocks', data = err, output = output} end)
     return r
   end)
 end
 
-local function package_patterns(dir) return fmt('%s?.lua;%s&/init.lua', dir, dir) end
+local function package_patterns(dir)
+  local sep = util.get_separator()
+  return fmt('%s%s?.lua;%s%s?%sinit.lua', dir, sep, dir, sep, sep)
+end
+
 local package_paths = (function()
   local install_path = util.join_paths(hererocks_install_dir, 'lib', 'luarocks',
                                        fmt('rocks-%s', lua_version.lua))
@@ -89,7 +95,7 @@ local function setup_nvim_paths()
   end
 
   local install_cpath = util.join_paths(hererocks_install_dir, 'lib', 'lua', lua_version.lua)
-  local install_cpath_pattern = fmt('%s?.so', install_cpath)
+  local install_cpath_pattern = fmt('%s%s?.so', install_cpath, util.get_separator())
   if not string.find(package.cpath, install_cpath_pattern, 1, true) then
     package.cpath = package.cpath .. ';' .. install_cpath_pattern
   end
@@ -100,7 +106,7 @@ end
 local function generate_path_setup_code()
   local package_path_str = vim.inspect(package_paths)
   local install_cpath = util.join_paths(hererocks_install_dir, 'lib', 'lua', lua_version.lua)
-  local install_cpath_pattern = fmt('"%s?.so"', install_cpath)
+  local install_cpath_pattern = fmt('"%s%s?.so"', install_cpath, util.get_separator())
   return [[
   local package_path_str = ]] .. package_path_str .. [[
 
@@ -291,7 +297,7 @@ local function ensure_packages(plugins, disp)
   end)
 end
 
--- TODO: Add logic to compiler to output necessary path modifications
+local function cfg(_config) config = _config.luarocks end
 
 return {
   list = luarocks_list,
@@ -301,5 +307,6 @@ return {
   clean = clean_packages,
   install = install_packages,
   ensure = ensure_packages,
-  generate_path_setup = generate_path_setup_code
+  generate_path_setup = generate_path_setup_code,
+  cfg = cfg
 }

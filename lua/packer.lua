@@ -66,7 +66,8 @@ local config_defaults = {
     header_lines = 2,
     title = 'packer.nvim',
     show_all_info = true
-  }
+  },
+  luarocks = {python_cmd = 'python'}
 }
 
 local config = vim.tbl_extend('force', {}, config_defaults)
@@ -90,7 +91,7 @@ packer.init = function(user_config)
   config.start_dir = util.join_paths(config.pack_dir, 'start')
 
   for _, mod in ipairs({
-    clean, compile, display, handlers, install, plugin_types, plugin_utils, update
+    clean, compile, display, handlers, install, plugin_types, plugin_utils, update, luarocks
   }) do mod.cfg(config) end
 
   plugin_utils.ensure_dirs()
