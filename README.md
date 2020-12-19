@@ -32,7 +32,7 @@ Neovim.
 ## Features
 - Declarative plugin specification
 - Support for dependencies
-- (soon) Support for Luarocks dependencies
+- Support for Luarocks dependencies
 - Expressive configuration and lazy-loading options
 - Automatically compiles efficient lazy-loading code to improve startup time
 - Uses native packages
@@ -96,6 +96,12 @@ return require('packer').startup(function()
     'haorenW1025/completion-nvim',
     opt = true,
     requires = {{'hrsh7th/vim-vsnip', opt = true}, {'hrsh7th/vim-vsnip-integ', opt = true}}
+  }
+
+  -- Plugins can also depend on rocks from luarocks.org:
+  use {
+    'my/supercoolplugin',
+    rocks = {'LPeg', {'lua-cjson', '2.1.0'}}
   }
 
   -- Local plugins can be included
@@ -233,6 +239,9 @@ default configuration values (and structure of the configuration table) are:
     moved_sym = '→', -- The symbol for a plugin which was moved (e.g. from opt to start)
     header_sym = '━', -- The symbol for the header line in packer's display
     show_all_info = true, -- Should packer show all update details automatically?
+  },
+  luarocks = {
+    python_cmd = 'python'
   }
 }
 ```
@@ -270,7 +279,8 @@ use {
   commit = string,             -- Specifies a git commit to use
   lock = boolean,              -- Skip this plugin in updates/syncs
   run = string or function,    -- Post-update/install hook. See "update/install hooks".
-  requires = string or list -- Specifies plugin dependencies. See "dependencies".
+  requires = string or list    -- Specifies plugin dependencies. See "dependencies".
+  rocks = string or list       -- Specifies LuaRocks rocks the plugin depends on
   config = string or function, -- Specifies code to run after this plugin is loaded.
   -- The following keys all imply lazy-loading
   cmd = string or list,        -- Specifies commands which load this plugin.
