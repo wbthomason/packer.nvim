@@ -99,27 +99,39 @@ end
 util.float = function()
   local last_win = vim.api.nvim_get_current_win()
   local last_pos = vim.api.nvim_win_get_cursor(last_win)
-  local columns = vim.o.columns
-  local rows = vim.o.lines
-  local width = math.min(columns - 4, math.max(80, columns - 20))
-  local height = math.min(rows - 4, math.max(20, rows - 10))
-  local top = ((rows - height) / 2) - 1
-  local left = (columns - width) / 2
+  local columns, lines = vim.o.columns, vim.o.lines
+  local win_width = math.ceil(columns * 0.8)
+  local win_height = math.ceil(lines * 0.8 - 4)
+  local col = math.ceil((columns - win_width) / 2)
+  local row = math.ceil((lines - win_height) / 2 - 1)
+
+  local bg_buf = vim.api.nvim_create_buf(false, true)
+
+  local border_lines = { '┌' .. string.rep('─', win_width) .. '┐' }
+  local middle_line = '|' .. string.rep(' ', win_width) .. '|'
+  for _ =1, win_height do
+    table.insert(border_lines, middle_line)
+  end
+  table.insert(border_lines, '└' .. string.rep('─', win_width) .. '┘')
+
   local opts = {
     relative = 'editor',
-    row = top,
-    col = left,
-    width = width,
-    height = height,
-    style = 'minimal'
+    style = 'minimal',
+    width = win_width + 2,
+    height = win_height + 2,
+    col = col - 1,
+    row = row - 1,
   }
-  local bg_buf = vim.api.nvim_create_buf(false, true)
+
+  vim.api.nvim_buf_set_lines(bg_buf, 0, -1, false, border_lines)
   local bg_win = vim.api.nvim_open_win(bg_buf, true, opts)
-  vim.api.nvim_win_set_option(bg_win, 'winhl', 'Normal:NormalFloat')
-  opts.row = opts.row + 1
-  opts.height = opts.height - 2
-  opts.col = opts.col + 2
-  opts.width = opts.width - 4
+  vim.fn.nvim_win_set_option(bg_win, 'winhl', 'Normal:Normal')
+
+  opts.width = win_width
+  opts.height = win_height
+  opts.col = col
+  opts.row = row
+
   local buf = vim.api.nvim_create_buf(false, true)
   local win = vim.api.nvim_open_win(buf, true, opts)
 
