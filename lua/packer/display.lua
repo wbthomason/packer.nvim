@@ -232,6 +232,17 @@ local display_mt = {
 
     if #raw_lines == 0 then table.insert(raw_lines, ' Everything already up to date!') end
 
+    local keymap_definitions = {
+      { lhs = keymaps[1][2], action = 'quit' },
+      { lhs = keymaps[2][2], action = 'show more info' },
+      { lhs = keymaps[3][2], action = 'revert an update' },
+    }
+    table.insert(raw_lines, '')
+    for _, keymap in ipairs(keymap_definitions) do
+      table.insert(raw_lines,
+                   string.format(" Press '%s' to %s", keymap.lhs, keymap.action))
+    end
+
     -- Ensure there are no newlines
     local lines = {}
     for _, line in ipairs(raw_lines) do
