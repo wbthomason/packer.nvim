@@ -47,10 +47,8 @@ plugin_utils.helptags_stale = function(dir)
   vim.list_extend(tags, vim.fn.glob(util.join_paths(dir, 'tags-[a-z][a-z]'), true, true))
   local txt_ftimes = util.map(vim.fn.getftime, txts)
   local tag_ftimes = util.map(vim.fn.getftime, tags)
-  if #txt_ftimes == 0 or #tag_ftimes == 0 then
-    return false
-  end
-
+  if #txt_ftimes == 0 then return false end
+  if #tag_ftimes == 0 then return true end
   local txt_newest = math.max(unpack(txt_ftimes))
   local tag_oldest = math.min(unpack(tag_ftimes))
   return txt_newest > tag_oldest
@@ -100,7 +98,7 @@ plugin_utils.load_plugin = function(plugin)
     vim.o.runtimepath = vim.o.runtimepath .. ',' .. plugin.install_path
     for _, pat in ipairs({
       table.concat({'plugin', '**', '*.vim'}, util.get_separator()),
-      table.concat({'after', 'plugin', '**', '*.vim'}, util.get_separator()),
+      table.concat({'after', 'plugin', '**', '*.vim'}, util.get_separator())
     }) do
       local path = util.join_paths(plugin.install_path, pat)
       local glob_ok, files = pcall(vim.fn.glob, path, false, true)
