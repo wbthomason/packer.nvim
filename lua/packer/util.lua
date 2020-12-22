@@ -99,19 +99,20 @@ end
 util.float = function()
   local last_win = vim.api.nvim_get_current_win()
   local last_pos = vim.api.nvim_win_get_cursor(last_win)
-  local columns, lines = vim.o.columns, vim.o.lines
-  local win_width = math.ceil(columns * 0.8)
-  local win_height = math.ceil(lines * 0.8 - 4)
-  local col = math.ceil((columns - win_width) * 0.5)
-  local row = math.ceil((lines - win_height) * 0.5 - 1)
+  local columns = vim.o.columns
+  local lines = vim.o.lines
+  local width = math.ceil(columns * 0.8)
+  local height = math.ceil(lines * 0.8 - 4)
+  local left = math.ceil((columns - width) * 0.5)
+  local top = math.ceil((lines - height) * 0.5 - 1)
 
   local opts = {
     relative = 'editor',
     style = 'minimal',
-    width = win_width,
-    height = win_height,
-    col = col,
-    row = row
+    width = width,
+    height = height,
+    col = left,
+    row = top
   }
 
   local buf = vim.api.nvim_create_buf(false, true)
