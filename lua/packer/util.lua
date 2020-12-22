@@ -102,41 +102,22 @@ util.float = function()
   local columns, lines = vim.o.columns, vim.o.lines
   local win_width = math.ceil(columns * 0.8)
   local win_height = math.ceil(lines * 0.8 - 4)
-  local col = math.ceil((columns - win_width) / 2)
-  local row = math.ceil((lines - win_height) / 2 - 1)
-
-  local bg_buf = vim.api.nvim_create_buf(false, true)
-
-  local border_lines = { '┌' .. string.rep('─', win_width) .. '┐' }
-  local middle_line = '|' .. string.rep(' ', win_width) .. '|'
-  for _ =1, win_height do
-    table.insert(border_lines, middle_line)
-  end
-  table.insert(border_lines, '└' .. string.rep('─', win_width) .. '┘')
+  local col = math.ceil((columns - win_width) * 0.5)
+  local row = math.ceil((lines - win_height) * 0.5 - 1)
 
   local opts = {
     relative = 'editor',
     style = 'minimal',
-    width = win_width + 2,
-    height = win_height + 2,
-    col = col - 1,
-    row = row - 1,
+    width = win_width,
+    height = win_height,
+    col = col,
+    row = row
   }
-
-  vim.api.nvim_buf_set_lines(bg_buf, 0, -1, false, border_lines)
-  local bg_win = vim.api.nvim_open_win(bg_buf, true, opts)
-  vim.fn.nvim_win_set_option(bg_win, 'winhl', 'Normal:Normal')
-
-  opts.width = win_width
-  opts.height = win_height
-  opts.col = col
-  opts.row = row
 
   local buf = vim.api.nvim_create_buf(false, true)
   local win = vim.api.nvim_open_win(buf, true, opts)
 
   function restore_cursor()
-    vim.api.nvim_buf_delete(bg_buf, {})
     vim.api.nvim_set_current_win(last_win)
     vim.api.nvim_win_set_cursor(last_win, last_pos)
   end
