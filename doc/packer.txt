@@ -220,6 +220,11 @@ default values: >
       moved_sym = '→', -- The symbol for a plugin which was moved (e.g. from opt to start)
       header_sym = '━', -- The symbol for the header line in packer's display
       show_all_info = true, -- Should packer show all update details automatically?
+      keybindings = { -- Keybindings for the display window
+        quit = 'q',
+        toggle_info = '<CR>',
+        prompt_revert = 'r',
+      }
     }
   }
 
@@ -344,6 +349,8 @@ Once an operation completes, the results are shown in the display window.
 q                    close the display window
 <CR>                 toggle information about a particular plugin
 r                    revert an update
+
+They can be configured by changing the value of `config.display.keybindings`.
 
 ==============================================================================
 API                                            *packer-api*
