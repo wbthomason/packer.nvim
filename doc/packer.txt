@@ -337,6 +337,14 @@ where `plugins` is the global table of managed plugins, `plugin` is the table
 for a specific plugin, and `value` is the value associated with key `name` in
 `plugin`.
 
+RESULTS WINDOW KEYBINDINGS                     *packer-results-keybindings*
+Once an operation completes, the results are shown in the display window.
+`packer` sets up default keybindings for this window:
+
+q                    close the display window
+<CR>                 toggle information about a particular plugin
+r                    revert an update
+
 ==============================================================================
 API                                            *packer-api*
 
