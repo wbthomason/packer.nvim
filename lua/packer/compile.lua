@@ -159,7 +159,7 @@ local function make_loaders(_, plugins)
         plugin.executable_config = {}
         if type(plugin.config) ~= 'table' then plugin.config = {plugin.config} end
         for i, config_item in ipairs(plugin.config) do
-          local executable_string = vim.inspect(config_item)
+          local executable_string = config_item
           if type(config_item) == 'function' then
             local stringified = string.dump(config_item, true)
             executable_string = vim.inspect(stringified)
