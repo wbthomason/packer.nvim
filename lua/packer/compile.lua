@@ -155,18 +155,17 @@ local function make_loaders(_, plugins)
   for name, plugin in pairs(plugins) do
     if not plugin.disable then
       local quote_name = "'" .. name .. "'"
-      if plugin.config then
+      if plugin.config and not plugin.executable_config then
         plugin.executable_config = {}
         if type(plugin.config) ~= 'table' then plugin.config = {plugin.config} end
         for i, config_item in ipairs(plugin.config) do
           local executable_string = config_item
           if type(config_item) == 'function' then
             local stringified = string.dump(config_item, true)
-            executable_string = vim.inspect(stringified)
-            if not plugin.opt then stringified = executable_string end
             plugin.config[i] = stringified
+            executable_string = 'loadstring(' .. vim.inspect(stringified) .. ')()'
           end
-          executable_string = 'loadstring(' .. executable_string .. ')()'
+
           table.insert(plugin.executable_config, executable_string)
         end
       end
