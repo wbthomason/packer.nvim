@@ -315,23 +315,19 @@ local function make_loaders(_, plugins)
   for condition, names in pairs(conditions) do
     local conditional_loads = {}
     for _, name in ipairs(names) do
-      table.insert(conditional_loads, 'vim.cmd("packadd ' .. name .. '")')
+      table.insert(conditional_loads, '\tvim.cmd("packadd ' .. name .. '")')
       if plugins[name].config then
-        local lines = {'', '-- Config for: ' .. name}
+        local lines = {'-- Config for: ' .. name}
         vim.list_extend(lines, plugins[name].executable_config)
-        table.insert(lines, '')
         vim.list_extend(conditional_loads, lines)
       end
     end
 
     local conditional = [[if
-    ]] .. condition .. [[
+  ]] .. condition .. [[
 
-    then
-      ]] .. table.concat(conditional_loads, '\n\t') .. [[
-
-    end
-    ]]
+then
+]] .. table.concat(conditional_loads, '\n\t') .. '\nend\n'
 
     table.insert(conditionals, conditional)
   end
