@@ -65,6 +65,11 @@ local config_defaults = {
     header_lines = 2,
     title = 'packer.nvim',
     show_all_info = true,
+    keybindings = {
+      quit = 'q',
+      toggle_info = '<CR>',
+      prompt_revert = 'r',
+    }
   }
 }
 
