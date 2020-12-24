@@ -248,8 +248,10 @@ local display_mt = {
 
     table.insert(raw_lines, '')
     for _, keymap in ipairs(keymap_display_order) do
-      table.insert(raw_lines,
-                   string.format(" Press '%s' to %s", keymaps[keymap].lhs, keymaps[keymap].action))
+      if keymaps[keymap].lhs then
+        table.insert(raw_lines,
+                     string.format(" Press '%s' to %s", keymaps[keymap].lhs, keymaps[keymap].action))
+      end
     end
 
     -- Ensure there are no newlines
@@ -418,7 +420,11 @@ end
 
 display.cfg = function(_config)
   config = _config.display
-  for name, lhs in pairs(config.keybindings) do keymaps[name].lhs = lhs end
+  if config.keybindings then
+    for name, lhs in pairs(config.keybindings) do
+      if keymaps[name] then keymaps[name].lhs = lhs end
+    end
+  end
   config.filetype_cmds = make_filetype_cmds(config.working_sym, config.done_sym, config.error_sym)
 end
 
@@ -435,7 +441,11 @@ end
 --- Initialize options, settings, and keymaps for display windows
 local function setup_window(disp)
   api.nvim_buf_set_option(disp.buf, 'filetype', 'packer')
-  for _, m in pairs(keymaps) do api.nvim_buf_set_keymap(disp.buf, 'n', m.lhs, m.rhs, {nowait = true, silent = true}) end
+  if config.keybindings then
+    for _, m in pairs(keymaps) do
+      if m.lhs then api.nvim_buf_set_keymap(disp.buf, 'n', m.lhs, m.rhs, {nowait = true, silent = true}) end
+    end
+  end
   for _, c in ipairs(config.filetype_cmds) do vim.cmd(c) end
 end
 
