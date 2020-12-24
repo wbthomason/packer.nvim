@@ -3,8 +3,7 @@ local util = require('packer.util')
 local log = require('packer.log')
 local fmt = string.format
 
-local config = nil
-
+local config
 local function cfg(_config) config = _config end
 
 local feature_guard = [[
@@ -281,13 +280,13 @@ local function make_loaders(_, plugins)
   local ft_aucmds = {}
   for ft, names in pairs(fts) do
     table.insert(ft_aucmds, fmt('  au FileType %s ++once call s:load([%s], { "ft": "%s" })', ft,
-    table.concat(names, ', '), ft))
+                                table.concat(names, ', '), ft))
   end
 
   local event_aucmds = {}
   for event, names in pairs(events) do
     table.insert(event_aucmds, fmt('  au %s ++once call s:load([%s], { "event": "%s" })', event,
-    table.concat(names, ', '), event))
+                                   table.concat(names, ', '), event))
   end
 
   local config_lines = {}
@@ -335,8 +334,8 @@ then
   local command_defs = {}
   for command, names in pairs(commands) do
     local command_line = fmt(
-    'command! -nargs=* -range -bang -complete=file %s call s:load([%s], { "cmd": "%s", "l1": <line1>, "l2": <line2>, "bang": <q-bang>, "args": <q-args> })',
-    command, table.concat(names, ', '), command)
+                           'command! -nargs=* -range -bang -complete=file %s call s:load([%s], { "cmd": "%s", "l1": <line1>, "l2": <line2>, "bang": <q-bang>, "args": <q-args> })',
+                           command, table.concat(names, ', '), command)
     table.insert(command_defs, command_line)
   end
 
@@ -346,9 +345,9 @@ then
     if keymap[1] ~= 'i' then prefix = '' end
     local cr_escaped_map = string.gsub(keymap[2], '<[cC][rR]>', '\\<CR\\>')
     local keymap_line = fmt(
-    '%snoremap <silent> %s <cmd>call <SID>load([%s], { "keys": "%s"%s })<cr>',
-    keymap[1], keymap[2], table.concat(names, ', '), cr_escaped_map,
-    prefix == nil and '' or (', "prefix": "' .. prefix .. '"'))
+                          '%snoremap <silent> %s <cmd>call <SID>load([%s], { "keys": "%s"%s })<cr>',
+                          keymap[1], keymap[2], table.concat(names, ', '), cr_escaped_map,
+                          prefix == nil and '' or (', "prefix": "' .. prefix .. '"'))
 
     table.insert(keymap_defs, keymap_line)
   end
@@ -388,7 +387,8 @@ then
 
   while next(frontier) ~= nil do
     local plugin = table.remove(frontier)
-    if loaders[plugin].only_sequence and not (loaders[plugin].only_setup or loaders[plugin].only_config) then
+    if loaders[plugin].only_sequence
+      and not (loaders[plugin].only_setup or loaders[plugin].only_config) then
       table.insert(sequence_lines, 'vim.cmd [[ packadd ' .. plugin .. ' ]]')
       if plugins[plugin].config then
         local lines = {'', '-- Config for: ' .. plugin}
