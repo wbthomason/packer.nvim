@@ -350,7 +350,9 @@ q                    close the display window
 <CR>                 toggle information about a particular plugin
 r                    revert an update
 
-They can be configured by changing the value of `config.display.keybindings`.
+They can be configured by changing the value of `config.display.keybindings`
+(see |packer-configuration|). Setting it to `false` will disable all keybindings.
+Setting any of its keys to `false` will disable the corresponding keybinding.
 
 ==============================================================================
 API                                            *packer-api*
