@@ -441,10 +441,8 @@ end
 --- Initialize options, settings, and keymaps for display windows
 local function setup_window(disp)
   api.nvim_buf_set_option(disp.buf, 'filetype', 'packer')
-  if config.keybindings then
-    for _, m in pairs(keymaps) do
-      if m.lhs then api.nvim_buf_set_keymap(disp.buf, 'n', m.lhs, m.rhs, {nowait = true, silent = true}) end
-    end
+  for _, m in pairs(keymaps) do
+    if m.lhs then api.nvim_buf_set_keymap(disp.buf, 'n', m.lhs, m.rhs, {nowait = true, silent = true}) end
   end
   for _, c in ipairs(config.filetype_cmds) do vim.cmd(c) end
 end
