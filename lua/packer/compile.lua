@@ -1,5 +1,6 @@
 -- Compiling plugin specifications to Lua for lazy-loading
 local util = require('packer.util')
+local plugin_utils = require('packer.plugin_utils')
 local log = require('packer.log')
 local fmt = string.format
 
@@ -19,6 +20,10 @@ local vim_loader = [[
 function! s:load(names, cause) abort
 call luaeval('_packer_load(_A[1], _A[2])', [a:names, a:cause])
 endfunction
+]]
+
+local plugin_accessor = [[
+function PackerGetCompiled(plugin) return plugins[plugin] end
 ]]
 
 local lua_loader = [[
@@ -274,6 +279,8 @@ local function make_loaders(_, plugins)
         plugin.only_config = true
         configs[name] = plugin.executable_config
       end
+
+      loaders[name].type = plugin.type
     end
   end
 
@@ -432,6 +439,7 @@ then
   table.insert(result, feature_guard)
   table.insert(result, 'lua << END')
   table.insert(result, fmt('local plugins = %s\n', vim.inspect(loaders)))
+  table.insert(result, plugin_accessor)
   table.insert(result, lua_loader)
   -- Then the runtimepath line
   table.insert(result, '-- Runtimepath customization')
