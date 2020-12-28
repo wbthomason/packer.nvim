@@ -82,8 +82,13 @@ plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins
   local missing_plugins = {}
   for _, plugin_name in ipairs(vim.tbl_keys(plugins)) do
     local plugin = plugins[plugin_name]
-    if (not plugin.opt and not start_plugins[util.join_paths(config.start_dir, plugin.short_name)])
-      or (plugin.opt and not opt_plugins[util.join_paths(config.opt_dir, plugin.short_name)]) then
+
+    local plugin_list = plugin.opt and opt_plugins or start_plugins
+    local plugin_path = config[plugin.opt and 'opt_dir' or 'start_dir']
+
+    local plugin_installed = plugin_list[util.join_paths(plugin_path, plugin.short_name)]
+
+    if not plugin_installed or plugin.type ~= PackerGetCompiled(plugin_name).type then
       table.insert(missing_plugins, plugin_name)
     end
   end
