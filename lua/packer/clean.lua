@@ -13,7 +13,7 @@ local PLUGIN_OPTIONAL_LIST = 1
 local PLUGIN_START_LIST = 2
 
 local function is_dirty(plugin, typ)
-  return plugin.disable or (plugin.opt and typ == 2) or (not plugin.opt and typ == 1)
+  return plugin.disable or (plugin.opt and typ == PLUGIN_START_LIST) or (not plugin.opt and typ == PLUGIN_OPTIONAL_LIST)
 end
 
 -- Find and remove any plugins not currently configured for use
