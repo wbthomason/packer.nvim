@@ -8,20 +8,41 @@ local config = nil
 local plugin_utils = {}
 plugin_utils.cfg = function(_config) config = _config end
 
+plugin_utils.custom_plugin = 'custom'
+plugin_utils.local_plugin = 'local'
+plugin_utils.git_plugin = 'git'
+
 plugin_utils.guess_type = function(plugin)
   if plugin.installer then
-    plugin.type = 'custom'
+    plugin.type = plugin_utils.custom_plugin
   elseif vim.fn.isdirectory(plugin.path) ~= 0 then
     plugin.url = plugin.path
-    plugin.type = 'local'
+    plugin.type = plugin_utils.local_plugin
   elseif string.sub(plugin.path, 1, 6) == 'git://' or string.sub(plugin.path, 1, 4) == 'http'
     or string.match(plugin.path, '@') then
     plugin.url = plugin.path
-    plugin.type = 'git'
+    plugin.type = plugin_utils.git_plugin
   else
     local path = table.concat(vim.split(plugin.path, "\\", true), "/")
     plugin.url = 'https://github.com/' .. path
-    plugin.type = 'git'
+    plugin.type = plugin_utils.git_plugin
+  end
+end
+
+plugin_utils.guess_dir_type = function(dir)
+  local globdir = vim.fn.glob(dir)
+  local dir_type = (vim.loop.fs_lstat(globdir) or {type='noexist'}).type
+
+  --[[ NOTE: We're assuming here that:
+             1. users only create custom plugins for non-git repos;
+             2. custom plugins don't use symlinks to install;
+             otherwise, there's no consistent way to tell from a dir alone… ]]
+  if dir_type == 'link' then
+    return plugin_utils.local_plugin
+  elseif vim.loop.fs_stat(globdir..'/.git') then
+    return plugin_utils.git_plugin
+  elseif dir_type ~= 'noexist' then
+    return plugin_utils.custom_plugin
   end
 end
 
@@ -82,8 +103,11 @@ plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins
   local missing_plugins = {}
   for _, plugin_name in ipairs(vim.tbl_keys(plugins)) do
     local plugin = plugins[plugin_name]
-    if (not plugin.opt and not start_plugins[util.join_paths(config.start_dir, plugin.short_name)])
-      or (plugin.opt and not opt_plugins[util.join_paths(config.opt_dir, plugin.short_name)]) then
+
+    local plugin_path = util.join_paths(config[plugin.opt and 'opt_dir' or 'start_dir'], plugin.short_name)
+    local plugin_installed = (plugin.opt and opt_plugins or start_plugins)[plugin_path]
+
+    if not plugin_installed or plugin.type ~= plugin_utils.guess_dir_type(plugin_path) then
       table.insert(missing_plugins, plugin_name)
     end
   end
