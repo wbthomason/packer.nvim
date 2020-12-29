@@ -70,7 +70,7 @@ local function update_plugin(plugin, display_win, results)
     local r = await(plugin.updater(display_win))
     if r ~= nil and r.ok then
       local msg = 'up to date'
-      if plugin.type == 'git' then
+      if plugin.type == plugin_utils.git_plugin then
         local info = r.info
         local actual_update = info.revs[1] ~= info.revs[2]
         msg = actual_update and ('updated: ' .. info.revs[1] .. '...' .. info.revs[2])
