@@ -19,61 +19,65 @@ end
 -- Find and remove any plugins not currently configured for use
 local clean_plugins = function(_, plugins, results)
   return async(function()
+    local dirty_plugins = {}
     results = results or {}
     results.removals = results.removals or {}
 
-    local function map_install_folder(install_paths)
-      local install_folders = {}
-
-      for install_path, _ in pairs(install_paths) do
-        local split_path = vim.split(install_path, '/', true)
-        install_folders[split_path[#split_path]] = true
-      end
-
-      return install_folders
-    end
-
-    local function map_names_to_paths(plugin_names)
-      local paths = {}
-
-      for _, plugin_name in ipairs(plugin_names) do
-        paths[#paths+1] = plugins[plugin_name].install_path
-      end
-
-      return paths
-    end
-
     local opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
-    local dirty_plugins = plugin_utils.find_missing_plugins(plugins, opt_plugins, start_plugins)
 
-    opt_plugins = map_install_folder(opt_plugins)
-    start_plugins = map_install_folder(start_plugins)
+    local missing_plugins = plugin_utils.find_missing_plugins(plugins, opt_plugins, start_plugins)
+    -- turn the list into a hashset-like structure
+    for idx, plugin_name in ipairs(missing_plugins) do
+      missing_plugins[plugin_name] = true
+      missing_plugins[idx] = nil
+    end
 
+	 -- test for dirty / 'missing' plugins
     for _, plugin_config in pairs(plugins) do
-      local plugin_name = plugin_config.short_name
-      local plugin_source = (opt_plugins[plugin_name] and PLUGIN_OPTIONAL_LIST) or
-        (start_plugins[plugin_name] and PLUGIN_START_LIST)
+      local path = plugin_config.install_path
 
-      if is_dirty(plugin_config, plugin_source) then
-        dirty_plugins[#dirty_plugins+1] = plugin_name
+      local plugin_source = nil
+      if opt_plugins[path] then
+        plugin_source = PLUGIN_OPTIONAL_LIST
+        opt_plugins[path] = nil
+      elseif start_plugins[path] then
+        plugin_source = PLUGIN_START_LIST
+        start_plugins[path] = nil
+      end
+
+		-- We don't want to report paths which don't exist for removal; that will confuse people
+      local plugin_missing = missing_plugins[plugin_config.short_name] and vim.loop.fs_stat(path)
+
+      if plugin_missing or is_dirty(plugin_config, plugin_source) then
+        dirty_plugins[#dirty_plugins+1] = path
       end
     end
+
+    -- Any path which was not set to `nil` above will be set to dirty here
+    local function mark_remaining_as_dirty(plugin_list)
+      for path, _ in pairs(plugin_list) do
+		    dirty_plugins[#dirty_plugins+1] = path
+      end
+    end
+
+    mark_remaining_as_dirty(opt_plugins)
+    mark_remaining_as_dirty(start_plugins)
 
     if next(dirty_plugins) then
       local lines = {}
 
-      for _, plugin_name in ipairs(dirty_plugins) do
-        table.insert(lines, '  - ' .. plugins[plugin_name].install_path)
+      for _, path in ipairs(dirty_plugins) do
+        table.insert(lines, '  - ' .. path)
       end
 
       if await(display.ask_user('Removing the following directories. OK? (y/N)', lines)) then
         results.removals = dirty_plugins
         if util.is_windows then
-          for _, plugin_name in ipairs(vim.tbl_keys(dirty_plugins)) do
-            os.execute('cmd /C rmdir /S /Q ' .. plugins[plugin_name].install_path)
+          for _, path in ipairs(dirty_plugins) do
+            os.execute('cmd /C rmdir /S /Q ' .. path)
           end
         else
-          os.execute('rm -rf ' .. table.concat(map_names_to_paths(dirty_plugins), ' '))
+          os.execute('rm -rf ' .. table.concat(dirty_plugins, ' '))
         end
       else
         log.warning('Cleaning cancelled!')
