@@ -68,7 +68,6 @@ plugin_utils.update_rplugins = vim.schedule_wrap(function() vim.cmd [[UpdateRemo
 
 plugin_utils.ensure_dirs = function()
   if vim.fn.isdirectory(config.opt_dir) == 0 then vim.fn.mkdir(config.opt_dir, 'p') end
-
   if vim.fn.isdirectory(config.start_dir) == 0 then vim.fn.mkdir(config.start_dir, 'p') end
 end
 
