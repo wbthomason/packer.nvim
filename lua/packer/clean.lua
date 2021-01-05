@@ -32,7 +32,7 @@ local clean_plugins = function(_, plugins, results)
       missing_plugins[idx] = nil
     end
 
-	 -- test for dirty / 'missing' plugins
+    -- test for dirty / 'missing' plugins
     for _, plugin_config in pairs(plugins) do
       local path = plugin_config.install_path
 
@@ -45,7 +45,7 @@ local clean_plugins = function(_, plugins, results)
         start_plugins[path] = nil
       end
 
-		-- We don't want to report paths which don't exist for removal; that will confuse people
+      -- We don't want to report paths which don't exist for removal; that will confuse people
       local plugin_missing = missing_plugins[plugin_config.short_name] and vim.loop.fs_stat(path)
 
       if plugin_missing or is_dirty(plugin_config, plugin_source) then
@@ -56,7 +56,7 @@ local clean_plugins = function(_, plugins, results)
     -- Any path which was not set to `nil` above will be set to dirty here
     local function mark_remaining_as_dirty(plugin_list)
       for path, _ in pairs(plugin_list) do
-		    dirty_plugins[#dirty_plugins+1] = path
+        dirty_plugins[#dirty_plugins+1] = path
       end
     end
 

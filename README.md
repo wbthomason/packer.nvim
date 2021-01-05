@@ -149,8 +149,8 @@ local fn = vim.fn
 local install_path = fn.stdpath('data')..'/site/pack/packer/opt/packer.nvim'
 
 if fn.empty(fn.glob(install_path)) > 0 then
-	execute('!git clone https://github.com/wbthomason/packer.nvim '..install_path)
-    execute 'packadd packer.nvim'
+  execute('!git clone https://github.com/wbthomason/packer.nvim '..install_path)
+  execute 'packadd packer.nvim'
 end
 ```
 
@@ -382,7 +382,7 @@ to generate the lazy-loader file!
 
 ## Status
 **tl;dr**: Beta. Things seem to work and most features are complete, but certainly not every edge
-case has been tested. People willing to give it a try and report bugs/errors are very welcome! 
+case has been tested. People willing to give it a try and report bugs/errors are very welcome!
 
 - Basic package management works (i.e. installation, updating, cleaning, start/opt plugins,
   displaying results)

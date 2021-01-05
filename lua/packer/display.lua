@@ -269,8 +269,8 @@ local display_mt = {
         if plugin.output.err and #plugin.output.err > 0 then
           table.insert(plugin_data.lines, '  Errors:')
           for _, line in ipairs(plugin.output.err) do
-	    line = vim.trim(line)
-	    if line:find('\n') then
+            line = vim.trim(line)
+            if line:find('\n') then
               for sub_line in line:gmatch("[^\r\n]+") do
                 table.insert(plugin_data.lines, '    ' .. sub_line)
               end
