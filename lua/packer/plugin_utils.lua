@@ -8,24 +8,24 @@ local config = nil
 local plugin_utils = {}
 plugin_utils.cfg = function(_config) config = _config end
 
-plugin_utils.custom_plugin = 'custom'
-plugin_utils.local_plugin = 'local'
-plugin_utils.git_plugin = 'git'
+plugin_utils.custom_plugin_type = 'custom'
+plugin_utils.local_plugin_type = 'local'
+plugin_utils.git_plugin_type = 'git'
 
 plugin_utils.guess_type = function(plugin)
   if plugin.installer then
-    plugin.type = plugin_utils.custom_plugin
+    plugin.type = plugin_utils.custom_plugin_type
   elseif vim.fn.isdirectory(plugin.path) ~= 0 then
     plugin.url = plugin.path
-    plugin.type = plugin_utils.local_plugin
+    plugin.type = plugin_utils.local_plugin_type
   elseif string.sub(plugin.path, 1, 6) == 'git://' or string.sub(plugin.path, 1, 4) == 'http'
     or string.match(plugin.path, '@') then
     plugin.url = plugin.path
-    plugin.type = plugin_utils.git_plugin
+    plugin.type = plugin_utils.git_plugin_type
   else
     local path = table.concat(vim.split(plugin.path, "\\", true), "/")
     plugin.url = 'https://github.com/' .. path
-    plugin.type = plugin_utils.git_plugin
+    plugin.type = plugin_utils.git_plugin_type
   end
 end
 
@@ -38,11 +38,11 @@ plugin_utils.guess_dir_type = function(dir)
              2. custom plugins don't use symlinks to install;
              otherwise, there's no consistent way to tell from a dir alone… ]]
   if dir_type == 'link' then
-    return plugin_utils.local_plugin
+    return plugin_utils.local_plugin_type
   elseif vim.loop.fs_stat(globdir..'/.git') then
-    return plugin_utils.git_plugin
+    return plugin_utils.git_plugin_type
   elseif dir_type ~= 'noexist' then
-    return plugin_utils.custom_plugin
+    return plugin_utils.custom_plugin_type
   end
 end
 

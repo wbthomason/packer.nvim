@@ -222,7 +222,7 @@ local display_mt = {
         local actual_update = true
         local failed_update = false
         if result.ok then
-          if plugin.type ~= plugin_utils.git_plugin or plugin.revs[1] == plugin.revs[2] then
+          if plugin.type ~= plugin_utils.git_plugin_type or plugin.revs[1] == plugin.revs[2] then
             actual_update = false
             table.insert(message, string.format(' %s %s is already up to date', config.done_sym,
                                                 plugin_name))
