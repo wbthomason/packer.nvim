@@ -131,7 +131,7 @@ manage = function(plugin)
   local name_segments = vim.split(path, util.get_separator())
 
   local segment_idx = #name_segments
-  local name = name_segments[segment_idx]
+  local name = plugin.as or name_segments[segment_idx]
   while name == '' and segment_idx > 0 do
     name = name_segments[segment_idx]
     segment_idx = segment_idx - 1
@@ -154,7 +154,7 @@ manage = function(plugin)
   end
 
   -- Handle aliases
-  plugin.short_name = plugin.as or name
+  plugin.short_name = name
   plugin.name = path
   plugin.path = path
 
