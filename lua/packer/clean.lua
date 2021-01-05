@@ -49,14 +49,14 @@ local clean_plugins = function(_, plugins, results)
       local plugin_missing = missing_plugins[plugin_config.short_name] and vim.loop.fs_stat(path)
 
       if plugin_missing or is_dirty(plugin_config, plugin_source) then
-        dirty_plugins[#dirty_plugins+1] = path
+        table.insert(dirty_plugins, path)
       end
     end
 
     -- Any path which was not set to `nil` above will be set to dirty here
     local function mark_remaining_as_dirty(plugin_list)
       for path, _ in pairs(plugin_list) do
-        dirty_plugins[#dirty_plugins+1] = path
+        table.insert(dirty_plugins, path)
       end
     end
 
