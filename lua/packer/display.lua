@@ -154,6 +154,7 @@ local display_mt = {
   --- Update the status message of a task in progress
   task_update = vim.schedule_wrap(function(self, plugin, message)
     if not self:valid_display() then return end
+    if not self.marks[plugin] then return end
     local line, _ = get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
     self:set_lines(line[1], line[1] + 1,
                    {string.format(' %s %s: %s', config.working_sym, plugin, message)})
