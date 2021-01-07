@@ -151,6 +151,7 @@ local function make_loaders(_, plugins)
   local commands = {}
   local keymaps = {}
   local after = {}
+  local funcs = {}
   for name, plugin in pairs(plugins) do
     if not plugin.disable then
       local quote_name = "'" .. name .. "'"
@@ -268,6 +269,18 @@ local function make_loaders(_, plugins)
             table.insert(after[other_plugin], name)
           end
         end
+        
+        if plugin.func then
+          loaders[name].only_sequence = false
+          loaders[name].only_setup = false
+
+          if type(plugin.func) == 'string' then plugin.func = {plugin.func} end
+
+          for _, func in ipairs(plugin.func) do
+            funcs[func] = funcs[func] or {}
+            table.insert(funcs[func], quote_name)
+          end
+        end
       end
 
       if plugin.config and (not plugin.opt or loaders[name].only_setup) then
@@ -369,6 +382,12 @@ then
     end
   end
 
+  local func_aucmds = {}
+  for func, names in pairs(funcs) do
+    table.insert(func_aucmds, fmt('  au FuncUndefined %s ++once call s:load([%s], {})', func,
+                                table.concat(names, ', ')))
+  end
+
   local sequence_lines = {}
   local graph = {}
   for name, precedents in pairs(sequence_loads) do
@@ -460,12 +479,14 @@ then
   vim.list_extend(result, keymap_defs)
   table.insert(result, '')
 
-  -- The filetype and event autocommands
+  -- The filetype, event and func autocommands
   table.insert(result, 'augroup packer_load_aucmds\n  au!')
   table.insert(result, '  " Filetype lazy-loads')
   vim.list_extend(result, ft_aucmds)
   table.insert(result, '  " Event lazy-loads')
   vim.list_extend(result, event_aucmds)
+  table.insert(result, '  " Function lazy-loads')
+  vim.list_extend(result, func_aucmds)
   table.insert(result, 'augroup END\n')
 
   -- And a final package path update
@@ -474,6 +495,6 @@ end
 
 local compile = setmetatable({cfg = cfg}, {__call = make_loaders})
 
-compile.opt_keys = {'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup'}
+compile.opt_keys = {'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup', 'func'}
 
 return compile
