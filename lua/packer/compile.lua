@@ -343,10 +343,12 @@ then
   for keymap, names in pairs(keymaps) do
     local prefix = nil
     if keymap[1] ~= 'i' then prefix = '' end
-    local cr_escaped_map = string.gsub(keymap[2], '<[cC][rR]>', '\\<CR\\>')
+    local escaped_map = string.gsub(keymap[2], '<[cC][rR]>', '\\<CR\\>')
+    escaped_map = string.gsub(escaped_map, '<Plug>', '\\<Plug\\>')
+
     local keymap_line = fmt(
                           '%snoremap <silent> %s <cmd>call <SID>load([%s], { "keys": "%s"%s })<cr>',
-                          keymap[1], keymap[2], table.concat(names, ', '), cr_escaped_map,
+                          keymap[1], keymap[2], table.concat(names, ', '), escaped_map,
                           prefix == nil and '' or (', "prefix": "' .. prefix .. '"'))
 
     table.insert(keymap_defs, keymap_line)
