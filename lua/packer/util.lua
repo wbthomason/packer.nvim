@@ -31,7 +31,11 @@ util.nonempty_or = function(opt, alt)
   end
 end
 
-util.is_windows = jit.os == 'Windows'
+if jit ~= nil then
+  util.is_windows = jit.os == 'Windows'
+else
+  util.is_windows = package.config:sub(1,1) == '\\'
+end
 
 util.get_separator = function()
   if util.is_windows then return '\\' end
