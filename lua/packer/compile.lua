@@ -151,7 +151,7 @@ local function make_loaders(_, plugins)
   local commands = {}
   local keymaps = {}
   local after = {}
-  local funcs = {}
+  local fns = {}
   for name, plugin in pairs(plugins) do
     if not plugin.disable then
       local quote_name = "'" .. name .. "'"
@@ -270,15 +270,15 @@ local function make_loaders(_, plugins)
           end
         end
         
-        if plugin.func then
+        if plugin.fn then
           loaders[name].only_sequence = false
           loaders[name].only_setup = false
 
-          if type(plugin.func) == 'string' then plugin.func = {plugin.func} end
+          if type(plugin.fn) == 'string' then plugin.fn = {plugin.fn} end
 
-          for _, func in ipairs(plugin.func) do
-            funcs[func] = funcs[func] or {}
-            table.insert(funcs[func], quote_name)
+          for _, fn in ipairs(plugin.fn) do
+            fns[fn] = fns[fn] or {}
+            table.insert(fns[fns], quote_name)
           end
         end
       end
@@ -382,9 +382,9 @@ then
     end
   end
 
-  local func_aucmds = {}
-  for func, names in pairs(funcs) do
-    table.insert(func_aucmds, fmt('  au FuncUndefined %s ++once call s:load([%s], {})', func,
+  local fn_aucmds = {}
+  for fn, names in pairs(fns) do
+    table.insert(fn_aucmds, fmt('  au FuncUndefined %s ++once call s:load([%s], {})', fn,
                                 table.concat(names, ', ')))
   end
 
@@ -486,7 +486,7 @@ then
   table.insert(result, '  " Event lazy-loads')
   vim.list_extend(result, event_aucmds)
   table.insert(result, '  " Function lazy-loads')
-  vim.list_extend(result, func_aucmds)
+  vim.list_extend(result, fn_aucmds)
   table.insert(result, 'augroup END\n')
 
   -- And a final package path update
