@@ -1,6 +1,7 @@
 local api = vim.api
 local log = require('packer.log')
 local a = require('packer.async')
+local plugin_utils = require('packer.plugin_utils')
 
 local in_headless = #api.nvim_list_uis() == 0
 
@@ -222,7 +223,7 @@ local display_mt = {
         local actual_update = true
         local failed_update = false
         if result.ok then
-          if plugin.type ~= 'git' or plugin.revs[1] == plugin.revs[2] then
+          if plugin.type ~= plugin_utils.git_plugin_type or plugin.revs[1] == plugin.revs[2] then
             actual_update = false
             table.insert(message, string.format(' %s %s is already up to date', config.done_sym,
                                                 plugin_name))
@@ -269,8 +270,8 @@ local display_mt = {
         if plugin.output.err and #plugin.output.err > 0 then
           table.insert(plugin_data.lines, '  Errors:')
           for _, line in ipairs(plugin.output.err) do
-	    line = vim.trim(line)
-	    if line:find('\n') then
+            line = vim.trim(line)
+            if line:find('\n') then
               for sub_line in line:gmatch("[^\r\n]+") do
                 table.insert(plugin_data.lines, '    ' .. sub_line)
               end
