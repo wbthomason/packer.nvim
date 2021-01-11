@@ -128,9 +128,10 @@ _packer_load = function(names, cause)
       vim.fn.feedkeys(prefix, 'n')
     end
 
-    -- NOTE: I'm not sure if the below substitution is correct; it might correspond to the literal
-    -- characters \<Plug> rather than the special <Plug> key.
-    vim.fn.feedkeys(string.gsub(string.gsub(cause.keys, '^<Plug>', '\\<Plug>') .. extra, '<[cC][rR]>', '\r'))
+    local formatted_plug_key = string.format('%c%c%c', 0x80, 253, 83)
+    local keys = string.gsub(cause.keys, '^<Plug>', formatted_plug_key) .. extra
+    local escaped_keys = string.gsub(keys, '<[cC][rR]>', '\r')
+    vim.fn.feedkeys(escaped_keys)
   elseif cause.event then
     vim.cmd(fmt('doautocmd <nomodeline> %s', cause.event))
   elseif cause.ft then
