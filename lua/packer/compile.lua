@@ -128,9 +128,10 @@ _packer_load = function(names, cause)
       vim.fn.feedkeys(prefix, 'n')
     end
 
-    -- NOTE: I'm not sure if the below substitution is correct; it might correspond to the literal
-    -- characters \<Plug> rather than the special <Plug> key.
-    vim.fn.feedkeys(string.gsub(string.gsub(cause.keys, '^<Plug>', '\\<Plug>') .. extra, '<[cC][rR]>', '\r'))
+    local formatted_plug_key = string.format('%c%c%c', 0x80, 253, 83)
+    local keys = string.gsub(cause.keys, '^<Plug>', formatted_plug_key) .. extra
+    local escaped_keys = string.gsub(keys, '<[cC][rR]>', '\r')
+    vim.fn.feedkeys(escaped_keys)
   elseif cause.event then
     vim.cmd(fmt('doautocmd <nomodeline> %s', cause.event))
   elseif cause.ft then
@@ -343,10 +344,12 @@ then
   for keymap, names in pairs(keymaps) do
     local prefix = nil
     if keymap[1] ~= 'i' then prefix = '' end
-    local cr_escaped_map = string.gsub(keymap[2], '<[cC][rR]>', '\\<CR\\>')
+    local escaped_map = string.gsub(keymap[2], '<[cC][rR]>', '\\<CR\\>')
+    escaped_map = string.gsub(escaped_map, '<Plug>', '\\<Plug\\>')
+
     local keymap_line = fmt(
                           '%snoremap <silent> %s <cmd>call <SID>load([%s], { "keys": "%s"%s })<cr>',
-                          keymap[1], keymap[2], table.concat(names, ', '), cr_escaped_map,
+                          keymap[1], keymap[2], table.concat(names, ', '), escaped_map,
                           prefix == nil and '' or (', "prefix": "' .. prefix .. '"'))
 
     table.insert(keymap_defs, keymap_line)
