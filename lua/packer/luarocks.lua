@@ -231,6 +231,7 @@ local function clean_packages(plugins, disp)
       for _, package in ipairs(installed_packages) do to_remove[package.name] = package end
       for _, plugin in pairs(plugins) do
         if plugin.rocks then
+          if type(plugin.rocks) == 'string' then plugin.rocks = {plugin.rocks} end
           for _, rock in ipairs(plugin.rocks) do
             if type(rock) == 'table' then
               if to_remove[rock[1]] and to_remove[rock[1]].version == rock[2] then
