@@ -224,7 +224,7 @@ end
 local function clean_packages(plugins, disp)
   return async(function()
     local r = result.ok()
-    if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
+    if not hererocks_is_setup() then return r end
     r = r:and_then(await, luarocks_list(disp))
     r = r:map_ok(function(installed_packages)
       local to_remove = {}
