@@ -369,6 +369,18 @@ packer.sync = function(...)
   end)()
 end
 
+
+local function reload_module(name)
+  if name then
+    package.loaded[name] = nil
+    return require(name)
+  end
+end
+
+--- Search through all the loaded packages for those that
+--- return a function, then cross reference them with all
+--- the plugin configs and setups and if there are any matches
+--- reload the user module.
 local function precompile(plugs)
   local reverse_index = {}
   for k, v in pairs(package.loaded) do
@@ -376,14 +388,11 @@ local function precompile(plugs)
         reverse_index[v] = k
     end
   end
-  -- TODO also reload setup as well as config
   for _, plugin in pairs(plugs) do
-    local value = plugin.config
-    local package_name = reverse_index[value]
-    if package_name then
-      package.loaded[package_name] = nil
-      require(package_name)
-    end
+    local cfg = reload_module(reverse_index[plugin.config])
+    local setup = reload_module(reverse_index[plugin.setup])
+    if cfg then plugin.config = cfg end
+    if setup then plugin.setup = setup end
   end
 end
 
