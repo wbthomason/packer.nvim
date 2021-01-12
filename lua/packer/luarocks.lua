@@ -301,7 +301,37 @@ end
 
 local function cfg(_config) config = _config.luarocks end
 
+local function handle_command(cmd, ...)
+  local task
+  local packages = {...}
+  if cmd == 'install' then
+    task = install_packages(packages)
+  elseif cmd == 'clean' then
+    task = uninstall_packages(packages)
+  else
+    log.warning('Unrecognized command!')
+    return result.err('Unrecognized command')
+  end
+
+  local r = await(task)()
+  local package_names = vim.fn.escape(vim.inspect(packages), '"')
+  return r:map_ok(function(data)
+    local operation_name = cmd:sub(1, 1):upper() .. cmd:sub(2)
+    log.info(fmt('%s packages %s', operation_name, package_names))
+    return data
+  end):map_err(function(err)
+    log.error(fmt('Failed to %s packages %s: %s', cmd, package_names, vim.inspect(err)))
+    return err
+  end)
+end
+
+local function make_commands()
+  vim.cmd [[ command! -nargs=+ PackerRocks lua require('packer.luarocks').handle_command(<f-args>) ]]
+end
+
 return {
+  handle_command = handle_command,
+  install_commands = make_commands,
   list = luarocks_list,
   install_hererocks = hererocks_installer,
   setup_paths = setup_nvim_paths,
