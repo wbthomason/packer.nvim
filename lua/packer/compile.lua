@@ -129,9 +129,10 @@ _packer_load = function(names, cause)
       vim.fn.feedkeys(prefix, 'n')
     end
 
-    -- NOTE: I'm not sure if the below substitution is correct; it might correspond to the literal
-    -- characters \<Plug> rather than the special <Plug> key.
-    vim.fn.feedkeys(string.gsub(string.gsub(cause.keys, '^<Plug>', '\\<Plug>') .. extra, '<[cC][rR]>', '\r'))
+    local formatted_plug_key = string.format('%c%c%c', 0x80, 253, 83)
+    local keys = string.gsub(cause.keys, '^<Plug>', formatted_plug_key) .. extra
+    local escaped_keys = string.gsub(keys, '<[cC][rR]>', '\r')
+    vim.fn.feedkeys(escaped_keys)
   elseif cause.event then
     vim.cmd(fmt('doautocmd <nomodeline> %s', cause.event))
   elseif cause.ft then
@@ -152,6 +153,7 @@ local function make_loaders(_, plugins)
   local commands = {}
   local keymaps = {}
   local after = {}
+  local fns = {}
   for name, plugin in pairs(plugins) do
     if not plugin.disable then
       local quote_name = "'" .. name .. "'"
@@ -269,6 +271,18 @@ local function make_loaders(_, plugins)
             table.insert(after[other_plugin], name)
           end
         end
+        
+        if plugin.fn then
+          loaders[name].only_sequence = false
+          loaders[name].only_setup = false
+
+          if type(plugin.fn) == 'string' then plugin.fn = {plugin.fn} end
+
+          for _, fn in ipairs(plugin.fn) do
+            fns[fn] = fns[fn] or {}
+            table.insert(fns[fns], quote_name)
+          end
+        end
       end
 
       if plugin.config and (not plugin.opt or loaders[name].only_setup) then
@@ -344,10 +358,12 @@ then
   for keymap, names in pairs(keymaps) do
     local prefix = nil
     if keymap[1] ~= 'i' then prefix = '' end
-    local cr_escaped_map = string.gsub(keymap[2], '<[cC][rR]>', '\\<CR\\>')
+    local escaped_map = string.gsub(keymap[2], '<[cC][rR]>', '\\<CR\\>')
+    escaped_map = string.gsub(escaped_map, '<Plug>', '\\<Plug\\>')
+
     local keymap_line = fmt(
                           '%snoremap <silent> %s <cmd>call <SID>load([%s], { "keys": "%s"%s })<cr>',
-                          keymap[1], keymap[2], table.concat(names, ', '), cr_escaped_map,
+                          keymap[1], keymap[2], table.concat(names, ', '), escaped_map,
                           prefix == nil and '' or (', "prefix": "' .. prefix .. '"'))
 
     table.insert(keymap_defs, keymap_line)
@@ -368,6 +384,12 @@ then
         table.insert(sequence_loads[name], pre)
       end
     end
+  end
+
+  local fn_aucmds = {}
+  for fn, names in pairs(fns) do
+    table.insert(fn_aucmds, fmt('  au FuncUndefined %s ++once call s:load([%s], {})', fn,
+                                table.concat(names, ', ')))
   end
 
   local sequence_lines = {}
@@ -462,12 +484,14 @@ then
   vim.list_extend(result, keymap_defs)
   table.insert(result, '')
 
-  -- The filetype and event autocommands
+  -- The filetype, event and func autocommands
   table.insert(result, 'augroup packer_load_aucmds\n  au!')
   table.insert(result, '  " Filetype lazy-loads')
   vim.list_extend(result, ft_aucmds)
   table.insert(result, '  " Event lazy-loads')
   vim.list_extend(result, event_aucmds)
+  table.insert(result, '  " Function lazy-loads')
+  vim.list_extend(result, fn_aucmds)
   table.insert(result, 'augroup END\n')
 
   -- And a final package path update
@@ -476,6 +500,6 @@ end
 
 local compile = setmetatable({cfg = cfg}, {__call = make_loaders})
 
-compile.opt_keys = {'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup'}
+compile.opt_keys = {'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup', 'func'}
 
 return compile

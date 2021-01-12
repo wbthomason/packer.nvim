@@ -268,7 +268,7 @@ A table given to `use` can take two forms:
    and may additionally have a number of optional keyword elements, shown below:
 ```lua
 use {
-  'myusername/example',   -- The plugin location string
+  'myusername/example',        -- The plugin location string
   -- The following keys are all optional
   disable = boolean,           -- Mark a plugin as inactive
   as = string,                 -- Specifies an alias under which to install the plugin
@@ -290,6 +290,7 @@ use {
   ft = string or list,         -- Specifies filetypes which load this plugin.
   keys = string or list,       -- Specifies maps which load this plugin. See "Keybindings".
   event = string or list,      -- Specifies autocommand events which load this plugin.
+  fn = string or list          -- Specifies functions which load this plugin.
   cond = string, function, or list of strings/functions,   -- Specifies a conditional test to load this plugin
   setup = string or function,  -- Specifies code to run before this plugin is loaded.
 }
