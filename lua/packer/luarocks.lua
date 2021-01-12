@@ -253,23 +253,24 @@ end
 
 local function ensure_packages(plugins, disp)
   return async(function()
-    local r = result.ok()
-    if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
-    r = r:and_then(await, luarocks_list(disp))
-    r = r:map_ok(function(installed_packages)
-      local to_install = {}
-      for _, plugin in pairs(plugins) do
-        if plugin.rocks then
-          if type(plugin.rocks) == 'string' then plugin.rocks = {plugin.rocks} end
-          for _, rock in ipairs(plugin.rocks) do
-            if type(rock) == 'table' then
-              to_install[rock[1]] = rock
-            else
-              to_install[rock] = true
-            end
+    local to_install = {}
+    for _, plugin in pairs(plugins) do
+      if plugin.rocks then
+        if type(plugin.rocks) == 'string' then plugin.rocks = {plugin.rocks} end
+        for _, rock in ipairs(plugin.rocks) do
+          if type(rock) == 'table' then
+            to_install[rock[1]] = rock
+          else
+            to_install[rock] = true
           end
         end
       end
+    end
+    local r = result.ok()
+    if #to_install == 0 then return r end
+    if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
+    r = r:and_then(await, luarocks_list(disp))
+    r = r:map_ok(function(installed_packages)
 
       for _, package in ipairs(installed_packages) do
         local spec = to_install[package.name]
