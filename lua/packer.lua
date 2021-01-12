@@ -65,7 +65,12 @@ local config_defaults = {
     header_sym = '━',
     header_lines = 2,
     title = 'packer.nvim',
-    show_all_info = true
+    show_all_info = true,
+    keybindings = {
+      quit = 'q',
+      toggle_info = '<CR>',
+      prompt_revert = 'r',
+    }
   },
   luarocks = {python_cmd = 'python'}
 }
@@ -128,7 +133,7 @@ manage = function(plugin)
   local name_segments = vim.split(path, util.get_separator())
 
   local segment_idx = #name_segments
-  local name = name_segments[segment_idx]
+  local name = plugin.as or name_segments[segment_idx]
   while name == '' and segment_idx > 0 do
     name = name_segments[segment_idx]
     segment_idx = segment_idx - 1
@@ -151,7 +156,7 @@ manage = function(plugin)
   end
 
   -- Handle aliases
-  plugin.short_name = plugin.as or name
+  plugin.short_name = name
   plugin.name = path
   plugin.path = path
 
@@ -175,7 +180,7 @@ manage = function(plugin)
                                         plugin.short_name)
 
   if not plugin.type then plugin_utils.guess_type(plugin) end
-  if plugin.type ~= 'custom' then plugin_types[plugin.type].setup(plugin) end
+  if plugin.type ~= plugin_utils.custom_plugin_type then plugin_types[plugin.type].setup(plugin) end
   for k, v in pairs(plugin) do if handlers[k] then handlers[k](plugins, plugin, v) end end
   plugins[plugin.short_name] = plugin
 

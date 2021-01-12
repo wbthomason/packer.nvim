@@ -46,8 +46,6 @@ Neovim.
 ## Requirements
 - You need to be running Neovim v0.5.0+; `packer` makes use of extmarks and other newly-added Neovim
   features.
-- Your version of Neovim must be compiled with LuaJIT support; `packer` relies on this to detect
-  whether you are running Windows or a Unix-like OS (for path separators)
 - If you are on Windows 10, you need developer mode enabled in order to use local plugins (`packer`
   needs to use `mklink`, which requires admin privileges - credit to @TimUntersberger for this note)
 
@@ -155,8 +153,8 @@ local fn = vim.fn
 local install_path = fn.stdpath('data')..'/site/pack/packer/opt/packer.nvim'
 
 if fn.empty(fn.glob(install_path)) > 0 then
-	execute('!git clone https://github.com/wbthomason/packer.nvim '..install_path)
-    execute 'packadd packer.nvim'
+  execute('!git clone https://github.com/wbthomason/packer.nvim '..install_path)
+  execute 'packadd packer.nvim'
 end
 ```
 
@@ -239,6 +237,11 @@ default configuration values (and structure of the configuration table) are:
     moved_sym = '→', -- The symbol for a plugin which was moved (e.g. from opt to start)
     header_sym = '━', -- The symbol for the header line in packer's display
     show_all_info = true, -- Should packer show all update details automatically?
+    keybindings = { -- Keybindings for the display window
+      quit = 'q',
+      toggle_info = '<CR>',
+      prompt_revert = 'r',
+    }
   },
   luarocks = {
     python_cmd = 'python'
@@ -387,7 +390,7 @@ to generate the lazy-loader file!
 
 ## Status
 **tl;dr**: Beta. Things seem to work and most features are complete, but certainly not every edge
-case has been tested. People willing to give it a try and report bugs/errors are very welcome! 
+case has been tested. People willing to give it a try and report bugs/errors are very welcome!
 
 - Basic package management works (i.e. installation, updating, cleaning, start/opt plugins,
   displaying results)

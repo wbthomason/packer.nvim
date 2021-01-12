@@ -1,6 +1,7 @@
 local api = vim.api
 local log = require('packer.log')
 local a = require('packer.async')
+local plugin_utils = require('packer.plugin_utils')
 
 local in_headless = #api.nvim_list_uis() == 0
 
@@ -25,12 +26,26 @@ end
 
 local config = nil
 local keymaps = {
-  {'n', 'q', '<cmd>lua require"packer.display".quit()<cr>', {nowait = true, silent = true}},
-  {
-    'n', '<cr>', '<cmd>lua require"packer.display".toggle_info()<cr>',
-    {nowait = true, silent = true}
+  quit = {
+    rhs = '<cmd>lua require"packer.display".quit()<cr>',
+    action = 'quit',
   },
-  {'n', 'r', '<cmd>lua require"packer.display".prompt_revert()<cr>', {nowait = true, silent = true}}
+  toggle_info = {
+    rhs = '<cmd>lua require"packer.display".toggle_info()<cr>',
+    action = 'show more info',
+  },
+  prompt_revert = {
+    rhs = '<cmd>lua require"packer.display".prompt_revert()<cr>',
+    action = 'revert an update',
+  },
+}
+
+--- The order of the keys in a dict-like table isn't guaranteed, meaning the display window can
+--- potentially show the keybindings in a different order every time
+local keymap_display_order = {
+  [1] = 'quit',
+  [2] = 'toggle_info',
+  [3] = 'prompt_revert',
 }
 
 --- Utility function to prompt a user with a question in a floating window
@@ -145,6 +160,7 @@ local display_mt = {
   --- Update the status message of a task in progress
   task_update = vim.schedule_wrap(function(self, plugin, message)
     if not self:valid_display() then return end
+    if not self.marks[plugin] then return end
     local line, _ = get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
     self:set_lines(line[1], line[1] + 1,
                    {string.format(' %s %s: %s', config.working_sym, plugin, message)})
@@ -213,7 +229,7 @@ local display_mt = {
         local actual_update = true
         local failed_update = false
         if result.ok then
-          if plugin.type ~= 'git' or plugin.revs[1] == plugin.revs[2] then
+          if plugin.type ~= plugin_utils.git_plugin_type or plugin.revs[1] == plugin.revs[2] then
             actual_update = false
             table.insert(message, string.format(' %s %s is already up to date', config.done_sym,
                                                 plugin_name))
@@ -237,6 +253,14 @@ local display_mt = {
     end
 
     if #raw_lines == 0 then table.insert(raw_lines, ' Everything already up to date!') end
+
+    table.insert(raw_lines, '')
+    for _, keymap in ipairs(keymap_display_order) do
+      if keymaps[keymap].lhs then
+        table.insert(raw_lines,
+                     string.format(" Press '%s' to %s", keymaps[keymap].lhs, keymaps[keymap].action))
+      end
+    end
 
     -- Ensure there are no newlines
     local lines = {}
@@ -404,6 +428,11 @@ end
 
 display.cfg = function(_config)
   config = _config.display
+  if config.keybindings then
+    for name, lhs in pairs(config.keybindings) do
+      if keymaps[name] then keymaps[name].lhs = lhs end
+    end
+  end
   config.filetype_cmds = make_filetype_cmds(config.working_sym, config.done_sym, config.error_sym)
 end
 
@@ -420,7 +449,9 @@ end
 --- Initialize options, settings, and keymaps for display windows
 local function setup_window(disp)
   api.nvim_buf_set_option(disp.buf, 'filetype', 'packer')
-  for _, m in ipairs(keymaps) do api.nvim_buf_set_keymap(disp.buf, m[1], m[2], m[3], m[4]) end
+  for _, m in pairs(keymaps) do
+    if m.lhs then api.nvim_buf_set_keymap(disp.buf, 'n', m.lhs, m.rhs, {nowait = true, silent = true}) end
+  end
   for _, c in ipairs(config.filetype_cmds) do vim.cmd(c) end
 end
 

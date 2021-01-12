@@ -4,8 +4,7 @@ local log = require('packer.log')
 local fmt = string.format
 local luarocks = require('packer.luarocks')
 
-local config = nil
-
+local config
 local function cfg(_config) config = _config end
 
 local feature_guard = [[
@@ -117,7 +116,7 @@ _packer_load = function(names, cause)
     end
 
     if cause.prefix then
-      local prefix = vim.v.count and vim.v.count or ''
+      local prefix = vim.v.count ~= 0 and vim.v.count or ''
       prefix = prefix .. '"' .. vim.v.register .. cause.prefix
       if vim.fn.mode('full') == 'no' then
         if vim.v.operator == 'c' then
@@ -156,16 +155,15 @@ local function make_loaders(_, plugins)
   for name, plugin in pairs(plugins) do
     if not plugin.disable then
       local quote_name = "'" .. name .. "'"
-      if plugin.config then
+      if plugin.config and not plugin.executable_config then
         plugin.executable_config = {}
         if type(plugin.config) ~= 'table' then plugin.config = {plugin.config} end
         for i, config_item in ipairs(plugin.config) do
           local executable_string = config_item
           if type(config_item) == 'function' then
             local stringified = string.dump(config_item, true)
-            executable_string = 'loadstring(' .. vim.inspect(stringified) .. ')()'
-            if not plugin.opt then stringified = executable_string end
             plugin.config[i] = stringified
+            executable_string = 'loadstring(' .. vim.inspect(stringified) .. ')()'
           end
 
           table.insert(plugin.executable_config, executable_string)
@@ -283,13 +281,13 @@ local function make_loaders(_, plugins)
   local ft_aucmds = {}
   for ft, names in pairs(fts) do
     table.insert(ft_aucmds, fmt('  au FileType %s ++once call s:load([%s], { "ft": "%s" })', ft,
-    table.concat(names, ', '), ft))
+                                table.concat(names, ', '), ft))
   end
 
   local event_aucmds = {}
   for event, names in pairs(events) do
     table.insert(event_aucmds, fmt('  au %s ++once call s:load([%s], { "event": "%s" })', event,
-    table.concat(names, ', '), event))
+                                   table.concat(names, ', '), event))
   end
 
   local config_lines = {}
@@ -317,23 +315,19 @@ local function make_loaders(_, plugins)
   for condition, names in pairs(conditions) do
     local conditional_loads = {}
     for _, name in ipairs(names) do
-      table.insert(conditional_loads, 'vim.cmd("packadd ' .. name .. '")')
+      table.insert(conditional_loads, '\tvim.cmd("packadd ' .. name .. '")')
       if plugins[name].config then
-        local lines = {'', '-- Config for: ' .. name}
+        local lines = {'-- Config for: ' .. name}
         vim.list_extend(lines, plugins[name].executable_config)
-        table.insert(lines, '')
         vim.list_extend(conditional_loads, lines)
       end
     end
 
     local conditional = [[if
-    ]] .. condition .. [[
+  ]] .. condition .. [[
 
-    then
-      ]] .. table.concat(conditional_loads, '\n\t') .. [[
-
-    end
-    ]]
+then
+]] .. table.concat(conditional_loads, '\n\t') .. '\nend\n'
 
     table.insert(conditionals, conditional)
   end
@@ -341,8 +335,8 @@ local function make_loaders(_, plugins)
   local command_defs = {}
   for command, names in pairs(commands) do
     local command_line = fmt(
-    'command! -nargs=* -range -bang -complete=file %s call s:load([%s], { "cmd": "%s", "l1": <line1>, "l2": <line2>, "bang": <q-bang>, "args": <q-args> })',
-    command, table.concat(names, ', '), command)
+                           'command! -nargs=* -range -bang -complete=file %s call s:load([%s], { "cmd": "%s", "l1": <line1>, "l2": <line2>, "bang": <q-bang>, "args": <q-args> })',
+                           command, table.concat(names, ', '), command)
     table.insert(command_defs, command_line)
   end
 
@@ -352,9 +346,9 @@ local function make_loaders(_, plugins)
     if keymap[1] ~= 'i' then prefix = '' end
     local cr_escaped_map = string.gsub(keymap[2], '<[cC][rR]>', '\\<CR\\>')
     local keymap_line = fmt(
-    '%snoremap <silent> %s <cmd>call <SID>load([%s], { "keys": "%s"%s })<cr>',
-    keymap[1], keymap[2], table.concat(names, ', '), cr_escaped_map,
-    prefix == nil and '' or (', "prefix": "' .. prefix .. '"'))
+                          '%snoremap <silent> %s <cmd>call <SID>load([%s], { "keys": "%s"%s })<cr>',
+                          keymap[1], keymap[2], table.concat(names, ', '), cr_escaped_map,
+                          prefix == nil and '' or (', "prefix": "' .. prefix .. '"'))
 
     table.insert(keymap_defs, keymap_line)
   end
@@ -394,7 +388,8 @@ local function make_loaders(_, plugins)
 
   while next(frontier) ~= nil do
     local plugin = table.remove(frontier)
-    if loaders[plugin].only_sequence and not (loaders[plugin].only_setup or loaders[plugin].only_config) then
+    if loaders[plugin].only_sequence
+      and not (loaders[plugin].only_setup or loaders[plugin].only_config) then
       table.insert(sequence_lines, 'vim.cmd [[ packadd ' .. plugin .. ' ]]')
       if plugins[plugin].config then
         local lines = {'', '-- Config for: ' .. plugin}

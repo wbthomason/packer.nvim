@@ -220,6 +220,11 @@ default values: >
       moved_sym = '→', -- The symbol for a plugin which was moved (e.g. from opt to start)
       header_sym = '━', -- The symbol for the header line in packer's display
       show_all_info = true, -- Should packer show all update details automatically?
+      keybindings = { -- Keybindings for the display window
+        quit = 'q',
+        toggle_info = '<CR>',
+        prompt_revert = 'r',
+      }
     }
   }
 
@@ -336,6 +341,18 @@ and `func` is a function with the signature `func(plugins, plugin, value)`
 where `plugins` is the global table of managed plugins, `plugin` is the table
 for a specific plugin, and `value` is the value associated with key `name` in
 `plugin`.
+
+RESULTS WINDOW KEYBINDINGS                     *packer-results-keybindings*
+Once an operation completes, the results are shown in the display window.
+`packer` sets up default keybindings for this window:
+
+q                    close the display window
+<CR>                 toggle information about a particular plugin
+r                    revert an update
+
+They can be configured by changing the value of `config.display.keybindings`
+(see |packer-configuration|). Setting it to `false` will disable all keybindings.
+Setting any of its keys to `false` will disable the corresponding keybinding.
 
 ==============================================================================
 API                                            *packer-api*

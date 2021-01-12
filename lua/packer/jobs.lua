@@ -74,6 +74,7 @@ local spawn = a.wrap(function(cmd, options, callback)
       timer:stop()
       timer:close()
       if loop.is_active(handle) then
+        log.warning('Killing ' .. cmd .. ' due to timeout!')
         loop.process_kill(handle, 'sigint')
         handle:close()
         for _, pipe in pairs(options.stdio) do
