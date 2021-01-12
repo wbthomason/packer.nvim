@@ -369,10 +369,29 @@ packer.sync = function(...)
   end)()
 end
 
+local function precompile(plugs)
+  local reverse_index = {}
+  for k, v in pairs(package.loaded) do
+    if type(v) == "function" then
+        reverse_index[v] = k
+    end
+  end
+  -- TODO also reload setup as well as config
+  for _, plugin in pairs(plugs) do
+    local value = plugin.config
+    local package_name = reverse_index[value]
+    if package_name then
+      package.loaded[package_name] = nil
+      require(package_name)
+    end
+  end
+end
+
 --- Update the compiled lazy-loader code
 -- Takes an optional argument of a path to which to output the resulting compiled code
 packer.compile = function(output_path)
   output_path = output_path or config.compile_path
+  precompile(plugins)
   local compiled_loader = compile(plugins)
   output_path = vim.fn.expand(output_path)
   vim.fn.mkdir(vim.fn.fnamemodify(output_path, ":h"), 'p')
