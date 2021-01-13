@@ -401,7 +401,8 @@ end
 packer.compile = function(output_path)
   output_path = output_path or config.compile_path
   precompile(plugins)
-  local compiled_loader = compile(plugins)
+  -- NOTE: we copy the plugins table so the in memory value is not mutated during compilation
+  local compiled_loader = compile(vim.deepcopy(plugins))
   output_path = vim.fn.expand(output_path)
   vim.fn.mkdir(vim.fn.fnamemodify(output_path, ":h"), 'p')
   local output_file = io.open(output_path, 'w')
