@@ -279,7 +279,7 @@ local function make_loaders(_, plugins)
 
           for _, fn in ipairs(plugin.fn) do
             fns[fn] = fns[fn] or {}
-            table.insert(fns[fns], quote_name)
+            table.insert(fns[fn], quote_name)
           end
         end
       end
@@ -482,7 +482,7 @@ then
   vim.list_extend(result, keymap_defs)
   table.insert(result, '')
 
-  -- The filetype, event and func autocommands
+  -- The filetype, event and function autocommands
   table.insert(result, 'augroup packer_load_aucmds\n  au!')
   table.insert(result, '  " Filetype lazy-loads')
   vim.list_extend(result, ft_aucmds)
@@ -498,6 +498,6 @@ end
 
 local compile = setmetatable({cfg = cfg}, {__call = make_loaders})
 
-compile.opt_keys = {'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup', 'func'}
+compile.opt_keys = {'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup', 'fn'}
 
 return compile
