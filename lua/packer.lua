@@ -381,7 +381,7 @@ end
 --- return a function, then cross reference them with all
 --- the plugin configs and setups and if there are any matches
 --- reload the user module.
-local function precompile(plugs)
+local function refresh_configs(plugs)
   local reverse_index = {}
   for k, v in pairs(package.loaded) do
     if type(v) == "function" then
@@ -400,7 +400,7 @@ end
 -- Takes an optional argument of a path to which to output the resulting compiled code
 packer.compile = function(output_path)
   output_path = output_path or config.compile_path
-  precompile(plugins)
+  refresh_configs(plugins)
   -- NOTE: we copy the plugins table so the in memory value is not mutated during compilation
   local compiled_loader = compile(vim.deepcopy(plugins))
   output_path = vim.fn.expand(output_path)
