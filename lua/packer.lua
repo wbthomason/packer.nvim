@@ -33,6 +33,7 @@ local config_defaults = {
   opt_default = false,
   transitive_opt = true,
   transitive_disable = true,
+  auto_reload_compiled = true,
   git = {
     cmd = 'git',
     subcommands = {
@@ -408,6 +409,9 @@ packer.compile = function(output_path)
   local output_file = io.open(output_path, 'w')
   output_file:write(compiled_loader)
   output_file:close()
+  if config.auto_reload_compiled then
+    vim.cmd("source "..output_path)
+  end
   log.info('Finished compiling lazy-loaders!')
 end
 
