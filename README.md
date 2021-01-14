@@ -2,6 +2,10 @@
 [`use-package`](https://github.com/jwiegley/use-package) inspired plugin/package management for
 Neovim.
 
+Have questions? Start a [discussion](https://github.com/wbthomason/packer.nvim/discussions).
+
+Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvim/issues) or a [PR](https://github.com/wbthomason/packer.nvim/pulls).
+
 ## Table of Contents
 1. [Notices](#notices)
 2. [Features](#features)
