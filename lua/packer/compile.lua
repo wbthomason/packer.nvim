@@ -44,15 +44,15 @@ local function handle_bufread(names)
   end
 end
 
+local packer_load = nil
 local function handle_after(name, before)
   local plugin = plugins[name]
   plugin.load_after[before] = nil
   if next(plugin.load_after) == nil then
-    _packer_load({name}, {})
+    packer_load({name}, {})
   end
 end
 
-local packer_load = nil
 packer_load = function(names, cause)
   local some_unloaded = false
   for _, name in ipairs(names) do
