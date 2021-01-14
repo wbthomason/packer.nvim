@@ -369,11 +369,40 @@ packer.sync = function(...)
   end)()
 end
 
+
+local function reload_module(name)
+  if name then
+    package.loaded[name] = nil
+    return require(name)
+  end
+end
+
+--- Search through all the loaded packages for those that
+--- return a function, then cross reference them with all
+--- the plugin configs and setups and if there are any matches
+--- reload the user module.
+local function refresh_configs(plugs)
+  local reverse_index = {}
+  for k, v in pairs(package.loaded) do
+    if type(v) == "function" then
+        reverse_index[v] = k
+    end
+  end
+  for _, plugin in pairs(plugs) do
+    local cfg = reload_module(reverse_index[plugin.config])
+    local setup = reload_module(reverse_index[plugin.setup])
+    if cfg then plugin.config = cfg end
+    if setup then plugin.setup = setup end
+  end
+end
+
 --- Update the compiled lazy-loader code
 -- Takes an optional argument of a path to which to output the resulting compiled code
 packer.compile = function(output_path)
   output_path = output_path or config.compile_path
-  local compiled_loader = compile(plugins)
+  refresh_configs(plugins)
+  -- NOTE: we copy the plugins table so the in memory value is not mutated during compilation
+  local compiled_loader = compile(vim.deepcopy(plugins))
   output_path = vim.fn.expand(output_path)
   vim.fn.mkdir(vim.fn.fnamemodify(output_path, ":h"), 'p')
   local output_file = io.open(output_path, 'w')
