@@ -17,7 +17,7 @@ endif
 
 local vim_loader = [[
 function! s:load(names, cause) abort
-call luaeval('_packer_load(_A[1], _A[2])', [a:names, a:cause])
+  call luaeval('_packer_load_wrapper(_A[1], _A[2])', [a:names, a:cause])
 endfunction
 ]]
 
@@ -34,8 +34,6 @@ local function handle_bufread(names)
   end
 end
 
-_packer_load = nil
-
 local function handle_after(name, before)
   local plugin = plugins[name]
   plugin.load_after[before] = nil
@@ -44,7 +42,8 @@ local function handle_after(name, before)
   end
 end
 
-_packer_load = function(names, cause)
+local packer_load = nil
+packer_load = function(names, cause)
   local some_unloaded = false
   for _, name in ipairs(names) do
     if not plugins[name].loaded then
@@ -135,6 +134,16 @@ _packer_load = function(names, cause)
   elseif cause.ft then
     vim.cmd(fmt('doautocmd <nomodeline> %s FileType %s', 'filetypeplugin', cause.ft))
     vim.cmd(fmt('doautocmd <nomodeline> %s FileType %s', 'filetypeindent', cause.ft))
+  end
+end
+
+_packer_load_wrapper = function(names, cause)
+  success, err_msg = pcall(packer_load, names, cause)
+  if not success then
+    vim.cmd('echohl ErrorMsg')
+    vim.cmd('echomsg "Error in packer_compiled: ' .. vim.fn.escape(err_msg, '"') .. '"')
+    vim.cmd('echomsg "Please check your config for correctness"')
+    vim.cmd('echohl None')
   end
 end
 ]]
