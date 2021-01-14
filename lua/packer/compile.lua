@@ -128,10 +128,8 @@ _packer_load = function(names, cause)
       vim.fn.feedkeys(prefix, 'n')
     end
 
-    local formatted_plug_key = string.format('%c%c%c', 0x80, 253, 83)
-    local keys = string.gsub(cause.keys, '^<Plug>', formatted_plug_key) .. extra
-    local escaped_keys = string.gsub(keys, '<[cC][rR]>', '\r')
-    vim.fn.feedkeys(escaped_keys)
+    local escaped_keys = vim.api.nvim_replace_termcodes(cause.keys .. extra, true, true, true)
+    vim.api.nvim_feedkeys(escaped_keys, 'm', true)
   elseif cause.event then
     vim.cmd(fmt('doautocmd <nomodeline> %s', cause.event))
   elseif cause.ft then
@@ -357,8 +355,7 @@ then
   for keymap, names in pairs(keymaps) do
     local prefix = nil
     if keymap[1] ~= 'i' then prefix = '' end
-    local escaped_map = string.gsub(keymap[2], '<[cC][rR]>', '\\<CR\\>')
-    escaped_map = string.gsub(escaped_map, '<Plug>', '\\<Plug\\>')
+    local escaped_map = string.gsub(keymap[2], '([\\"<>])', '\\%1')
 
     local keymap_line = fmt(
                           '%snoremap <silent> %s <cmd>call <SID>load([%s], { "keys": "%s"%s })<cr>',
