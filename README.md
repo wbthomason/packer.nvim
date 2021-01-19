@@ -2,6 +2,10 @@
 [`use-package`](https://github.com/jwiegley/use-package) inspired plugin/package management for
 Neovim.
 
+Have questions? Start a [discussion](https://github.com/wbthomason/packer.nvim/discussions).
+
+Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvim/issues) or a [PR](https://github.com/wbthomason/packer.nvim/pulls).
+
 ## Table of Contents
 1. [Notices](#notices)
 2. [Features](#features)
@@ -16,6 +20,7 @@ Neovim.
     5. [Extending packer](#extending-packer)
     6. [Compiling Lazy-Loaders](#compiling-lazy-loaders)
 7. [Status](#status)
+8. [Contributors](#contributors)
 
 ## Notices
 - **2020-12-10**: The `disable_commands` configuration flag now affects non-`startup` use as well.
@@ -402,3 +407,25 @@ case has been tested. People willing to give it a try and report bugs/errors are
 ## Current work-in-progress
 - Luarocks support
 - Playing with ideas to make manual compilation less necessary
+
+## Contributors
+Many thanks to those who have contributed to the project! PRs and issues are always welcome. This
+list is infrequently updated; please feel free to bug me if you're not listed here and you would
+like to be.
+
+- @nanotee
+- @weilbith
+- @Iron-E
+- @tjdevries
+- @numToStr
+- @fsouza
+- @gbrlsnchs
+- @lewis6991
+- @TimUntersberger
+- @akinsho
+- @bfredl
+- @sunjon
+- @gwerbin
+- @shadmansaleh
+- @ur4ltz
+- @EdenEast

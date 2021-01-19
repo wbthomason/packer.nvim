@@ -13,7 +13,7 @@ local PLUGIN_OPTIONAL_LIST = 1
 local PLUGIN_START_LIST = 2
 
 local function is_dirty(plugin, typ)
-  return plugin.disable or (plugin.opt and typ == PLUGIN_START_LIST) or (not plugin.opt and typ == PLUGIN_OPTIONAL_LIST)
+  return (plugin.opt and typ == PLUGIN_START_LIST) or (not plugin.opt and typ == PLUGIN_OPTIONAL_LIST)
 end
 
 -- Find and remove any plugins not currently configured for use
@@ -46,9 +46,11 @@ local clean_plugins = function(_, plugins, results)
       end
 
       -- We don't want to report paths which don't exist for removal; that will confuse people
-      local plugin_missing = missing_plugins[plugin_config.short_name] and vim.loop.fs_stat(path)
+      local is_installed = vim.loop.fs_stat(path) ~= nil
+      local plugin_missing = missing_plugins[plugin_config.short_name] and is_installed
+      local disabled_but_installed = is_installed and plugin_config.disable
 
-      if plugin_missing or is_dirty(plugin_config, plugin_source) then
+      if plugin_missing or is_dirty(plugin_config, plugin_source) or disabled_but_installed then
         table.insert(dirty_plugins, path)
       end
     end

@@ -14,11 +14,21 @@ if !has('nvim-0.5')
   echohl None
   finish
 endif
+try
+]]
+
+local catch_errors = [[
+catch
+  echohl ErrorMsg
+  echom "Error in packer_compiled: " .. v:exception
+  echom "Please check your config for correctness"
+  echohl None
+endtry
 ]]
 
 local vim_loader = [[
 function! s:load(names, cause) abort
-call luaeval('_packer_load(_A[1], _A[2])', [a:names, a:cause])
+  call luaeval('_packer_load_wrapper(_A[1], _A[2])', [a:names, a:cause])
 endfunction
 ]]
 
@@ -35,17 +45,16 @@ local function handle_bufread(names)
   end
 end
 
-_packer_load = nil
-
+local packer_load = nil
 local function handle_after(name, before)
   local plugin = plugins[name]
   plugin.load_after[before] = nil
   if next(plugin.load_after) == nil then
-    _packer_load({name}, {})
+    packer_load({name}, {})
   end
 end
 
-_packer_load = function(names, cause)
+packer_load = function(names, cause)
   local some_unloaded = false
   for _, name in ipairs(names) do
     if not plugins[name].loaded then
@@ -129,15 +138,23 @@ _packer_load = function(names, cause)
       vim.fn.feedkeys(prefix, 'n')
     end
 
-    local formatted_plug_key = string.format('%c%c%c', 0x80, 253, 83)
-    local keys = string.gsub(cause.keys, '^<Plug>', formatted_plug_key) .. extra
-    local escaped_keys = string.gsub(keys, '<[cC][rR]>', '\r')
-    vim.fn.feedkeys(escaped_keys)
+    local escaped_keys = vim.api.nvim_replace_termcodes(cause.keys .. extra, true, true, true)
+    vim.api.nvim_feedkeys(escaped_keys, 'm', true)
   elseif cause.event then
     vim.cmd(fmt('doautocmd <nomodeline> %s', cause.event))
   elseif cause.ft then
     vim.cmd(fmt('doautocmd <nomodeline> %s FileType %s', 'filetypeplugin', cause.ft))
     vim.cmd(fmt('doautocmd <nomodeline> %s FileType %s', 'filetypeindent', cause.ft))
+  end
+end
+
+_packer_load_wrapper = function(names, cause)
+  success, err_msg = pcall(packer_load, names, cause)
+  if not success then
+    vim.cmd('echohl ErrorMsg')
+    vim.cmd('echomsg "Error in packer_compiled: ' .. vim.fn.escape(err_msg, '"') .. '"')
+    vim.cmd('echomsg "Please check your config for correctness"')
+    vim.cmd('echohl None')
   end
 end
 ]]
@@ -280,7 +297,7 @@ local function make_loaders(_, plugins)
 
           for _, fn in ipairs(plugin.fn) do
             fns[fn] = fns[fn] or {}
-            table.insert(fns[fns], quote_name)
+            table.insert(fns[fn], quote_name)
           end
         end
       end
@@ -358,8 +375,7 @@ then
   for keymap, names in pairs(keymaps) do
     local prefix = nil
     if keymap[1] ~= 'i' then prefix = '' end
-    local escaped_map = string.gsub(keymap[2], '<[cC][rR]>', '\\<CR\\>')
-    escaped_map = string.gsub(escaped_map, '<Plug>', '\\<Plug\\>')
+    local escaped_map = string.gsub(keymap[2], '([\\"<>])', '\\%1')
 
     local keymap_line = fmt(
                           '%snoremap <silent> %s <cmd>call <SID>load([%s], { "keys": "%s"%s })<cr>',
@@ -484,7 +500,7 @@ then
   vim.list_extend(result, keymap_defs)
   table.insert(result, '')
 
-  -- The filetype, event and func autocommands
+  -- The filetype, event and function autocommands
   table.insert(result, 'augroup packer_load_aucmds\n  au!')
   table.insert(result, '  " Filetype lazy-loads')
   vim.list_extend(result, ft_aucmds)
@@ -493,6 +509,7 @@ then
   table.insert(result, '  " Function lazy-loads')
   vim.list_extend(result, fn_aucmds)
   table.insert(result, 'augroup END\n')
+  table.insert(result, catch_errors)
 
   -- And a final package path update
   return table.concat(result, '\n')
@@ -500,6 +517,6 @@ end
 
 local compile = setmetatable({cfg = cfg}, {__call = make_loaders})
 
-compile.opt_keys = {'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup', 'func'}
+compile.opt_keys = {'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup', 'fn'}
 
 return compile
