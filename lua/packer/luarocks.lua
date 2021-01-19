@@ -319,7 +319,7 @@ local function handle_command(cmd, ...)
   local packages = {...}
   if cmd == 'install' then
     task = install_packages(packages)
-  elseif cmd == 'clean' then
+  elseif cmd == 'remove' then
     task = uninstall_packages(packages)
   else
     log.warning('Unrecognized command!')
