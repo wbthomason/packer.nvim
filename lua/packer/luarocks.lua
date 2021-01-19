@@ -267,7 +267,7 @@ local function ensure_packages(plugins, disp)
       end
     end
     local r = result.ok()
-    if #to_install == 0 then return r end
+    if next(to_install) == nil then return r end
     if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
     r = r:and_then(await, luarocks_list(disp))
     r = r:map_ok(function(installed_packages)
