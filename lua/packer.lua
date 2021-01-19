@@ -224,7 +224,7 @@ packer.use = manage
 -- Finds plugins present in the `packer` package but not in the managed set
 packer.clean = function(results)
   async(function()
-    await(luarocks.clean(plugins, nil))
+    await(luarocks.clean(plugins, results, nil))
     await(clean(plugins, results))
   end)()
 end
@@ -253,7 +253,7 @@ packer.install = function(...)
     local results = {}
     local tasks, display_win = install(plugins, install_plugins, results)
     if next(tasks) then
-      table.insert(tasks, luarocks.ensure(plugins, display_win))
+      table.insert(tasks, luarocks.ensure(plugins, results, display_win))
       table.insert(tasks, 1, function() return not display.status.running end)
       table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
       display_win:update_headline_message('installing ' .. #tasks - 2 .. ' / ' .. #tasks - 2
@@ -296,7 +296,7 @@ packer.update = function(...)
     local update_tasks
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
-    table.insert(tasks, luarocks.ensure(plugins, display_win))
+    table.insert(tasks, luarocks.ensure(plugins, results, display_win))
     table.insert(tasks, 1, function() return not display.status.running end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     display_win:update_headline_message('updating ' .. #tasks - 2 .. ' / ' .. #tasks - 2
@@ -348,8 +348,8 @@ packer.sync = function(...)
     local update_tasks
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
-    table.insert(tasks, luarocks.clean(plugins, display_win))
-    table.insert(tasks, luarocks.ensure(plugins, display_win))
+    table.insert(tasks, luarocks.clean(plugins, results, display_win))
+    table.insert(tasks, luarocks.ensure(plugins, results, display_win))
     table.insert(tasks, 1, function() return not display.status.running end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     display_win:update_headline_message(
