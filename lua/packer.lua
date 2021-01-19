@@ -66,17 +66,12 @@ local config_defaults = {
     header_lines = 2,
     title = 'packer.nvim',
     show_all_info = true,
-    keybindings = {
-      quit = 'q',
-      toggle_info = '<CR>',
-      prompt_revert = 'r',
-    }
+    keybindings = {quit = 'q', toggle_info = '<CR>', prompt_revert = 'r'}
   },
   luarocks = {python_cmd = 'python'}
 }
 
 local config = vim.tbl_extend('force', {}, config_defaults)
-
 local plugins = nil
 
 --- Initialize packer
@@ -374,7 +369,6 @@ packer.sync = function(...)
   end)()
 end
 
-
 local function reload_module(name)
   if name then
     package.loaded[name] = nil
@@ -388,11 +382,7 @@ end
 --- reload the user module.
 local function refresh_configs(plugs)
   local reverse_index = {}
-  for k, v in pairs(package.loaded) do
-    if type(v) == "function" then
-        reverse_index[v] = k
-    end
-  end
+  for k, v in pairs(package.loaded) do if type(v) == "function" then reverse_index[v] = k end end
   for _, plugin in pairs(plugs) do
     local cfg = reload_module(reverse_index[plugin.config])
     local setup = reload_module(reverse_index[plugin.setup])
