@@ -313,16 +313,19 @@ local function handle_command(cmd, ...)
     return result.err('Unrecognized command')
   end
 
-  local r = await(task)()
-  local package_names = vim.fn.escape(vim.inspect(packages), '"')
-  return r:map_ok(function(data)
-    local operation_name = cmd:sub(1, 1):upper() .. cmd:sub(2)
-    log.info(fmt('%s packages %s', operation_name, package_names))
-    return data
-  end):map_err(function(err)
-    log.error(fmt('Failed to %s packages %s: %s', cmd, package_names, vim.inspect(err)))
-    return err
-  end)
+  return async(function()
+    local r = await(task)
+    await(a.main)
+    local package_names = vim.fn.escape(vim.inspect(packages), '"')
+    return r:map_ok(function(data)
+      local operation_name = cmd:sub(1, 1):upper() .. cmd:sub(2)
+      log.info(fmt('%sed packages %s', operation_name, package_names))
+      return data
+    end):map_err(function(err)
+      log.error(fmt('Failed to %s packages %s: %s', cmd, package_names, vim.inspect(err)))
+      return err
+    end)
+  end)()
 end
 
 local function make_commands()
