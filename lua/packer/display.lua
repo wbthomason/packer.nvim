@@ -239,6 +239,24 @@ local display_mt = {
       end
     end
 
+    if results.luarocks then
+      if results.luarocks.installs then
+        for package, result in pairs(results.luarocks.installs) do
+          table.insert(raw_lines,
+                       fmt(' %s %s %s', result.ok and config.done_sym or config.error_sym,
+                           result.ok and 'Installed' or 'Failed to install', package))
+        end
+      end
+
+      if results.luarocks.removals then
+        for package, result in pairs(results.luarocks.removals) do
+          table.insert(raw_lines,
+                       fmt(' %s %s %s', result.ok and config.done_sym or config.error_sym,
+                           result.ok and 'Removed' or 'Failed to remove', package))
+        end
+      end
+    end
+
     if #raw_lines == 0 then table.insert(raw_lines, ' Everything already up to date!') end
 
     table.insert(raw_lines, '')
