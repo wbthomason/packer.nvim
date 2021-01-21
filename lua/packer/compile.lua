@@ -2,6 +2,7 @@
 local util = require('packer.util')
 local log = require('packer.log')
 local fmt = string.format
+local luarocks = require('packer.luarocks')
 
 local config
 local function cfg(_config) config = _config end
@@ -469,6 +470,7 @@ then
   local result = {'" Automatically generated packer.nvim plugin loader code\n'}
   table.insert(result, feature_guard)
   table.insert(result, 'lua << END')
+  table.insert(result, luarocks.generate_path_setup())
   table.insert(result, fmt('local plugins = %s\n', vim.inspect(loaders)))
   table.insert(result, lua_loader)
   -- Then the runtimepath line

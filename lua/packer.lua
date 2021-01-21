@@ -11,6 +11,7 @@ local display = require('packer.display')
 local handlers = require('packer.handlers')
 local install = require('packer.install')
 local log = require('packer.log')
+local luarocks = require('packer.luarocks')
 local plugin_types = require('packer.plugin_types')
 local plugin_utils = require('packer.plugin_utils')
 local update = require('packer.update')
@@ -65,16 +66,12 @@ local config_defaults = {
     header_lines = 2,
     title = 'packer.nvim',
     show_all_info = true,
-    keybindings = {
-      quit = 'q',
-      toggle_info = '<CR>',
-      prompt_revert = 'r',
-    }
-  }
+    keybindings = {quit = 'q', toggle_info = '<CR>', prompt_revert = 'r'}
+  },
+  luarocks = {python_cmd = 'python'}
 }
 
 local config = vim.tbl_extend('force', {}, config_defaults)
-
 local plugins = nil
 
 --- Initialize packer
@@ -94,7 +91,7 @@ packer.init = function(user_config)
   config.start_dir = util.join_paths(config.pack_dir, 'start')
 
   for _, mod in ipairs({
-    clean, compile, display, handlers, install, plugin_types, plugin_utils, update
+    clean, compile, display, handlers, install, plugin_types, plugin_utils, update, luarocks
   }) do mod.cfg(config) end
 
   plugin_utils.ensure_dirs()
@@ -198,17 +195,13 @@ manage = function(plugin)
             for _, name in ipairs(req.after) do
               already_after = already_after or (name == plugin.short_name)
             end
-            if not already_after then
-              table.insert(req.after, plugin.short_name)
-            end
+            if not already_after then table.insert(req.after, plugin.short_name) end
           elseif req.after == nil then
             req.after = plugin.short_name
           end
         end
 
-        if config.transitive_disable and plugin.disable then
-          req.disable = true
-        end
+        if config.transitive_disable and plugin.disable then req.disable = true end
 
         manage(req)
       end
@@ -224,7 +217,12 @@ packer.use = manage
 
 --- Clean operation:
 -- Finds plugins present in the `packer` package but not in the managed set
-packer.clean = function(results) async(function() await(clean(plugins, results)) end)() end
+packer.clean = function(results)
+  async(function()
+    await(luarocks.clean(plugins, results, nil))
+    await(clean(plugins, results))
+  end)()
+end
 
 local function args_or_all(...) return util.nonempty_or({...}, vim.tbl_keys(plugins)) end
 
@@ -250,6 +248,7 @@ packer.install = function(...)
     local results = {}
     local tasks, display_win = install(plugins, install_plugins, results)
     if next(tasks) then
+      table.insert(tasks, luarocks.ensure(plugins, results, display_win))
       table.insert(tasks, 1, function() return not display.status.running end)
       table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
       display_win:update_headline_message('installing ' .. #tasks - 2 .. ' / ' .. #tasks - 2
@@ -292,6 +291,7 @@ packer.update = function(...)
     local update_tasks
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
+    table.insert(tasks, luarocks.ensure(plugins, results, display_win))
     table.insert(tasks, 1, function() return not display.status.running end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     display_win:update_headline_message('updating ' .. #tasks - 2 .. ' / ' .. #tasks - 2
@@ -343,6 +343,8 @@ packer.sync = function(...)
     local update_tasks
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
+    table.insert(tasks, luarocks.clean(plugins, results, display_win))
+    table.insert(tasks, luarocks.ensure(plugins, results, display_win))
     table.insert(tasks, 1, function() return not display.status.running end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     display_win:update_headline_message(
@@ -359,16 +361,13 @@ packer.sync = function(...)
 
     await(a.main)
 
-    if config.compile_on_sync then
-      packer.compile()
-    end
+    if config.compile_on_sync then packer.compile() end
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta)
   end)()
 end
-
 
 local function reload_module(name)
   if name then
@@ -383,11 +382,7 @@ end
 --- reload the user module.
 local function refresh_configs(plugs)
   local reverse_index = {}
-  for k, v in pairs(package.loaded) do
-    if type(v) == "function" then
-        reverse_index[v] = k
-    end
-  end
+  for k, v in pairs(package.loaded) do if type(v) == "function" then reverse_index[v] = k end end
   for _, plugin in pairs(plugs) do
     local cfg = reload_module(reverse_index[plugin.config])
     local setup = reload_module(reverse_index[plugin.setup])

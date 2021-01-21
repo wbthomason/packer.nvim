@@ -22,7 +22,7 @@ local clean_plugins = function(_, plugins, results)
     local dirty_plugins = {}
     results = results or {}
     results.removals = results.removals or {}
-
+    await(a.main)
     local opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
 
     local missing_plugins = plugin_utils.find_missing_plugins(plugins, opt_plugins, start_plugins)

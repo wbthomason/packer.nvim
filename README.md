@@ -23,6 +23,8 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 8. [Contributors](#contributors)
 
 ## Notices
+- **2021-01-19**: Basic Luarocks support has landed! Use the `rocks` key with a string or table to
+  specify packages to install.
 - **2020-12-10**: The `disable_commands` configuration flag now affects non-`startup` use as well.
   This means that, by default, `packer` will create commands for basic operations for you.
 - **2020-11-13**: There is now a default implementation for a floating window `open_fn` in
@@ -37,7 +39,7 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 ## Features
 - Declarative plugin specification
 - Support for dependencies
-- (soon) Support for Luarocks dependencies
+- Support for Luarocks dependencies
 - Expressive configuration and lazy-loading options
 - Automatically compiles efficient lazy-loading code to improve startup time
 - Uses native packages
@@ -99,6 +101,12 @@ return require('packer').startup(function()
     'haorenW1025/completion-nvim',
     opt = true,
     requires = {{'hrsh7th/vim-vsnip', opt = true}, {'hrsh7th/vim-vsnip-integ', opt = true}}
+  }
+
+  -- Plugins can also depend on rocks from luarocks.org:
+  use {
+    'my/supercoolplugin',
+    rocks = {'lpeg', {'lua-cjson', '2.1.0'}}
   }
 
   -- Local plugins can be included
@@ -241,6 +249,9 @@ default configuration values (and structure of the configuration table) are:
       toggle_info = '<CR>',
       prompt_revert = 'r',
     }
+  },
+  luarocks = {
+    python_cmd = 'python' -- Set the python command to use for running hererocks
   }
 }
 ```
@@ -278,7 +289,8 @@ use {
   commit = string,             -- Specifies a git commit to use
   lock = boolean,              -- Skip this plugin in updates/syncs
   run = string or function,    -- Post-update/install hook. See "update/install hooks".
-  requires = string or list    -- Specifies plugin dependencies. See "dependencies".
+  requires = string or list,   -- Specifies plugin dependencies. See "dependencies".
+  rocks = string or list,      -- Specifies Luarocks dependencies for the plugin
   config = string or function, -- Specifies code to run after this plugin is loaded.
   -- The following keys all imply lazy-loading
   cmd = string or list,        -- Specifies commands which load this plugin.
@@ -290,6 +302,25 @@ use {
   setup = string or function,  -- Specifies code to run before this plugin is loaded.
 }
 ```
+
+#### Luarocks support
+
+You may specify that a plugin requires one or more Luarocks packages using the `rocks` key. This key
+takes either a string specifying the name of a package (e.g. `rocks=lpeg`), or a list specifying one or more packages.
+Entries in the list may either be strings or lists --- the latter case is used to specify a
+particular version of a package, e.g. `rocks = {'lpeg', {'lua-cjson', '2.1.0'}}`.
+
+Currently, `packer` only supports equality constraints on package versions.
+
+`packer` also provides the function `packer.luarocks.install_commands()`, which creates the
+`PackerRocks <cmd> <packages...>` command. `<cmd>` must be one of "install" or "remove";
+`<packages...>` is one or more package names (currently, version restrictions are not supported with
+this command). Running `PackerRocks` will install or remove the given packages. You can use this
+command even if you don't use `packer` to manage your plugins. However, please note that (1)
+packages installed through `PackerRocks` **will** be removed by calls to `packer.luarocks.clean()`
+(unless they are also part of a `packer` plugin specification), and (2) you will need to manually
+invoke `packer.luarocks.setup_paths` (or otherwise modify your `package.path`) to ensure that Neovim
+can find the installed packages.
 
 #### Custom installers
 
@@ -395,7 +426,6 @@ case has been tested. People willing to give it a try and report bugs/errors are
 - The code is messy and needs more cleanup and refactoring
 
 ## Current work-in-progress
-- Luarocks support
 - Playing with ideas to make manual compilation less necessary
 
 ## Contributors

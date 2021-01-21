@@ -2,6 +2,7 @@ local api = vim.api
 local log = require('packer.log')
 local a = require('packer.async')
 local plugin_utils = require('packer.plugin_utils')
+local fmt = string.format
 
 local in_headless = #api.nvim_list_uis() == 0
 
@@ -26,27 +27,20 @@ end
 
 local config = nil
 local keymaps = {
-  quit = {
-    rhs = '<cmd>lua require"packer.display".quit()<cr>',
-    action = 'quit',
-  },
+  quit = {rhs = '<cmd>lua require"packer.display".quit()<cr>', action = 'quit'},
   toggle_info = {
     rhs = '<cmd>lua require"packer.display".toggle_info()<cr>',
-    action = 'show more info',
+    action = 'show more info'
   },
   prompt_revert = {
     rhs = '<cmd>lua require"packer.display".prompt_revert()<cr>',
-    action = 'revert an update',
-  },
+    action = 'revert an update'
+  }
 }
 
 --- The order of the keys in a dict-like table isn't guaranteed, meaning the display window can
 --- potentially show the keybindings in a different order every time
-local keymap_display_order = {
-  [1] = 'quit',
-  [2] = 'toggle_info',
-  [3] = 'prompt_revert',
-}
+local keymap_display_order = {[1] = 'quit', [2] = 'toggle_info', [3] = 'prompt_revert'}
 
 --- Utility function to prompt a user with a question in a floating window
 local function prompt_user(headline, body, callback)
@@ -101,7 +95,8 @@ local display = {}
 local display_mt = {
   --- Check if we have a valid display window
   valid_display = function(self)
-    return self and self.interactive and api.nvim_buf_is_valid(self.buf) and api.nvim_win_is_valid(self.win)
+    return self and self.interactive and api.nvim_buf_is_valid(self.buf)
+             and api.nvim_win_is_valid(self.win)
   end,
   --- Update the text of the display buffer
   set_lines = function(self, start_idx, end_idx, lines)
@@ -113,9 +108,13 @@ local display_mt = {
   --- Start displaying a new task
   task_start = vim.schedule_wrap(function(self, plugin, message)
     if not self:valid_display() then return end
+    if self.marks[plugin] then
+      self:task_update(plugin, message)
+      return
+    end
     display.status.running = true
     self:set_lines(config.header_lines, config.header_lines,
-                   {string.format(' %s %s: %s', config.working_sym, plugin, message)})
+                   {fmt(' %s %s: %s', config.working_sym, plugin, message)})
     self.marks[plugin] = set_extmark(self.buf, self.ns, nil, config.header_lines, 0)
   end),
 
@@ -134,8 +133,7 @@ local display_mt = {
   task_succeeded = vim.schedule_wrap(function(self, plugin, message)
     if not self:valid_display() then return end
     local line, _ = get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
-    self:set_lines(line[1], line[1] + 1,
-                   {string.format(' %s %s: %s', config.done_sym, plugin, message)})
+    self:set_lines(line[1], line[1] + 1, {fmt(' %s %s: %s', config.done_sym, plugin, message)})
     api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin])
     self.marks[plugin] = nil
     self:decrement_headline_count()
@@ -145,8 +143,7 @@ local display_mt = {
   task_failed = vim.schedule_wrap(function(self, plugin, message)
     if not self:valid_display() then return end
     local line, _ = get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
-    self:set_lines(line[1], line[1] + 1,
-                   {string.format(' %s %s: %s', config.error_sym, plugin, message)})
+    self:set_lines(line[1], line[1] + 1, {fmt(' %s %s: %s', config.error_sym, plugin, message)})
     api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin])
     self.marks[plugin] = nil
     self:decrement_headline_count()
@@ -157,8 +154,7 @@ local display_mt = {
     if not self:valid_display() then return end
     if not self.marks[plugin] then return end
     local line, _ = get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
-    self:set_lines(line[1], line[1] + 1,
-                   {string.format(' %s %s: %s', config.working_sym, plugin, message)})
+    self:set_lines(line[1], line[1] + 1, {fmt(' %s %s: %s', config.working_sym, plugin, message)})
     set_extmark(self.buf, self.ns, self.marks[plugin], line[1], 0)
   end),
 
@@ -174,9 +170,10 @@ local display_mt = {
 
   --- Setup new syntax group links for the status window
   setup_status_syntax = function(self)
-    local highlights = {'hi def link packerStatus         Type',
-    'hi def link packerStatusCommit   Constant', 'hi def link packerStatusSuccess  Constant',
-    'hi def link packerStatusFail     WarningMsg'}
+    local highlights = {
+      'hi def link packerStatus         Type', 'hi def link packerStatusCommit   Constant',
+      'hi def link packerStatusSuccess  Constant', 'hi def link packerStatusFail     WarningMsg'
+    }
     for _, c in ipairs(highlights) do vim.cmd(c) end
   end,
 
@@ -186,13 +183,13 @@ local display_mt = {
     self:setup_status_syntax()
     display.status.running = false
     time = tonumber(time)
-    self:update_headline_message(string.format('finished in %.3fs', time))
+    self:update_headline_message(fmt('finished in %.3fs', time))
     local raw_lines = {}
     local plugin_order = {}
     if results.removals then
       for plugin_dir, plugin in pairs(results.removals) do
         table.insert(plugin_order, plugin)
-        table.insert(raw_lines, string.format(' %s Removed %s', config.removed_sym, plugin_dir))
+        table.insert(raw_lines, fmt(' %s Removed %s', config.removed_sym, plugin_dir))
       end
     end
 
@@ -200,19 +197,18 @@ local display_mt = {
       for plugin, result in pairs(results.moves) do
         table.insert(plugin_order, plugin)
         table.insert(raw_lines,
-                     string.format(' %s %s %s: %s %s %s',
-                                   result.result.ok and config.done_sym or config.error_sym,
-                                   result.result.ok and 'Moved' or 'Failed to move', plugin,
-                                   result.from, config.moved_sym, result.to))
+                     fmt(' %s %s %s: %s %s %s',
+                         result.result.ok and config.done_sym or config.error_sym,
+                         result.result.ok and 'Moved' or 'Failed to move', plugin, result.from,
+                         config.moved_sym, result.to))
       end
     end
 
     if results.installs then
       for plugin, result in pairs(results.installs) do
         table.insert(plugin_order, plugin)
-        table.insert(raw_lines,
-                     string.format(' %s %s %s', result.ok and config.done_sym or config.error_sym,
-                                   result.ok and 'Installed' or 'Failed to install', plugin))
+        table.insert(raw_lines, fmt(' %s %s %s', result.ok and config.done_sym or config.error_sym,
+                                    result.ok and 'Installed' or 'Failed to install', plugin))
       end
     end
 
@@ -225,24 +221,39 @@ local display_mt = {
         if result.ok then
           if plugin.type ~= plugin_utils.git_plugin_type or plugin.revs[1] == plugin.revs[2] then
             actual_update = false
-            table.insert(message, string.format(' %s %s is already up to date', config.done_sym,
-                                                plugin_name))
+            table.insert(message, fmt(' %s %s is already up to date', config.done_sym, plugin_name))
           else
             table.insert(plugin_order, plugin_name)
-            table.insert(message,
-                         string.format(' %s Updated %s: %s..%s', config.done_sym, plugin_name,
-                                       plugin.revs[1], plugin.revs[2]))
+            table.insert(message, fmt(' %s Updated %s: %s..%s', config.done_sym, plugin_name,
+                                      plugin.revs[1], plugin.revs[2]))
           end
         else
           failed_update = true
           actual_update = false
           table.insert(plugin_order, plugin_name)
-          table.insert(message, string.format(' %s Failed to update %s', config.error_sym,
-                       plugin_name))
+          table.insert(message, fmt(' %s Failed to update %s', config.error_sym, plugin_name))
         end
 
         plugin.actual_update = actual_update
         if actual_update or failed_update then vim.list_extend(raw_lines, message) end
+      end
+    end
+
+    if results.luarocks then
+      if results.luarocks.installs then
+        for package, result in pairs(results.luarocks.installs) do
+          table.insert(raw_lines,
+                       fmt(' %s %s %s', result.ok and config.done_sym or config.error_sym,
+                           result.ok and 'Installed' or 'Failed to install', package))
+        end
+      end
+
+      if results.luarocks.removals then
+        for package, result in pairs(results.luarocks.removals) do
+          table.insert(raw_lines,
+                       fmt(' %s %s %s', result.ok and config.done_sym or config.error_sym,
+                           result.ok and 'Removed' or 'Failed to remove', package))
+        end
       end
     end
 
@@ -252,7 +263,7 @@ local display_mt = {
     for _, keymap in ipairs(keymap_display_order) do
       if keymaps[keymap].lhs then
         table.insert(raw_lines,
-                     string.format(" Press '%s' to %s", keymaps[keymap].lhs, keymaps[keymap].action))
+                     fmt(" Press '%s' to %s", keymaps[keymap].lhs, keymaps[keymap].action))
       end
     end
 
@@ -444,7 +455,9 @@ end
 local function setup_window(disp)
   api.nvim_buf_set_option(disp.buf, 'filetype', 'packer')
   for _, m in pairs(keymaps) do
-    if m.lhs then api.nvim_buf_set_keymap(disp.buf, 'n', m.lhs, m.rhs, {nowait = true, silent = true}) end
+    if m.lhs then
+      api.nvim_buf_set_keymap(disp.buf, 'n', m.lhs, m.rhs, {nowait = true, silent = true})
+    end
   end
   for _, c in ipairs(config.filetype_cmds) do vim.cmd(c) end
 end
@@ -498,9 +511,8 @@ display.quit = function()
   vim.fn.execute('q!', 'silent')
 end
 
-display.toggle_info = function()
-  if display.status.disp then display.status.disp:toggle_info() end
-end
+display.toggle_info =
+  function() if display.status.disp then display.status.disp:toggle_info() end end
 
 display.prompt_revert = function()
   if display.status.disp then display.status.disp:prompt_revert() end
