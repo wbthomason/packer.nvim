@@ -107,6 +107,7 @@ local function generate_path_setup_code()
   local package_path_str = vim.inspect(package_paths)
   local install_cpath = util.join_paths(hererocks_install_dir, 'lib', 'lua', lua_version.lua)
   local install_cpath_pattern = fmt('"%s%s?.so"', install_cpath, util.get_separator())
+  install_cpath_pattern = vim.fn.escape(install_cpath_pattern, [[\]])
   return [[
   local package_path_str = ]] .. package_path_str .. [[
 
