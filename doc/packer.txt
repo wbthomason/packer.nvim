@@ -251,6 +251,18 @@ CONFIGURING PLUGINS                            *packer-plugin-configuration*
 `setup` key described in |packer.use()|) or after they are loaded (the
 `config` key described in |packer.use()|).
 
+PLUGIN STATUSES                                 *packer-plugin-status*
+You can check whether or not a particular plugin is installed with `packer` as
+well as if that plugin is loaded. To do this you can check for the plugin's
+name in the `packer_plugins` global table. Plugins in this table are saved
+using only the last section of their names e.g. `tpope/vim-fugitive` if
+installed will be under the key `vim-fugitive`.
+>
+  if packer_plugins["vim-fugitive"] and packer_plugins["vim-fugitive"].loaded then
+  print("Vim fugitive is loaded")
+  -- other custom logic
+  end
+
 CUSTOM INSTALLERS                              *packer-custom-installers*
 You may specify a custom installer & updater for a plugin using the
 `installer` and `updater` keys in a plugin specification. Note that either
