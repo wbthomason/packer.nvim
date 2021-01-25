@@ -303,6 +303,19 @@ use {
 }
 ```
 
+#### Checking plugin statuses
+You can check whether or not a particular plugin is installed with `packer` as well as if that plugin is loaded.
+To do this you can check for the plugin's name in the `packer_plugins` global table.
+Plugins in this table are saved using only the last section of their names
+e.g. `tpope/vim-fugitive` if installed will be under the key `vim-fugitive`.
+
+```lua
+if packer_plugins["vim-fugitive"] and packer_plugins["vim-fugitive"].loaded then
+print("Vim fugitive is loaded")
+-- other custom logic
+end
+```
+
 #### Luarocks support
 
 You may specify that a plugin requires one or more Luarocks packages using the `rocks` key. This key
