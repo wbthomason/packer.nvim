@@ -109,6 +109,10 @@ return require('packer').startup(function()
     rocks = {'lpeg', {'lua-cjson', '2.1.0'}}
   }
 
+  -- You can specify rocks in isolation
+  use_rocks 'penlight'
+  use_rocks {'lua-resty-http', 'lpeg'}
+
   -- Local plugins can be included
   use '~/projects/personal/hover.nvim'
 
@@ -335,6 +339,11 @@ packages installed through `PackerRocks` **will** be removed by calls to `packer
 (unless they are also part of a `packer` plugin specification), and (2) you will need to manually
 invoke `packer.luarocks.setup_paths` (or otherwise modify your `package.path`) to ensure that Neovim
 can find the installed packages.
+
+Finally, `packer` provides the function `packer.use_rocks`, which takes a string or table specifying
+one or more Luarocks packages as in the `rocks` key. You can use this to ensure that `packer`
+downloads and manages some rocks which you want to use, but which are not associated with any
+particular plugin.
 
 #### Custom installers
 

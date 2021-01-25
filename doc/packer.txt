@@ -323,6 +323,11 @@ specification), and (2) you will need to manually invoke
 `packer.luarocks.setup_paths` (or otherwise modify your `package.path`) to
 ensure that Neovim can find the installed packages.
 
+Finally, `packer` provides the function `packer.use_rocks`, which takes a string
+or table specifying one or more Luarocks packages as in the `rocks` key. You can
+use this to ensure that `packer` downloads and manages some rocks which you want
+to use, but which are not associated with any particular plugin.
+
 SEQUENCING                                     *packer-plugin-sequencing*
 
 You may specify a loading order for plugins using the `after` key. This key can
