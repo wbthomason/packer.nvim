@@ -25,6 +25,15 @@ local function get_extmark_by_id(buf, ns, id)
   return api.nvim_buf_get_extmark_by_id(buf, ns, id)
 end
 
+local function strip_newlines(raw_lines)
+  local lines = {}
+  for _, line in ipairs(raw_lines) do
+    for _, chunk in ipairs(vim.split(line, '\n')) do table.insert(lines, chunk) end
+  end
+
+  return lines
+end
+
 local config = nil
 local keymaps = {
   quit = {rhs = '<cmd>lua require"packer.display".quit()<cr>', action = 'quit'},
@@ -185,17 +194,18 @@ local display_mt = {
     time = tonumber(time)
     self:update_headline_message(fmt('finished in %.3fs', time))
     local raw_lines = {}
-    local plugin_order = {}
+    local item_order = {}
+    local rocks_items = {}
     if results.removals then
       for plugin_dir, plugin in pairs(results.removals) do
-        table.insert(plugin_order, plugin)
+        table.insert(item_order, plugin)
         table.insert(raw_lines, fmt(' %s Removed %s', config.removed_sym, plugin_dir))
       end
     end
 
     if results.moves then
       for plugin, result in pairs(results.moves) do
-        table.insert(plugin_order, plugin)
+        table.insert(item_order, plugin)
         table.insert(raw_lines,
                      fmt(' %s %s %s: %s %s %s',
                          result.result.ok and config.done_sym or config.error_sym,
@@ -206,7 +216,7 @@ local display_mt = {
 
     if results.installs then
       for plugin, result in pairs(results.installs) do
-        table.insert(plugin_order, plugin)
+        table.insert(item_order, plugin)
         table.insert(raw_lines, fmt(' %s %s %s', result.ok and config.done_sym or config.error_sym,
                                     result.ok and 'Installed' or 'Failed to install', plugin))
       end
@@ -223,14 +233,14 @@ local display_mt = {
             actual_update = false
             table.insert(message, fmt(' %s %s is already up to date', config.done_sym, plugin_name))
           else
-            table.insert(plugin_order, plugin_name)
+            table.insert(item_order, plugin_name)
             table.insert(message, fmt(' %s Updated %s: %s..%s', config.done_sym, plugin_name,
                                       plugin.revs[1], plugin.revs[2]))
           end
         else
           failed_update = true
           actual_update = false
-          table.insert(plugin_order, plugin_name)
+          table.insert(item_order, plugin_name)
           table.insert(message, fmt(' %s Failed to update %s', config.error_sym, plugin_name))
         end
 
@@ -242,6 +252,8 @@ local display_mt = {
     if results.luarocks then
       if results.luarocks.installs then
         for package, result in pairs(results.luarocks.installs) do
+          rocks_items[package] = result.ok and nil
+                                   or {lines = strip_newlines(result.err.output.data.stderr)}
           table.insert(raw_lines,
                        fmt(' %s %s %s', result.ok and config.done_sym or config.error_sym,
                            result.ok and 'Installed' or 'Failed to install', package))
@@ -250,6 +262,8 @@ local display_mt = {
 
       if results.luarocks.removals then
         for package, result in pairs(results.luarocks.removals) do
+          rocks_items[package] = result.ok and nil
+                                   or {lines = strip_newlines(result.err.output.data.stderr)}
           table.insert(raw_lines,
                        fmt(' %s %s %s', result.ok and config.done_sym or config.error_sym,
                            result.ok and 'Removed' or 'Failed to remove', package))
@@ -268,11 +282,7 @@ local display_mt = {
     end
 
     -- Ensure there are no newlines
-    local lines = {}
-    for _, line in ipairs(raw_lines) do
-      for _, chunk in ipairs(vim.split(line, '\n')) do table.insert(lines, chunk) end
-    end
-
+    local lines = strip_newlines(raw_lines)
     self:set_lines(config.header_lines, -1, lines)
     local plugins = {}
     for plugin_name, plugin in pairs(results.plugins) do
@@ -307,22 +317,22 @@ local display_mt = {
       plugins[plugin_name] = plugin_data
     end
 
-    self.plugins = plugins
-    self.plugin_order = plugin_order
+    self.items = vim.tbl_extend('keep', plugins, rocks_items)
+    self.item_order = item_order
     if config.show_all_info then self:show_all_info() end
   end),
 
   --- Toggle the display of detailed information for all plugins in the final results display
   show_all_info = function(self)
     if not self:valid_display() then return end
-    if next(self.plugins) == nil then
+    if next(self.items) == nil then
       log.info('Operations are still running; plugin info is not ready yet')
       return
     end
 
     local line = config.header_lines + 1
-    for _, plugin_name in pairs(self.plugin_order) do
-      local plugin_data = self.plugins[plugin_name]
+    for _, plugin_name in pairs(self.item_order) do
+      local plugin_data = self.items[plugin_name]
       if plugin_data and plugin_data.spec.actual_update and #plugin_data.lines > 0 then
         self:set_lines(line, line, plugin_data.lines)
         line = line + #plugin_data.lines + 1
@@ -336,7 +346,7 @@ local display_mt = {
   --- Toggle the display of detailed information for a plugin in the final results display
   toggle_info = function(self)
     if not self:valid_display() then return end
-    if next(self.plugins) == nil then
+    if next(self.items) == nil then
       log.info('Operations are still running; plugin info is not ready yet')
       return
     end
@@ -347,7 +357,7 @@ local display_mt = {
       return
     end
 
-    local plugin_data = self.plugins[plugin_name]
+    local plugin_data = self.items[plugin_name]
     if plugin_data.displayed then
       self:set_lines(cursor_pos[1], cursor_pos[1] + #plugin_data.lines, {})
       plugin_data.displayed = false
@@ -362,7 +372,7 @@ local display_mt = {
   --- Prompt a user to revert the latest update for a plugin
   prompt_revert = function(self)
     if not self:valid_display() then return end
-    if next(self.plugins) == nil then
+    if next(self.items) == nil then
       log.info('Operations are still running; plugin info is not ready yet')
       return
     end
@@ -373,7 +383,7 @@ local display_mt = {
       return
     end
 
-    local plugin_data = self.plugins[plugin_name].spec
+    local plugin_data = self.items[plugin_name].spec
     if plugin_data.actual_update then
       prompt_user('Revert update for ' .. plugin_name .. '?', {
         'Do you want to revert ' .. plugin_name .. ' from ' .. plugin_data.revs[2] .. ' to '
@@ -400,7 +410,7 @@ local display_mt = {
     -- TODO: this is a dumb hack
     for i = cursor_pos[1], 1, -1 do
       local curr_line = api.nvim_buf_get_lines(0, i - 1, i, true)[1]
-      for name, _ in pairs(self.plugins) do
+      for name, _ in pairs(self.items) do
         if string.find(curr_line, name, 1, true) then return name, {i, 0} end
       end
     end
