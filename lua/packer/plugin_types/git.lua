@@ -318,6 +318,10 @@ git.setup = function(plugin)
     end)
   end
 
+  plugin.diff = function ()
+    
+  end
+
   plugin.revert_last = function()
     local r = result.ok(true)
     async(function()
