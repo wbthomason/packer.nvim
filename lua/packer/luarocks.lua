@@ -233,7 +233,7 @@ local function uninstall_packages(packages, results, disp)
   end)
 end
 
-local function clean_packages(plugins, results, disp)
+local function clean_packages(rocks, results, disp)
   return async(function()
     local r = result.ok()
     if not hererocks_is_setup() then return r end
@@ -241,18 +241,13 @@ local function clean_packages(plugins, results, disp)
     r = r:map_ok(function(installed_packages)
       local to_remove = {}
       for _, package in ipairs(installed_packages) do to_remove[package.name] = package end
-      for _, plugin in pairs(plugins) do
-        if plugin.rocks then
-          if type(plugin.rocks) == 'string' then plugin.rocks = {plugin.rocks} end
-          for _, rock in ipairs(plugin.rocks) do
-            if type(rock) == 'table' then
-              if to_remove[rock[1]] and to_remove[rock[1]].version == rock[2] then
-                to_remove[rock[1]] = nil
-              end
-            else
-              to_remove[rock] = nil
-            end
+      for _, rock in pairs(rocks) do
+        if type(rock) == 'table' then
+          if to_remove[rock[1]] and to_remove[rock[1]].version == rock[2] then
+            to_remove[rock[1]] = nil
           end
+        else
+          to_remove[rock] = nil
         end
       end
 
@@ -264,19 +259,14 @@ local function clean_packages(plugins, results, disp)
   end)
 end
 
-local function ensure_packages(plugins, results, disp)
+local function ensure_packages(rocks, results, disp)
   return async(function()
     local to_install = {}
-    for _, plugin in pairs(plugins) do
-      if plugin.rocks then
-        if type(plugin.rocks) == 'string' then plugin.rocks = {plugin.rocks} end
-        for _, rock in ipairs(plugin.rocks) do
-          if type(rock) == 'table' then
-            to_install[rock[1]] = rock
-          else
-            to_install[rock] = true
-          end
-        end
+    for _, rock in ipairs(rocks) do
+      if type(rock) == 'table' then
+        to_install[rock[1]] = rock
+      else
+        to_install[rock] = true
       end
     end
     local r = result.ok()
@@ -284,7 +274,6 @@ local function ensure_packages(plugins, results, disp)
     if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
     r = r:and_then(await, luarocks_list(disp))
     r = r:map_ok(function(installed_packages)
-
       for _, package in ipairs(installed_packages) do
         local spec = to_install[package.name]
         if spec then

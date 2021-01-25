@@ -1,9 +1,5 @@
--- TODO: Allow to review/rollback updates
--- TODO: Fetch/manage LuaRocks dependencies
 -- TODO: Performance analysis/tuning
 -- TODO: Merge start plugins?
--- WIP:
--- TODO: Allow separate packages
 local a = require('packer.async')
 local clean = require('packer.clean')
 local compile = require('packer.compile')
@@ -74,6 +70,7 @@ local config_defaults = {
 
 local config = vim.tbl_extend('force', {}, config_defaults)
 local plugins = nil
+local rocks = nil
 
 --- Initialize packer
 -- Forwards user configuration to sub-modules, resets the set of managed plugins, and ensures that
@@ -106,7 +103,18 @@ packer.init = function(user_config)
   end
 end
 
-packer.reset = function() plugins = {} end
+packer.reset = function()
+  plugins = {}
+  rocks = {}
+end
+
+--- Add a Luarocks package to be managed
+local function use_rocks(rock)
+  if type(rock) == "string" then rock = {rock} end
+  for _, r in ipairs(rock) do rocks[#rocks + 1] = r end
+end
+
+packer.use_rocks = use_rocks
 
 --- The main logic for adding a plugin (and any dependencies) to the managed set
 -- Can be invoked with (1) a single plugin spec as a string, (2) a single plugin spec table, or (3)
@@ -171,7 +179,6 @@ manage = function(plugin)
     end
   end
 
-  -- TODO: This needs to change for supporting multiple packages
   plugin.install_path = util.join_paths(plugin.opt and config.opt_dir or config.start_dir,
                                         plugin.short_name)
 
@@ -179,6 +186,7 @@ manage = function(plugin)
   if plugin.type ~= plugin_utils.custom_plugin_type then plugin_types[plugin.type].setup(plugin) end
   for k, v in pairs(plugin) do if handlers[k] then handlers[k](plugins, plugin, v) end end
   plugins[plugin.short_name] = plugin
+  if plugin.rocks then use_rocks(plugin.rocks) end
 
   if plugin.requires and config.ensure_dependencies then
     if type(plugin.requires) == 'string' then plugin.requires = {plugin.requires} end
@@ -220,7 +228,7 @@ packer.use = manage
 -- Finds plugins present in the `packer` package but not in the managed set
 packer.clean = function(results)
   async(function()
-    await(luarocks.clean(plugins, results, nil))
+    await(luarocks.clean(rocks, results, nil))
     await(clean(plugins, results))
   end)()
 end
@@ -249,7 +257,7 @@ packer.install = function(...)
     local results = {}
     local tasks, display_win = install(plugins, install_plugins, results)
     if next(tasks) then
-      table.insert(tasks, luarocks.ensure(plugins, results, display_win))
+      table.insert(tasks, luarocks.ensure(rocks, results, display_win))
       table.insert(tasks, 1, function() return not display.status.running end)
       table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
       display_win:update_headline_message('installing ' .. #tasks - 2 .. ' / ' .. #tasks - 2
@@ -292,7 +300,7 @@ packer.update = function(...)
     local update_tasks
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
-    table.insert(tasks, luarocks.ensure(plugins, results, display_win))
+    table.insert(tasks, luarocks.ensure(rocks, results, display_win))
     table.insert(tasks, 1, function() return not display.status.running end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     display_win:update_headline_message('updating ' .. #tasks - 2 .. ' / ' .. #tasks - 2
@@ -344,8 +352,8 @@ packer.sync = function(...)
     local update_tasks
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
-    table.insert(tasks, luarocks.clean(plugins, results, display_win))
-    table.insert(tasks, luarocks.ensure(plugins, results, display_win))
+    table.insert(tasks, luarocks.clean(rocks, results, display_win))
+    table.insert(tasks, luarocks.ensure(rocks, results, display_win))
     table.insert(tasks, 1, function() return not display.status.running end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     display_win:update_headline_message(
@@ -404,9 +412,7 @@ packer.compile = function(output_path)
   local output_file = io.open(output_path, 'w')
   output_file:write(compiled_loader)
   output_file:close()
-  if config.auto_reload_compiled then
-    vim.cmd("source "..output_path)
-  end
+  if config.auto_reload_compiled then vim.cmd("source " .. output_path) end
   log.info('Finished compiling lazy-loaders!')
 end
 
