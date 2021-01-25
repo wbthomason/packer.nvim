@@ -215,6 +215,7 @@ default configuration values (and structure of the configuration table) are:
   opt_default = false, -- Default to using opt (as opposed to start) plugins
   transitive_opt = true, -- Make dependencies of opt plugins also opt by default
   transitive_disable = true, -- Automatically disable dependencies of disabled plugins
+  auto_reload_compiled = true, -- Automatically reload the compiled file after creating it.
   git = {
     cmd = 'git', -- The base command for git operations
     subcommands = { -- Format strings for git subcommands
