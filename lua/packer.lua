@@ -457,8 +457,8 @@ packer.startup = function(spec)
   packer.reset()
 
   if user_func then
-    setfenv(user_func, vim.tbl_extend('force', getfenv(), {use = packer.use}))
-    local status, err = pcall(user_func, packer.use)
+    setfenv(user_func, vim.tbl_extend('force', getfenv(), {use = packer.use, use_rocks = packer.use_rocks}))
+    local status, err = pcall(user_func, packer.use, packer.use_rocks)
     if not status then
       log.error('Failure running setup function: ' .. vim.inspect(err))
       error(err)
