@@ -37,6 +37,10 @@ end
 local config = nil
 local keymaps = {
   quit = {rhs = '<cmd>lua require"packer.display".quit()<cr>', action = 'quit'},
+  diff = {
+    rhs = '<cmd>lua require"packer.display".diff()<cr>',
+    action = 'show the diff',
+  },
   toggle_info = {
     rhs = '<cmd>lua require"packer.display".toggle_info()<cr>',
     action = 'show more info'
@@ -49,7 +53,7 @@ local keymaps = {
 
 --- The order of the keys in a dict-like table isn't guaranteed, meaning the display window can
 --- potentially show the keybindings in a different order every time
-local keymap_display_order = {[1] = 'quit', [2] = 'toggle_info', [3] = 'prompt_revert'}
+local keymap_display_order = {[1] = 'quit', [2] = 'toggle_info', [3] = 'diff', [4] = 'prompt_revert'}
 
 --- Utility function to prompt a user with a question in a floating window
 local function prompt_user(headline, body, callback)
@@ -372,6 +376,25 @@ local display_mt = {
     end
   end,
 
+  diff = function (self)
+    if not self:valid_display() then return end
+    if next(self.plugins) == nil then
+      log.info('Operations are still running; plugin info is not ready yet')
+      return
+    end
+
+    local plugin_name, _ = self:find_nearest_plugin()
+    if plugin_name == nil then
+      log.warning('No plugin selected!')
+      return
+    end
+
+    local plugin_data = self.plugins[plugin_name]
+    print("plugin_data: " .. vim.inspect(plugin_data))
+    local diff = plugin_data.spec.diff()
+    print("diff: " .. vim.inspect(diff))
+  end,
+
   --- Prompt a user to revert the latest update for a plugin
   prompt_revert = function(self)
     if not self:valid_display() then return end
@@ -526,6 +549,9 @@ end
 
 display.toggle_info =
   function() if display.status.disp then display.status.disp:toggle_info() end end
+
+display.diff =
+  function() if display.status.disp then display.status.disp:diff() end end
 
 display.prompt_revert = function()
   if display.status.disp then display.status.disp:prompt_revert() end

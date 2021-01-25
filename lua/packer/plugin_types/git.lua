@@ -318,8 +318,15 @@ git.setup = function(plugin)
     end)
   end
 
-  plugin.diff = function ()
-    
+  plugin.diff = function()
+    local r = result.ok(true)
+    async(function ()
+      local diff_cmd = vim.split(config.exec_cmd .. fmt(config.subcommands.diff, install_to), '%s+')
+      r = r:and_then(await, jobs.run(diff_cmd, {capture_output = true}))
+      return r
+    end)()
+    print("r: " .. vim.inspect(r))
+    return r
   end
 
   plugin.revert_last = function()
