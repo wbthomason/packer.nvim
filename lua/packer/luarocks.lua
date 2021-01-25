@@ -182,6 +182,11 @@ local function install_packages(packages, results, disp)
   end)
 end
 
+--- Install the packages specified with `packages` synchronously
+local function install_sync(packages)
+  return async(function() return await(install_packages(packages)) end)()
+end
+
 local function luarocks_list(disp)
   return async(function()
     local r = result.ok()
@@ -231,6 +236,11 @@ local function uninstall_packages(packages, results, disp)
 
     return r
   end)
+end
+
+--- Uninstall the packages specified with `packages` synchronously
+local function uninstall_sync(packages)
+  return async(function() return await(uninstall_packages(packages)) end)()
 end
 
 local function clean_packages(rocks, results, disp)
@@ -342,9 +352,9 @@ return {
   list = luarocks_list,
   install_hererocks = hererocks_installer,
   setup_paths = setup_nvim_paths,
-  uninstall = uninstall_packages,
+  uninstall = uninstall_sync,
   clean = clean_packages,
-  install = install_packages,
+  install = install_sync,
   ensure = ensure_packages,
   generate_path_setup = generate_path_setup_code,
   cfg = cfg
