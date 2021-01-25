@@ -264,7 +264,7 @@ local function clean_packages(rocks, results, disp)
       return vim.tbl_keys(to_remove)
     end)
 
-    results.luarocks = results.luarocks or {}
+    if results ~= nil then results.luarocks = results.luarocks or {} end
     return r:and_then(await, uninstall_packages(r.ok, results, disp))
   end)
 end
