@@ -336,7 +336,8 @@ local function handle_command(cmd, ...)
       log.info(fmt('%sed packages %s', operation_name, package_names))
       return data
     end):map_err(function(err)
-      log.error(fmt('Failed to %s packages %s: %s', cmd, package_names, vim.inspect(err)))
+      log.error(fmt('Failed to %s packages %s: %s', cmd, package_names,
+                    vim.fn.escape(vim.inspect(err), '"\n')))
       return err
     end)
   end)()
