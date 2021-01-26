@@ -37,7 +37,7 @@ local function setup_local(plugin)
 
   plugin.updater = function(_) return async(function() return result.ok(true) end) end
   plugin.revert_last = function(_)
-    log.warning("Can't revert a local plugin!")
+    log.warn("Can't revert a local plugin!")
     return result.ok(true)
   end
 end

@@ -81,12 +81,12 @@ end)()
 local nvim_paths_are_setup = false
 local function setup_nvim_paths()
   if not hererocks_is_setup() then
-    log.warning('Tried to setup Neovim Lua paths before hererocks was setup!')
+    log.warn('Tried to setup Neovim Lua paths before hererocks was setup!')
     return
   end
 
   if nvim_paths_are_setup then
-    log.warning('Tried to setup Neovim Lua paths redundantly!')
+    log.warn('Tried to setup Neovim Lua paths redundantly!')
     return
   end
 
@@ -405,7 +405,7 @@ local function handle_command(cmd, ...)
   elseif cmd == 'remove' then
     task = uninstall_packages(packages)
   else
-    log.warning('Unrecognized command!')
+    log.warn('Unrecognized command!')
     return result.err('Unrecognized command')
   end
 

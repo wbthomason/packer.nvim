@@ -357,7 +357,7 @@ local display_mt = {
 
     local plugin_name, cursor_pos = self:find_nearest_plugin()
     if plugin_name == nil then
-      log.warning('No plugin selected!')
+      log.warn('No plugin selected!')
       return
     end
 
@@ -383,7 +383,7 @@ local display_mt = {
 
     local plugin_name, _ = self:find_nearest_plugin()
     if plugin_name == nil then
-      log.warning('No plugin selected!')
+      log.warn('No plugin selected!')
       return
     end
 
@@ -403,7 +403,7 @@ local display_mt = {
         end
       end)
     else
-      log.warning(plugin_name .. " wasn't updated; can't revert!")
+      log.warn(plugin_name .. " wasn't updated; can't revert!")
     end
   end,
 

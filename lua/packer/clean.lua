@@ -82,7 +82,7 @@ local clean_plugins = function(_, plugins, results)
           os.execute('rm -rf ' .. table.concat(dirty_plugins, ' '))
         end
       else
-        log.warning('Cleaning cancelled!')
+        log.warn('Cleaning cancelled!')
       end
     else
       log.info("Already clean!")

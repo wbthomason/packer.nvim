@@ -449,7 +449,7 @@ then
   end
 
   if next(graph) then
-    log.warning('Cycle detected in sequenced loads! Load order may be incorrect')
+    log.warn('Cycle detected in sequenced loads! Load order may be incorrect')
     -- TODO: This should actually just output the cycle, then continue with toposort. But I'm too
     -- lazy to do that right now, so.
     for plugin, _ in pairs(graph) do

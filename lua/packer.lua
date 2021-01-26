@@ -132,7 +132,7 @@ manage = function(plugin)
   end
 
   if plugin[1] == vim.NIL or plugin[1] == nil then
-    log.warning('Nil plugin name provided!')
+    log.warn('Nil plugin name provided!')
     return
   end
 
@@ -147,12 +147,12 @@ manage = function(plugin)
   end
 
   if name == '' then
-    log.warning('\\"' .. plugin[1] .. '\\" is an invalid plugin name!')
+    log.warn('\\"' .. plugin[1] .. '\\" is an invalid plugin name!')
     return
   end
 
   if plugins[name] then
-    log.warning('Plugin \\"' .. name .. '\\" is used twice!')
+    log.warn('Plugin \\"' .. name .. '\\" is used twice!')
     return
   end
 
