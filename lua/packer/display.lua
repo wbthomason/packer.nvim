@@ -378,7 +378,7 @@ local display_mt = {
 
   diff = function (self)
     if not self:valid_display() then return end
-    if next(self.plugins) == nil then
+    if next(self.items) == nil then
       log.info('Operations are still running; plugin info is not ready yet')
       return
     end
@@ -389,7 +389,7 @@ local display_mt = {
       return
     end
 
-    local plugin_data = self.plugins[plugin_name]
+    local plugin_data = self.items[plugin_name]
     print("plugin_data: " .. vim.inspect(plugin_data))
     local diff = plugin_data.spec.diff()
     print("diff: " .. vim.inspect(diff))
