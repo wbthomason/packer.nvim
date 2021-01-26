@@ -174,7 +174,7 @@ local function install_packages(packages, results, disp)
       r = r:and_then(await, luarocks_install(name, results, disp))
     end
 
-    r:map_ok(function() if disp then disp:task_succeeded('luarocks', 'rocks all installed!') end end)
+    r:map_ok(function() if disp then disp:task_succeeded('luarocks', 'rocks installed!') end end)
       :map_err(function()
         if disp then disp:task_failed('luarocks', 'installing rocks failed!') end
       end)
@@ -234,6 +234,10 @@ local function uninstall_packages(packages, results, disp)
       r = r:and_then(await, luarocks_remove(name, results, disp))
     end
 
+    r:map_ok(function() if disp then disp:task_succeeded('luarocks', 'rocks cleaned!') end end)
+      :map_err(function()
+        if disp then disp:task_failed('luarocks', 'cleaning rocks failed!') end
+      end)
     return r
   end)
 end
