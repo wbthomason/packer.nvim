@@ -252,8 +252,10 @@ local display_mt = {
     if results.luarocks then
       if results.luarocks.installs then
         for package, result in pairs(results.luarocks.installs) do
-          rocks_items[package] = result.ok and nil
-                                   or {lines = strip_newlines(result.err.output.data.stderr)}
+          if result.err then
+            rocks_items[package] = {lines = strip_newlines(result.err.output.data.stderr)}
+          end
+
           table.insert(raw_lines,
                        fmt(' %s %s %s', result.ok and config.done_sym or config.error_sym,
                            result.ok and 'Installed' or 'Failed to install', package))
@@ -262,8 +264,10 @@ local display_mt = {
 
       if results.luarocks.removals then
         for package, result in pairs(results.luarocks.removals) do
-          rocks_items[package] = result.ok and nil
-                                   or {lines = strip_newlines(result.err.output.data.stderr)}
+          if result.err then
+            rocks_items[package] = {lines = strip_newlines(result.err.output.data.stderr)}
+          end
+
           table.insert(raw_lines,
                        fmt(' %s %s %s', result.ok and config.done_sym or config.error_sym,
                            result.ok and 'Removed' or 'Failed to remove', package))
@@ -346,7 +350,7 @@ local display_mt = {
   --- Toggle the display of detailed information for a plugin in the final results display
   toggle_info = function(self)
     if not self:valid_display() then return end
-    if next(self.items) == nil then
+    if self.items == nil or next(self.items) == nil then
       log.info('Operations are still running; plugin info is not ready yet')
       return
     end
