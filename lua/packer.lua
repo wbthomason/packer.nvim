@@ -110,8 +110,11 @@ end
 
 --- Add a Luarocks package to be managed
 local function use_rocks(rock)
-  if type(rock) == "string" then rock = {rock} end
-  for _, r in ipairs(rock) do rocks[#rocks + 1] = r end
+  if type(rock) == 'string' then rock = {rock} end
+  for _, r in ipairs(rock) do
+    local rock_name = (type(r) == 'table') and r[1] or r
+    rocks[rock_name] = r
+  end
 end
 
 packer.use_rocks = use_rocks
@@ -457,7 +460,8 @@ packer.startup = function(spec)
   packer.reset()
 
   if user_func then
-    setfenv(user_func, vim.tbl_extend('force', getfenv(), {use = packer.use, use_rocks = packer.use_rocks}))
+    setfenv(user_func,
+            vim.tbl_extend('force', getfenv(), {use = packer.use, use_rocks = packer.use_rocks}))
     local status, err = pcall(user_func, packer.use, packer.use_rocks)
     if not status then
       log.error('Failure running setup function: ' .. vim.inspect(err))

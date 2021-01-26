@@ -187,6 +187,13 @@ local function install_sync(packages)
   return async(function() return await(install_packages(packages)) end)()
 end
 
+local function chunk_output(output)
+  -- Merge the output to a single line, then split again. Helps to deal with inconsistent
+  -- chunking in the output collection
+  local result = table.concat(output, '\n')
+  return vim.split(result, '\n')
+end
+
 local function luarocks_list(disp)
   return async(function()
     local r = result.ok()
@@ -194,10 +201,7 @@ local function luarocks_list(disp)
     r = r:and_then(await, run_luarocks('list --porcelain'))
     return r:map_ok(function(data)
       local results = {}
-      -- Merge the output to a single line, then split again. Helps to deal with inconsistent
-      -- chunking in the output collection
-      local output = table.concat(data.output.data.stdout, '\n')
-      output = vim.split(output, '\n')
+      local output = chunk_output(data.output.data.stdout)
       for _, line in ipairs(output) do
         for l_package, version, status, install_path in
           string.gmatch(line, "([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)") do
@@ -211,6 +215,29 @@ local function luarocks_list(disp)
       end
 
       return results
+    end)
+  end)
+end
+
+local function luarocks_show(package, disp)
+  return async(function()
+    local r = result.ok()
+    if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
+    r = r:and_then(await, run_luarocks('show --porcelain ' .. package))
+    return r:map_ok(function(data)
+      local output = chunk_output(data.output.data.stdout)
+      local dependencies = {}
+      for _, line in ipairs(output) do
+        local components = {}
+        for component in string.gmatch(line, '([^%s]+)') do
+          components[#components + 1] = component
+        end
+
+        if (components[1] == 'dependency' or components[1] == 'indirect_dependency')
+          and (components[2] ~= 'lua') then dependencies[components[2]] = components[2] end
+      end
+
+      return dependencies
     end)
   end)
 end
@@ -252,7 +279,20 @@ local function clean_packages(rocks, results, disp)
     local r = result.ok()
     if not hererocks_is_setup() then return r end
     r = r:and_then(await, luarocks_list(disp))
-    r = r:map_ok(function(installed_packages)
+    local installed_packages
+    if r.ok then
+      installed_packages = r.ok
+    else
+      return r
+    end
+
+    local dependency_info = {}
+    for _, package in ipairs(installed_packages) do
+      r = r:and_then(await, luarocks_show(package.name, disp))
+      if r.ok then dependency_info[package.name] = r.ok end
+    end
+
+    r = r:map_ok(function()
       local to_remove = {}
       for _, package in ipairs(installed_packages) do to_remove[package.name] = package end
       for _, rock in pairs(rocks) do
@@ -265,7 +305,45 @@ local function clean_packages(rocks, results, disp)
         end
       end
 
-      return vim.tbl_keys(to_remove)
+      for rock, dependencies in pairs(dependency_info) do
+        if rocks[rock] ~= nil then
+          for _, dependency in pairs(dependencies) do to_remove[dependency] = nil end
+        end
+      end
+
+      -- Toposort to ensure that we remove packages before their dependencies
+      local removal_order = {}
+      local frontier = {}
+      for rock, _ in pairs(to_remove) do
+        if next(dependency_info[rock]) == nil then
+          frontier[#frontier + 1] = rock
+          dependency_info[rock] = nil
+        end
+      end
+
+      local inverse_dependencies = {}
+      for rock, depends in pairs(dependency_info) do
+        for d, _ in pairs(depends) do
+          inverse_dependencies[d] = inverse_dependencies[d] or {}
+          inverse_dependencies[d][rock] = true
+        end
+      end
+
+      while #frontier > 0 do
+        local rock = table.remove(frontier)
+        removal_order[#removal_order + 1] = rock
+        local inv_depends = inverse_dependencies[rock]
+        if inv_depends ~= nil then
+          for depends, _ in pairs(inverse_dependencies[rock]) do
+            table.remove(dependency_info[depends])
+            if #dependency_info[depends] == 0 then frontier[#frontier + 1] = depends end
+          end
+        end
+      end
+
+      local reverse_order = {}
+      for i = #removal_order, 1, -1 do reverse_order[#reverse_order + 1] = removal_order[i] end
+      return reverse_order
     end)
 
     if results ~= nil then results.luarocks = results.luarocks or {} end
@@ -276,13 +354,14 @@ end
 local function ensure_packages(rocks, results, disp)
   return async(function()
     local to_install = {}
-    for _, rock in ipairs(rocks) do
+    for _, rock in pairs(rocks) do
       if type(rock) == 'table' then
         to_install[rock[1]] = rock
       else
         to_install[rock] = true
       end
     end
+
     local r = result.ok()
     if next(to_install) == nil then return r end
     if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
