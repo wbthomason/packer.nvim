@@ -411,7 +411,7 @@ local display_mt = {
     local commit_hash = plugin_data.revs[1]
     plugin_data.diff(commit_hash, function (diff, err)
       if err then
-        return log.warn(err)
+        return log.warn('Unable to get diff!')
       end
       local lines = vim.split(diff[1], '\n')
       vim.schedule(function()
