@@ -197,8 +197,7 @@ local display_mt = {
     local item_order = {}
     local rocks_items = {}
     if results.removals then
-      for plugin_dir, plugin in pairs(results.removals) do
-        table.insert(item_order, plugin)
+      for _, plugin_dir in pairs(results.removals) do
         table.insert(raw_lines, fmt(' %s Removed %s', config.removed_sym, plugin_dir))
       end
     end
