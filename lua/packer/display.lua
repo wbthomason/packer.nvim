@@ -402,6 +402,11 @@ local display_mt = {
       return
     end
 
+    if not self.items[plugin_name] or not self.items[plugin_name].spec then
+      log.warn('Plugin not available!')
+      return
+    end
+
     local plugin_data = self.items[plugin_name].spec
     local commit_hash = plugin_data.revs[1]
     plugin_data.diff(commit_hash, function (diff, err)
