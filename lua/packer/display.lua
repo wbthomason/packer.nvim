@@ -182,6 +182,11 @@ local display_mt = {
     vim.bo.buftype = "nofile"
     vim.bo.buflisted = false
     vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
+    vim.api.nvim_buf_set_keymap(0, "n", "q", "<cmd>pclose!<CR>", {
+      silent = true,
+      noremap = true,
+      nowait = true,
+    })
   end,
 
   --- Update the text of the headline message
