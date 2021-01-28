@@ -42,6 +42,7 @@ local config_defaults = {
       current_branch = '-C %s rev-parse --abbrev-ref HEAD',
       diff = '-C %s log --color=never --pretty=format:FMT --no-show-signature HEAD@{1}...HEAD',
       diff_fmt = '%%h %%s (%%cr)',
+      git_diff_fmt = "-C %s diff %s~ %s",
       get_rev = '-C %s rev-parse --short HEAD',
       get_msg = '-C %s log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',
       submodules = '-C %s submodule update --init --recursive --progress',

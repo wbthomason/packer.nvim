@@ -171,6 +171,19 @@ local display_mt = {
     set_extmark(self.buf, self.ns, self.marks[plugin], line[1], 0)
   end),
 
+  open_preview = function (_, commit, lines)
+    if not lines or #lines < 1 then
+      return log.warn('No diff available')
+    end
+    vim.cmd("pedit "..commit)
+    vim.cmd [[wincmd P]]
+    vim.wo.previewwindow = true
+    vim.bo.filetype = "git"
+    vim.bo.buftype = "nofile"
+    vim.bo.buflisted = false
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
+  end,
+
   --- Update the text of the headline message
   update_headline_message = vim.schedule_wrap(function(self, message)
     if not self:valid_display() then return end
@@ -385,14 +398,21 @@ local display_mt = {
 
     local plugin_name, _ = self:find_nearest_plugin()
     if plugin_name == nil then
-      log.warning('No plugin selected!')
+      log.warn('No plugin selected!')
       return
     end
 
-    local plugin_data = self.items[plugin_name]
-    print("plugin_data: " .. vim.inspect(plugin_data))
-    local diff = plugin_data.spec.diff()
-    print("diff: " .. vim.inspect(diff))
+    local plugin_data = self.items[plugin_name].spec
+    local commit_hash = plugin_data.revs[1]
+    plugin_data.diff(commit_hash, function (diff, err)
+      if err then
+        return log.warn(err)
+      end
+      local lines = vim.split(diff[1], '\n')
+      vim.schedule(function()
+        self:open_preview(commit_hash, lines)
+      end)
+    end)
   end,
 
   --- Prompt a user to revert the latest update for a plugin
