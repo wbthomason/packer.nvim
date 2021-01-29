@@ -118,6 +118,10 @@ local display_mt = {
     api.nvim_buf_set_lines(self.buf, start_idx, end_idx, true, lines)
     api.nvim_buf_set_option(self.buf, 'modifiable', false)
   end,
+  get_current_line = function (self)
+    if not self:valid_display() then return end
+    return api.nvim_get_current_line()
+  end,
   --- Start displaying a new task
   task_start = vim.schedule_wrap(function(self, plugin, message)
     if not self:valid_display() then return end
@@ -413,7 +417,12 @@ local display_mt = {
     end
 
     local plugin_data = self.items[plugin_name].spec
-    local commit_hash = plugin_data.revs[1]
+    local current_line = self:get_current_line()
+    local commit_hash = vim.fn.matchstr(current_line, [[\X*\zs[0-9a-f]\{7,9}]])
+    if not commit_hash then
+      log.warn('Unable to find the diff for this line')
+      return
+    end
     plugin_data.diff(commit_hash, function (diff, err)
       if err then
         return log.warn('Unable to get diff!')
