@@ -321,7 +321,7 @@ git.setup = function(plugin)
   plugin.diff = function(commit, callback)
     async(function ()
       local r = result.ok(true)
-      local diff_cmd = config.exec_cmd .. fmt(config.subcommands.git_diff_fmt, install_to, commit, commit)
+      local diff_cmd = config.exec_cmd .. fmt(config.subcommands.git_diff_fmt, install_to, commit)
       local diff_info = {err = {}, output = {}, messages = {}}
       local diff_onread = jobs.logging_callback(diff_info.err, diff_info.messages)
       local diff_callbacks = {stdout = diff_onread, stderr = diff_onread}
