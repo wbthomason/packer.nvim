@@ -318,6 +318,20 @@ git.setup = function(plugin)
     end)
   end
 
+  plugin.diff = function(commit, callback)
+    async(function ()
+      local r = result.ok(true)
+      local diff_cmd = config.exec_cmd .. fmt(config.subcommands.git_diff_fmt, install_to, commit, commit)
+      local diff_info = {err = {}, output = {}, messages = {}}
+      local diff_onread = jobs.logging_callback(diff_info.err, diff_info.messages)
+      local diff_callbacks = {stdout = diff_onread, stderr = diff_onread}
+      r = await(jobs.run(diff_cmd, { capture_output = diff_callbacks }))
+      return r:map_ok(function(_) return callback(diff_info.messages) end):map_err(function (err)
+        return callback(nil, err)
+      end)
+    end)()
+  end
+
   plugin.revert_last = function()
     local r = result.ok(true)
     async(function()

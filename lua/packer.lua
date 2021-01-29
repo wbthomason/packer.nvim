@@ -42,6 +42,7 @@ local config_defaults = {
       current_branch = '-C %s rev-parse --abbrev-ref HEAD',
       diff = '-C %s log --color=never --pretty=format:FMT --no-show-signature HEAD@{1}...HEAD',
       diff_fmt = '%%h %%s (%%cr)',
+      git_diff_fmt = "-C %s diff %s~ %s",
       get_rev = '-C %s rev-parse --short HEAD',
       get_msg = '-C %s log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',
       submodules = '-C %s submodule update --init --recursive --progress',
@@ -63,7 +64,7 @@ local config_defaults = {
     header_lines = 2,
     title = 'packer.nvim',
     show_all_info = true,
-    keybindings = {quit = 'q', toggle_info = '<CR>', prompt_revert = 'r'}
+    keybindings = {quit = 'q', toggle_info = '<CR>', diff = 'd', prompt_revert = 'r'}
   },
   luarocks = {python_cmd = 'python'}
 }
