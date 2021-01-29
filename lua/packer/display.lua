@@ -223,7 +223,6 @@ local display_mt = {
     local item_order = {}
     local rocks_items = {}
     if results.removals then
-      print(vim.inspect(results.removals))
       for _, plugin_dir in ipairs(results.removals) do
         table.insert(item_order, plugin_dir)
         table.insert(raw_lines, fmt(' %s Removed %s', config.removed_sym, plugin_dir))
