@@ -100,8 +100,8 @@ packer.init = function(user_config)
   plugin_utils.ensure_dirs()
 
   if not config.disable_commands then
-    vim.cmd [[command! PackerInstall  lua local packer = require 'packer'; packer.clean(); packer.install()]]
-    vim.cmd [[command! PackerUpdate   lua local packer = require 'packer'; packer.clean(); packer.update()]]
+    vim.cmd [[command! PackerInstall  lua require('packer').install()]]
+    vim.cmd [[command! PackerUpdate   lua require('packer').update()]]
     vim.cmd [[command! PackerSync     lua require('packer').sync()]]
     vim.cmd [[command! PackerClean    lua require('packer').clean()]]
     vim.cmd [[command! PackerCompile  lua require('packer').compile()]]
@@ -246,6 +246,7 @@ packer.install = function(...)
   end
 
   async(function()
+    packer.clean()
     local start_time = vim.fn.reltime()
     local results = {}
     local tasks, display_win = install(plugins, install_plugins, results)
@@ -279,6 +280,7 @@ end
 packer.update = function(...)
   local update_plugins = args_or_all(...)
   async(function()
+    packer.clean()
     local start_time = vim.fn.reltime()
     local results = {}
     local missing_plugins, installed_plugins = util.partition(
