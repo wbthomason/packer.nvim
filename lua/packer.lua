@@ -148,12 +148,12 @@ manage = function(plugin)
   end
 
   if name == '' then
-    log.warn('\\"' .. plugin[1] .. '\\" is an invalid plugin name!')
+    log.warn('"' .. plugin[1] .. '" is an invalid plugin name!')
     return
   end
 
   if plugins[name] then
-    log.warn('Plugin \\"' .. name .. '\\" is used twice!')
+    log.warn('Plugin "' .. name .. '" is used twice!')
     return
   end
 
