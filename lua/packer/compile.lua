@@ -29,14 +29,44 @@ catch
 endtry
 ]]
 
+local function funclines(str, line1, lineN, filename)
+  if line1 == 0 and lineN == 0 then return str end
+  -- get the source block
+  local phase, skip, grab = 1, line1 - 1, lineN - (line1 - 1)
+  local ostart, oend -- these will be the start/end offsets
+  if skip == 0 then phase, ostart = 2, 0 end -- starts at first line
+  for pos in str:gmatch "\n()" do
+    if phase == 1 then -- find offset of linedefined
+      skip = skip - 1;
+      if skip == 0 then ostart, phase = pos, 2 end
+    else -- phase == 2, find offset of lastlinedefined+1
+      grab = grab - 1;
+      if grab == 0 then
+        oend = pos - 2;
+        break
       end
     end
   end
 
+  return str:sub(ostart, oend)
 end
 
+local function dumpsource(f)
+  local info = debug.getinfo(f, "S")
+  local src, line, lastline = info.source, info.linedefined, info.lastlinedefined
+  local path = src:match "^@(.*)$"
+  local code = src
+  if path then
+    local file = io.open(path)
+    local code_lines = file:read '*a'
+    file:close()
+    code = code_lines
   end
 
+  local lines = vim.split(funclines(code, line, lastline), '\n')
+  lines[1] = lines[1]:match('function.*$')
+  lines[#lines] = lines[#lines]:match('.*end')
+  return table.concat(lines, '\n')
 end
 
 local function make_loaders(_, plugins)
@@ -51,22 +81,29 @@ local function make_loaders(_, plugins)
   local keymaps = {}
   local after = {}
   local fns = {}
+  local config_fns = {}
+  local setup_fns = {}
+  local cond_fns = {}
+
   for name, plugin in pairs(plugins) do
     if not plugin.disable then
       local quote_name = "'" .. name .. "'"
-      if plugin.config and not plugin.executable_config then
-        plugin.executable_config = {}
+      if plugin.config then
         if type(plugin.config) ~= 'table' then plugin.config = {plugin.config} end
+        local config_defs = {}
         for i, config_item in ipairs(plugin.config) do
-          local executable_string = config_item
-          if type(config_item) == 'function' then
-            local stringified = string.dump(config_item, true)
-            plugin.config[i] = stringified
-            executable_string = 'loadstring(' .. vim.inspect(stringified) .. ')()'
+          local fn_name = fmt('%s_config_%d', name:gsub('[.-]', '_'), #config_defs)
+          if type(config_item) == 'string' then
+            config_defs[#config_defs + 1] = fmt('local %s = function()\n%s\nend', fn_name,
+                                                config_item)
+          elseif type(config_item) == 'function' then
+            local stringified = dumpsource(config_item)
+            config_defs[#config_defs + 1] = fmt('local %s = ', fn_name) .. stringified
+            plugin.config[i] = fn_name
           end
-
-          table.insert(plugin.executable_config, executable_string)
         end
+
+        vim.list_extend(config_fns, config_defs)
       end
 
       if plugin.rtp then table.insert(rtps, util.join_paths(plugin.install_path, plugin.rtp)) end
@@ -182,7 +219,8 @@ local function make_loaders(_, plugins)
 
       if plugin.config and (not plugin.opt or loaders[name].only_setup) then
         plugin.only_config = true
-        configs[name] = plugin.executable_config
+        configs[name] = vim.deepcopy(plugin.config)
+        for i, val in ipairs(configs[name]) do configs[name][i] = val .. '()' end
       end
     end
   end
@@ -350,6 +388,7 @@ then
   table.insert(result, feature_guard)
   table.insert(result, 'lua << END')
   table.insert(result, luarocks.generate_path_setup())
+  vim.list_extend(result, config_fns)
   table.insert(result, fmt('_G.packer_plugins = %s\n', vim.inspect(loaders)))
   -- Then the runtimepath line
   if rtp_line ~= '' then
