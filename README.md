@@ -194,8 +194,7 @@ plugin, you must modify the value of `install_path` in the above snippet.
 
 The above snippets give some examples of `packer` features and use. Examples include:
 
-- Very simple: `test_init.vim` in this repo.
-- A more realistic example in my dotfiles:
+- My dotfiles:
   - [Specification file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/lua/plugins.lua)
   - [Loading file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/plugin/plugins.vim)
   - [Generated lazy-loader file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/plugin/packer_load.vim)
