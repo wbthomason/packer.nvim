@@ -47,7 +47,7 @@ packer_load = function(names, cause, plugins)
     if not plugins[name].loaded then
       vim.cmd('packadd ' .. name)
       if plugins[name].config then
-        for _i, config_line in ipairs(plugins[name].config) do loadstring(config_line)() end
+        for _, config_line in ipairs(plugins[name].config) do loadstring(config_line)() end
       end
 
       if plugins[name].after then
@@ -66,7 +66,6 @@ packer_load = function(names, cause, plugins)
     local lines = cause.l1 == cause.l2 and '' or (cause.l1 .. ',' .. cause.l2)
     vim.cmd(fmt('%s%s%s %s', lines, cause.cmd, cause.bang, cause.args))
   elseif cause.keys then
-    local keys = cause.keys
     local extra = ''
     while true do
       local c = vim.fn.getchar(0)
@@ -79,7 +78,6 @@ packer_load = function(names, cause, plugins)
       prefix = prefix .. '"' .. vim.v.register .. cause.prefix
       if vim.fn.mode('full') == 'no' then
         if vim.v.operator == 'c' then prefix = '' .. prefix end
-
         prefix = prefix .. vim.v.operator
       end
 
