@@ -254,11 +254,12 @@ then
   for keymap, names in pairs(keymaps) do
     local prefix = nil
     if keymap[1] ~= 'i' then prefix = '' end
-    local escaped_map = string.gsub(keymap[2], '([\\"<>])', '\\%1')
+    local escaped_map_lt = string.gsub(keymap[2], '<', '<lt>')
+    local escaped_map = string.gsub(escaped_map_lt, '([\\"])', '\\%1')
     local keymap_line = fmt(
                           'vim.cmd [[%snoremap <silent> %s <cmd>lua require("packer.load")({%s}, { keys = "%s"%s }, _G.packer_plugins)<cr>]]',
                           keymap[1], keymap[2], table.concat(names, ', '), escaped_map,
-                          prefix == nil and '' or (', "prefix": "' .. prefix .. '"'))
+                          prefix == nil and '' or (', prefix = "' .. prefix .. '"'))
 
     table.insert(keymap_defs, keymap_line)
   end
