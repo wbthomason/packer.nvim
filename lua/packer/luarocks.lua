@@ -109,17 +109,17 @@ local function generate_path_setup_code()
   local install_cpath_pattern = fmt('"%s%s?.so"', install_cpath, util.get_separator())
   install_cpath_pattern = vim.fn.escape(install_cpath_pattern, [[\]])
   return [[
-  local package_path_str = ]] .. package_path_str .. [[
+local package_path_str = ]] .. package_path_str .. [[
 
-  local install_cpath_pattern = ]] .. install_cpath_pattern .. [[
+local install_cpath_pattern = ]] .. install_cpath_pattern .. [[
 
-  if not string.find(package.path, package_path_str, 1, true) then
-    package.path = package.path .. ';' .. package_path_str
-  end
+if not string.find(package.path, package_path_str, 1, true) then
+  package.path = package.path .. ';' .. package_path_str
+end
 
-  if not string.find(package.cpath, install_cpath_pattern, 1, true) then
-    package.cpath = package.cpath .. ';' .. install_cpath_pattern
-  end
+if not string.find(package.cpath, install_cpath_pattern, 1, true) then
+  package.cpath = package.cpath .. ';' .. install_cpath_pattern
+end
 ]]
 end
 
