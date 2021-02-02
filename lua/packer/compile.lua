@@ -29,6 +29,16 @@ catch
 endtry
 ]]
 
+local function dump_loaders(loaders)
+  local result = vim.deepcopy(loaders)
+  for k, _ in pairs(result) do
+    result[k].only_setup = nil
+    result[k].only_sequence = nil
+  end
+
+  return vim.inspect(result)
+end
+
 local function make_loaders(_, plugins)
   local loaders = {}
   local configs = {}
@@ -340,7 +350,7 @@ then
   table.insert(result, feature_guard)
   table.insert(result, 'lua << END')
   table.insert(result, luarocks.generate_path_setup())
-  table.insert(result, fmt('_G.packer_plugins = %s\n', vim.inspect(loaders)))
+  table.insert(result, fmt('_G.packer_plugins = %s\n', dump_loaders(loaders)))
   -- Then the runtimepath line
   if rtp_line ~= '' then
     table.insert(result, '-- Runtimepath customization')
