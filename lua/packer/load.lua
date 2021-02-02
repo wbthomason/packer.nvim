@@ -47,7 +47,7 @@ packer_load = function(names, cause, plugins)
     if not plugins[name].loaded then
       vim.cmd('packadd ' .. name)
       if plugins[name].config then
-        for _i, config_line in ipairs(plugins[name].config) do config_line() end
+        for _i, config_line in ipairs(plugins[name].config) do loadstring(config_line)() end
       end
 
       if plugins[name].after then

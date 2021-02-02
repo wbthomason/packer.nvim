@@ -29,16 +29,6 @@ catch
 endtry
 ]]
 
-      end
-    end
-  end
-
-end
-
-  end
-
-end
-
 local function make_loaders(_, plugins)
   local loaders = {}
   local configs = {}
