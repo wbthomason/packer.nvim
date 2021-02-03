@@ -29,6 +29,16 @@ catch
 endtry
 ]]
 
+local try_loadstring = [[
+local function try_loadstring(s, component, name)
+  local success, err = pcall(loadstring(s))
+  if not success then
+    print('Error running ' .. component .. ' for ' .. name)
+    error(err)
+  end
+end
+]]
+
 local function dump_loaders(loaders)
   local result = vim.deepcopy(loaders)
   for k, _ in pairs(result) do
@@ -62,7 +72,8 @@ local function make_loaders(_, plugins)
           if type(config_item) == 'function' then
             local stringified = string.dump(config_item, true)
             plugin.config[i] = stringified
-            executable_string = 'loadstring(' .. vim.inspect(stringified) .. ')()'
+            executable_string = 'try_loadstring(' .. vim.inspect(stringified) .. ', "config", "'
+                                  .. name .. '")'
           end
 
           table.insert(plugin.executable_config, executable_string)
@@ -84,7 +95,7 @@ local function make_loaders(_, plugins)
         for i, setup_item in ipairs(plugin.setup) do
           if type(setup_item) == 'function' then
             local stringified = vim.inspect(string.dump(setup_item, true))
-            plugin.setup[i] = 'loadstring(' .. stringified .. ')()'
+            plugin.setup[i] = 'try_loadstring(' .. stringified .. ', "setup", "' .. name .. '")'
           end
         end
 
@@ -123,7 +134,8 @@ local function make_loaders(_, plugins)
 
         for _, condition in ipairs(plugin.cond) do
           if type(condition) == 'function' then
-            condition = 'loadstring(' .. vim.inspect(string.dump(condition, true)) .. ')()'
+            condition = 'try_loadstring(' .. vim.inspect(string.dump(condition, true))
+                          .. ', "condition", "' .. name .. '")'
           end
 
           conditions[condition] = conditions[condition] or {}
@@ -350,6 +362,7 @@ then
   table.insert(result, feature_guard)
   table.insert(result, 'lua << END')
   table.insert(result, luarocks.generate_path_setup())
+  table.insert(result, try_loadstring)
   table.insert(result, fmt('_G.packer_plugins = %s\n', dump_loaders(loaders)))
   -- Then the runtimepath line
   if rtp_line ~= '' then
