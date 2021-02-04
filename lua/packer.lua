@@ -246,7 +246,7 @@ packer.install = function(...)
   end
 
   async(function()
-    packer.clean()
+    vim.cmd 'PackerClean'
     local start_time = vim.fn.reltime()
     local results = {}
     local tasks, display_win = install(plugins, install_plugins, results)
@@ -280,7 +280,7 @@ end
 packer.update = function(...)
   local update_plugins = args_or_all(...)
   async(function()
-    packer.clean()
+    vim.cmd 'PackerClean'
     local start_time = vim.fn.reltime()
     local results = {}
     local missing_plugins, installed_plugins = util.partition(
