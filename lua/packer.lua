@@ -246,9 +246,9 @@ packer.install = function(...)
   end
 
   async(function()
-    vim.cmd 'PackerClean'
     local start_time = vim.fn.reltime()
     local results = {}
+    await(clean(plugins, results))
     local tasks, display_win = install(plugins, install_plugins, results)
     if next(tasks) then
       table.insert(tasks, 1, function() return not display.status.running end)
@@ -280,9 +280,9 @@ end
 packer.update = function(...)
   local update_plugins = args_or_all(...)
   async(function()
-    vim.cmd 'PackerClean'
     local start_time = vim.fn.reltime()
     local results = {}
+    await(clean(plugins, results))
     local missing_plugins, installed_plugins = util.partition(
                                                  plugin_utils.find_missing_plugins(plugins),
                                                  update_plugins)
