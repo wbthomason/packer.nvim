@@ -1,6 +1,6 @@
 # packer.nvim
 
-[![Gitter](https://badges.gitter.im/packer.nvim/community.svg)](https://gitter.im/packer.nvim/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![Gitter](https://badges.gitter.im/packer-nvim/community.svg)](https://gitter.im/packer-nvim/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 [`use-package`](https://github.com/jwiegley/use-package) inspired plugin/package management for
 Neovim.
