@@ -20,7 +20,11 @@ end
 
 local function get_extmark_by_id(buf, ns, id)
   local result, line, col = pcall(api.nvim_buf_get_extmark_by_id, buf, ns, id, {})
-  if result then return line, col end
+  if result then
+    return line, col
+  else
+    log.error('Failed to get extmark: ' .. line)
+  end
   -- We must be in an older version of Neovim
   return api.nvim_buf_get_extmark_by_id(buf, ns, id)
 end
