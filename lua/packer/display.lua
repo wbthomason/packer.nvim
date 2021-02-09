@@ -41,10 +41,7 @@ end
 local config = nil
 local keymaps = {
   quit = {rhs = '<cmd>lua require"packer.display".quit()<cr>', action = 'quit'},
-  diff = {
-    rhs = '<cmd>lua require"packer.display".diff()<cr>',
-    action = 'show the diff',
-  },
+  diff = {rhs = '<cmd>lua require"packer.display".diff()<cr>', action = 'show the diff'},
   toggle_info = {
     rhs = '<cmd>lua require"packer.display".toggle_info()<cr>',
     action = 'show more info'
@@ -57,7 +54,12 @@ local keymaps = {
 
 --- The order of the keys in a dict-like table isn't guaranteed, meaning the display window can
 --- potentially show the keybindings in a different order every time
-local keymap_display_order = {[1] = 'quit', [2] = 'toggle_info', [3] = 'diff', [4] = 'prompt_revert'}
+local keymap_display_order = {
+  [1] = 'quit',
+  [2] = 'toggle_info',
+  [3] = 'diff',
+  [4] = 'prompt_revert'
+}
 
 --- Utility function to prompt a user with a question in a floating window
 local function prompt_user(headline, body, callback)
@@ -122,7 +124,7 @@ local display_mt = {
     api.nvim_buf_set_lines(self.buf, start_idx, end_idx, true, lines)
     api.nvim_buf_set_option(self.buf, 'modifiable', false)
   end,
-  get_current_line = function (self)
+  get_current_line = function(self)
     if not self:valid_display() then return end
     return api.nvim_get_current_line()
   end,
@@ -179,22 +181,17 @@ local display_mt = {
     set_extmark(self.buf, self.ns, self.marks[plugin], line[1], 0)
   end),
 
-  open_preview = function (_, commit, lines)
-    if not lines or #lines < 1 then
-      return log.warn('No diff available')
-    end
-    vim.cmd("pedit "..commit)
+  open_preview = function(_, commit, lines)
+    if not lines or #lines < 1 then return log.warn('No diff available') end
+    vim.cmd("pedit " .. commit)
     vim.cmd [[wincmd P]]
     vim.wo.previewwindow = true
     vim.bo.filetype = "git"
     vim.bo.buftype = "nofile"
     vim.bo.buflisted = false
     vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
-    vim.api.nvim_buf_set_keymap(0, "n", "q", "<cmd>pclose!<CR>", {
-      silent = true,
-      noremap = true,
-      nowait = true,
-    })
+    vim.api.nvim_buf_set_keymap(0, "n", "q", "<cmd>pclose!<CR>",
+                                {silent = true, noremap = true, nowait = true})
   end,
 
   --- Update the text of the headline message
@@ -403,7 +400,7 @@ local display_mt = {
     end
   end,
 
-  diff = function (self)
+  diff = function(self)
     if not self:valid_display() then return end
     if next(self.items) == nil then
       log.info('Operations are still running; plugin info is not ready yet')
@@ -428,14 +425,10 @@ local display_mt = {
       log.warn('Unable to find the diff for this line')
       return
     end
-    plugin_data.diff(commit_hash, function (diff, err)
-      if err then
-        return log.warn('Unable to get diff!')
-      end
+    plugin_data.diff(commit_hash, function(diff, err)
+      if err then return log.warn('Unable to get diff!') end
       local lines = vim.split(diff[1], '\n')
-      vim.schedule(function()
-        self:open_preview(commit_hash, lines)
-      end)
+      vim.schedule(function() self:open_preview(commit_hash, lines) end)
     end)
   end,
 
@@ -594,8 +587,7 @@ end
 display.toggle_info =
   function() if display.status.disp then display.status.disp:toggle_info() end end
 
-display.diff =
-  function() if display.status.disp then display.status.disp:diff() end end
+display.diff = function() if display.status.disp then display.status.disp:diff() end end
 
 display.prompt_revert = function()
   if display.status.disp then display.status.disp:prompt_revert() end
