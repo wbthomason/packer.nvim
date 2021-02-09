@@ -108,7 +108,8 @@ log.new = function(config, standalone)
 
     -- Output to log file
     if config.use_file then
-      local fp = io.open(outfile, "a")
+      local fp, err = io.open(outfile, "a")
+      if not fp then print(err) end
       local str = string.format("[%-6s%s] %s: %s\n", nameupper, os.date(), lineinfo, msg)
       fp:write(str)
       fp:close()
