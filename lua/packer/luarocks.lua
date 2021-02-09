@@ -22,6 +22,7 @@ local cache_path = vim.fn.stdpath('cache')
 local rocks_path = util.join_paths(cache_path, 'packer_hererocks')
 local hererocks_file = util.join_paths(rocks_path, 'hererocks.py')
 local hererocks_install_dir = util.join_paths(rocks_path, lua_version.dir)
+local shell_hererocks_dir = vim.fn.shellescape(hererocks_install_dir)
 local _hererocks_setup_done = false
 local function hererocks_is_setup()
   if _hererocks_setup_done then return true end
@@ -139,7 +140,8 @@ end
 local function run_luarocks(args, disp)
   local cmd = {
     os.getenv('SHELL'), '-c',
-    fmt('%s && luarocks %s', activate_hererocks_cmd(hererocks_install_dir), args)
+    fmt('%s && luarocks --tree=%s %s', activate_hererocks_cmd(hererocks_install_dir),
+        shell_hererocks_dir, args)
   }
   return async(function()
     local output = jobs.output_table()
