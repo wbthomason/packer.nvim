@@ -45,11 +45,11 @@ local function hererocks_installer(disp)
       return result.err('"curl" or "wget" is required to install hererocks')
     end
 
-    if disp ~= nil then disp:task_start('luarocks', 'installing hererocks...') end
-
+    if disp ~= nil then disp:task_start('luarocks-hererocks', 'installing hererocks...') end
     local output = jobs.output_table()
     local callbacks = {
-      stdout = jobs.logging_callback(output.err.stdout, output.data.stdout, nil, disp, 'luarocks'),
+      stdout = jobs.logging_callback(output.err.stdout, output.data.stdout, nil, disp,
+                                     'luarocks-hererocks'),
       stderr = jobs.logging_callback(output.err.stderr, output.data.stderr)
     }
 
@@ -61,8 +61,13 @@ local function hererocks_installer(disp)
 
     local luarocks_cmd = config.python_cmd .. ' ' .. hererocks_file .. ' --verbose -j '
                            .. lua_version.jit .. ' -r latest ' .. hererocks_install_dir
-    r = r:and_then(await, jobs.run(luarocks_cmd, opts)):map_err(
-          function(err) return {msg = 'Error installing luarocks', data = err, output = output} end)
+    r = r:and_then(await, jobs.run(luarocks_cmd, opts)):map_ok(
+          function()
+        if disp then disp:task_succeeded('luarocks-hererocks', 'installed hererocks!') end
+      end):map_err(function(err)
+      if disp then disp:task_failed('luarocks-hererocks', 'failed to install hererocks!') end
+      return {msg = 'Error installing luarocks', data = err, output = output}
+    end)
     return r
   end)
 end
@@ -137,7 +142,7 @@ local function activate_hererocks_cmd(install_path)
   return fmt('source %s', util.join_paths(install_path, 'bin', activate_file))
 end
 
-local function run_luarocks(args, disp)
+local function run_luarocks(args, disp, operation_name)
   local cmd = {
     os.getenv('SHELL'), '-c',
     fmt('%s && luarocks --tree=%s %s', activate_hererocks_cmd(hererocks_install_dir),
@@ -146,7 +151,8 @@ local function run_luarocks(args, disp)
   return async(function()
     local output = jobs.output_table()
     local callbacks = {
-      stdout = jobs.logging_callback(output.err.stdout, output.data.stdout, nil, disp, 'luarocks'),
+      stdout = jobs.logging_callback(output.err.stdout, output.data.stdout, nil, disp,
+                                     operation_name),
       stderr = jobs.logging_callback(output.err.stderr, output.data.stderr)
     }
 
@@ -159,8 +165,8 @@ end
 
 local function luarocks_install(package, results, disp)
   return async(function()
-    if disp then disp:task_update('luarocks', 'installing ' .. package) end
-    local install_result = await(run_luarocks('install ' .. package, disp))
+    if disp then disp:task_update('luarocks-install', 'installing ' .. package) end
+    local install_result = await(run_luarocks('install ' .. package, disp, 'luarocks-install'))
     if results then results.luarocks.installs[package] = install_result end
     return install_result
   end)
@@ -170,16 +176,17 @@ local function install_packages(packages, results, disp)
   return async(function()
     local r = result.ok()
     if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
-    if disp then disp:task_start('luarocks', 'installing rocks...') end
+    if disp then disp:task_start('luarocks-install', 'installing rocks...') end
     if results then results.luarocks.installs = {} end
     for _, name in ipairs(packages) do
       r = r:and_then(await, luarocks_install(name, results, disp))
     end
 
-    r:map_ok(function() if disp then disp:task_succeeded('luarocks', 'rocks installed!') end end)
-      :map_err(function()
-        if disp then disp:task_failed('luarocks', 'installing rocks failed!') end
-      end)
+    r:map_ok(function()
+      if disp then disp:task_succeeded('luarocks-install', 'rocks installed!') end
+    end):map_err(function()
+      if disp then disp:task_failed('luarocks-install', 'installing rocks failed!') end
+    end)
     return r
   end)
 end
@@ -192,8 +199,8 @@ end
 local function chunk_output(output)
   -- Merge the output to a single line, then split again. Helps to deal with inconsistent
   -- chunking in the output collection
-  local result = table.concat(output, '\n')
-  return vim.split(result, '\n')
+  local res = table.concat(output, '\n')
+  return vim.split(res, '\n')
 end
 
 local function luarocks_list(disp)
@@ -246,8 +253,8 @@ end
 
 local function luarocks_remove(package, results, disp)
   return async(function()
-    if disp then disp:task_update('luarocks', 'removing ' .. package) end
-    local remove_result = await(run_luarocks('remove ' .. package, disp))
+    if disp then disp:task_update('luarocks-remove', 'removing ' .. package) end
+    local remove_result = await(run_luarocks('remove ' .. package, disp, 'luarocks-remove'))
     if results then results.luarocks.removals[package] = remove_result end
     return remove_result
   end)
@@ -257,15 +264,16 @@ local function uninstall_packages(packages, results, disp)
   return async(function()
     local r = result.ok()
     if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
-    if disp then disp:task_start('luarocks', 'uninstalling rocks...') end
+    if disp then disp:task_start('luarocks-remove', 'uninstalling rocks...') end
     if results then results.luarocks.removals = {} end
     for _, name in ipairs(packages) do
       r = r:and_then(await, luarocks_remove(name, results, disp))
     end
 
-    r:map_ok(function() if disp then disp:task_succeeded('luarocks', 'rocks cleaned!') end end)
+    r:map_ok(
+      function() if disp then disp:task_succeeded('luarocks-remove', 'rocks cleaned!') end end)
       :map_err(function()
-        if disp then disp:task_failed('luarocks', 'cleaning rocks failed!') end
+        if disp then disp:task_failed('luarocks-remove', 'cleaning rocks failed!') end
       end)
     return r
   end)
