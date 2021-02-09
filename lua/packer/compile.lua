@@ -49,6 +49,12 @@ local function dump_loaders(loaders)
   return vim.inspect(result)
 end
 
+local function make_try_loadstring(item, chunk, name)
+  local stringified = vim.inspect(string.dump(item, true))
+  local executable_string = 'try_loadstring(' .. stringified .. ', "' .. chunk .. '", "' .. name .. '")'
+  return executable_string
+end
+
 local function make_loaders(_, plugins)
   local loaders = {}
   local configs = {}
@@ -70,10 +76,8 @@ local function make_loaders(_, plugins)
         for i, config_item in ipairs(plugin.config) do
           local executable_string = config_item
           if type(config_item) == 'function' then
-            local stringified = string.dump(config_item, true)
-            plugin.config[i] = stringified
-            executable_string = 'try_loadstring(' .. vim.inspect(stringified) .. ', "config", "'
-                                  .. name .. '")'
+            executable_string = make_try_loadstring(config_item, 'config', name)
+            plugin.config[i] = executable_string
           end
 
           table.insert(plugin.executable_config, executable_string)
@@ -94,8 +98,7 @@ local function make_loaders(_, plugins)
         if type(plugin.setup) ~= 'table' then plugin.setup = {plugin.setup} end
         for i, setup_item in ipairs(plugin.setup) do
           if type(setup_item) == 'function' then
-            local stringified = vim.inspect(string.dump(setup_item, true))
-            plugin.setup[i] = 'try_loadstring(' .. stringified .. ', "setup", "' .. name .. '")'
+            plugin.setup[i] = make_try_loadstring(setup_item, 'setup', name)
           end
         end
 
@@ -134,8 +137,7 @@ local function make_loaders(_, plugins)
 
         for _, condition in ipairs(plugin.cond) do
           if type(condition) == 'function' then
-            condition = 'try_loadstring(' .. vim.inspect(string.dump(condition, true))
-                          .. ', "condition", "' .. name .. '")'
+            condition = make_try_loadstring(condition, 'condition', name)
           end
 
           conditions[condition] = conditions[condition] or {}
