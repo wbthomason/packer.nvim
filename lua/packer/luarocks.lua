@@ -16,6 +16,8 @@ local lua_version = nil
 if jit then
   local jit_version = string.gsub(jit.version, 'LuaJIT ', '')
   lua_version = {lua = string.gsub(_VERSION, 'Lua ', ''), jit = jit_version, dir = jit_version}
+else
+  lua_version = {lua = string.gsub(_VERSION, 'Lua ', ''), jit = nil, dir = nil}
 end
 
 local cache_path = vim.fn.stdpath('cache')
