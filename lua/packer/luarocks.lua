@@ -175,13 +175,10 @@ end
 local function install_packages(packages, results, disp)
   return async(function()
     local r = result.ok()
-    if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
+    if not hererocks_is_setup() then r:and_then(await, hererocks_installer(disp)) end
     if disp then disp:task_start('luarocks-install', 'installing rocks...') end
     if results then results.luarocks.installs = {} end
-    for _, name in ipairs(packages) do
-      r = r:and_then(await, luarocks_install(name, results, disp))
-    end
-
+    for _, name in ipairs(packages) do r:and_then(await, luarocks_install(name, results, disp)) end
     r:map_ok(function()
       if disp then disp:task_succeeded('luarocks-install', 'rocks installed!') end
     end):map_err(function()
@@ -206,8 +203,8 @@ end
 local function luarocks_list(disp)
   return async(function()
     local r = result.ok()
-    if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
-    r = r:and_then(await, run_luarocks('list --porcelain'))
+    if not hererocks_is_setup() then r:and_then(await, hererocks_installer(disp)) end
+    r:and_then(await, run_luarocks('list --porcelain'))
     return r:map_ok(function(data)
       local results = {}
       local output = chunk_output(data.output.data.stdout)
@@ -231,8 +228,8 @@ end
 local function luarocks_show(package, disp)
   return async(function()
     local r = result.ok()
-    if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
-    r = r:and_then(await, run_luarocks('show --porcelain ' .. package))
+    if not hererocks_is_setup() then r:and_then(await, hererocks_installer(disp)) end
+    r:and_then(await, run_luarocks('show --porcelain ' .. package))
     return r:map_ok(function(data)
       local output = chunk_output(data.output.data.stdout)
       local dependencies = {}
@@ -263,13 +260,10 @@ end
 local function uninstall_packages(packages, results, disp)
   return async(function()
     local r = result.ok()
-    if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
+    if not hererocks_is_setup() then r:and_then(await, hererocks_installer(disp)) end
     if disp then disp:task_start('luarocks-remove', 'uninstalling rocks...') end
     if results then results.luarocks.removals = {} end
-    for _, name in ipairs(packages) do
-      r = r:and_then(await, luarocks_remove(name, results, disp))
-    end
-
+    for _, name in ipairs(packages) do r:and_then(await, luarocks_remove(name, results, disp)) end
     r:map_ok(
       function() if disp then disp:task_succeeded('luarocks-remove', 'rocks cleaned!') end end)
       :map_err(function()
@@ -288,7 +282,7 @@ local function clean_packages(rocks, results, disp)
   return async(function()
     local r = result.ok()
     if not hererocks_is_setup() then return r end
-    r = r:and_then(await, luarocks_list(disp))
+    r:and_then(await, luarocks_list(disp))
     local installed_packages
     if r.ok then
       installed_packages = r.ok
@@ -298,7 +292,7 @@ local function clean_packages(rocks, results, disp)
 
     local dependency_info = {}
     for _, package in ipairs(installed_packages) do
-      r = r:and_then(await, luarocks_show(package.name, disp))
+      r:and_then(await, luarocks_show(package.name, disp))
       if r.ok then dependency_info[package.name] = r.ok end
     end
 
@@ -375,8 +369,8 @@ local function ensure_packages(rocks, results, disp)
     local r = result.ok()
     if next(to_install) == nil then return r end
     if not hererocks_is_setup() then r = r:and_then(await, hererocks_installer(disp)) end
-    r = r:and_then(await, luarocks_list(disp))
-    r = r:map_ok(function(installed_packages)
+    r:and_then(await, luarocks_list(disp))
+    r:map_ok(function(installed_packages)
       for _, package in ipairs(installed_packages) do
         local spec = to_install[package.name]
         if spec then

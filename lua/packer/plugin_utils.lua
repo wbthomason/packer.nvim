@@ -4,6 +4,8 @@ local util = require('packer.util')
 local result = require('packer.result')
 local log = require('packer.log')
 
+local await = a.wait
+
 local config = nil
 local plugin_utils = {}
 plugin_utils.cfg = function(_config) config = _config end
@@ -31,7 +33,7 @@ end
 
 plugin_utils.guess_dir_type = function(dir)
   local globdir = vim.fn.glob(dir)
-  local dir_type = (vim.loop.fs_lstat(globdir) or {type='noexist'}).type
+  local dir_type = (vim.loop.fs_lstat(globdir) or {type = 'noexist'}).type
 
   --[[ NOTE: We're assuming here that:
              1. users only create custom plugins for non-git repos;
@@ -39,7 +41,7 @@ plugin_utils.guess_dir_type = function(dir)
              otherwise, there's no consistent way to tell from a dir alone… ]]
   if dir_type == 'link' then
     return plugin_utils.local_plugin_type
-  elseif vim.loop.fs_stat(globdir..'/.git') then
+  elseif vim.loop.fs_stat(globdir .. '/.git') then
     return plugin_utils.git_plugin_type
   elseif dir_type ~= 'noexist' then
     return plugin_utils.custom_plugin_type
@@ -104,7 +106,8 @@ plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins
   for _, plugin_name in ipairs(vim.tbl_keys(plugins)) do
     local plugin = plugins[plugin_name]
 
-    local plugin_path = util.join_paths(config[plugin.opt and 'opt_dir' or 'start_dir'], plugin.short_name)
+    local plugin_path = util.join_paths(config[plugin.opt and 'opt_dir' or 'start_dir'],
+                                        plugin.short_name)
     local plugin_installed = (plugin.opt and opt_plugins or start_plugins)[plugin_path]
 
     if not plugin_installed or plugin.type ~= plugin_utils.guess_dir_type(plugin_path) then
@@ -143,22 +146,22 @@ plugin_utils.post_update_hook = function(plugin, disp)
   local plugin_name = util.get_plugin_full_name(plugin)
   return a.sync(function()
     if plugin.run or not plugin.opt then
-      a.wait(vim.schedule)
+      await(vim.schedule)
       plugin_utils.load_plugin(plugin)
     end
     if plugin.run then
       disp:task_update(plugin_name, 'running post update hook...')
       if type(plugin.run) == 'function' then
         if pcall(plugin.run, plugin) then
-          return result.ok(true)
+          return result.ok()
         else
           return result.err({msg = 'Error running post update hook'})
         end
       elseif type(plugin.run) == 'string' then
         if string.sub(plugin.run, 1, 1) == ':' then
-          a.wait(vim.schedule)
+          await(a.main)
           vim.cmd(string.sub(plugin.run, 2))
-          return result.ok(true)
+          return result.ok()
         else
           local hook_output = {err = {}, output = {}}
           local hook_callbacks = {
@@ -170,8 +173,7 @@ plugin_utils.post_update_hook = function(plugin, disp)
           local cmd = {
             os.getenv('SHELL'), '-c', 'cd ' .. plugin.install_path .. ' && ' .. plugin.run
           }
-          local r = result.ok(true)
-          return r:and_then(a.wait, jobs.run(cmd, {capture_output = hook_callbacks})):map_err(
+          return await(jobs.run(cmd, {capture_output = hook_callbacks})):map_err(
                    function(err)
               return {
                 msg = string.format('Error running post update hook: %s',
@@ -183,10 +185,10 @@ plugin_utils.post_update_hook = function(plugin, disp)
       else
         -- TODO/NOTE: This case should also capture output in case of error. The minor difficulty is
         -- what to do if the plugin's run table (i.e. this case) already specifies output handling.
-        return a.wait(jobs.run(plugin.run))
+        return await(jobs.run(plugin.run))
       end
     else
-      return result.ok(true)
+      return result.ok()
     end
   end)
 end
