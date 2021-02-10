@@ -61,8 +61,8 @@ local function hererocks_installer(disp)
 
     local luarocks_cmd = config.python_cmd .. ' ' .. hererocks_file .. ' --verbose -j '
                            .. lua_version.jit .. ' -r latest ' .. hererocks_install_dir
-    r = r:and_then(await, jobs.run(luarocks_cmd, opts)):map_ok(
-          function()
+    r:and_then(await, jobs.run(luarocks_cmd, opts)):map_ok(
+      function()
         if disp then disp:task_succeeded('luarocks-hererocks', 'installed hererocks!') end
       end):map_err(function(err)
       if disp then disp:task_failed('luarocks-hererocks', 'failed to install hererocks!') end
