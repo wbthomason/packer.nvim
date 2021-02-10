@@ -1,8 +1,9 @@
+local source_dirs = {'ftdetect', 'ftplugin', 'after/ftdetect', 'after/ftplugin'}
 local function handle_bufread(names, plugins)
   for _, name in ipairs(names) do
     local path = plugins[name].path
-    for _, dir in ipairs({'ftdetect', 'ftplugin', 'after/ftdetect', 'after/ftplugin'}) do
-      if #vim.fn.finddir(dir, path) > 0 then
+    for i = 1, 4 do
+      if #vim.fn.finddir(source_dirs[i], path) > 0 then
         vim.cmd('doautocmd BufRead')
         return
       end
@@ -19,54 +20,45 @@ end
 
 packer_load = function(names, cause, plugins)
   local some_unloaded = false
-  for _, name in ipairs(names) do
-    if not plugins[name].loaded then
-      some_unloaded = true
-      break
-    end
-  end
+  local num_names = #names
 
-  if not some_unloaded then return end
-
+  local cmd = vim.api.nvim_command
   local fmt = string.format
-  local del_cmds = {}
-  local del_maps = {}
-  for _, name in ipairs(names) do
-    if plugins[name].commands then
-      for _, cmd in ipairs(plugins[name].commands) do del_cmds[cmd] = true end
-    end
+  for i = 1, num_names do
+    local plugin = plugins[names[i]]
+    if not plugin.loaded then
+      some_unloaded = true
+      if plugin.commands then
+        for _, del_cmd in ipairs(plugin.commands) do cmd('silent! delcommand ' .. del_cmd) end
+      end
 
-    if plugins[name].keys then
-      for _, key in ipairs(plugins[name].keys) do del_maps[key] = true end
-    end
-  end
+      if plugin.keys then
+        for _, key in ipairs(plugin.keys) do cmd(fmt('silent! %sunmap %s', key[1], key[2])) end
+      end
 
-  for cmd, _ in pairs(del_cmds) do vim.cmd('silent! delcommand ' .. cmd) end
-  for key, _ in pairs(del_maps) do vim.cmd(fmt('silent! %sunmap %s', key[1], key[2])) end
-  for _, name in ipairs(names) do
-    if not plugins[name].loaded then
-      vim.cmd('packadd ' .. name)
-      if plugins[name].config then
-        for _, config_line in ipairs(plugins[name].config) do
+      vim.cmd('packadd ' .. names[i])
+      if plugin.config then
+        for _, config_line in ipairs(plugin.config) do
           local success, err = pcall(loadstring(config_line))
           if not success then
-            print('Error running config for ' .. name)
+            print('Error running config for ' .. names[i])
             error(err)
           end
         end
       end
 
-      if plugins[name].after then
-        for _, after_name in ipairs(plugins[name].after) do
-          handle_after(after_name, name, plugins)
+      if plugin.after then
+        for _, after_name in ipairs(plugin.after) do
+          handle_after(after_name, names[i], plugins)
           vim.cmd('redraw')
         end
       end
 
-      plugins[name].loaded = true
+      plugins[names[i]].loaded = true
     end
   end
 
+  if not some_unloaded then return end
   handle_bufread(names, plugins)
   if cause.cmd then
     local lines = cause.l1 == cause.l2 and '' or (cause.l1 .. ',' .. cause.l2)
@@ -93,10 +85,10 @@ packer_load = function(names, cause, plugins)
     local escaped_keys = vim.api.nvim_replace_termcodes(cause.keys .. extra, true, true, true)
     vim.api.nvim_feedkeys(escaped_keys, 'm', true)
   elseif cause.event then
-    vim.cmd(fmt('doautocmd <nomodeline> %s', cause.event))
+    cmd(fmt('doautocmd <nomodeline> %s', cause.event))
   elseif cause.ft then
-    vim.cmd(fmt('doautocmd <nomodeline> %s FileType %s', 'filetypeplugin', cause.ft))
-    vim.cmd(fmt('doautocmd <nomodeline> %s FileType %s', 'filetypeindent', cause.ft))
+    cmd(fmt('doautocmd <nomodeline> %s FileType %s', 'filetypeplugin', cause.ft))
+    cmd(fmt('doautocmd <nomodeline> %s FileType %s', 'filetypeindent', cause.ft))
   end
 end
 
