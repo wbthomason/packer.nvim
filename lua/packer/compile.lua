@@ -50,9 +50,10 @@ local function dump_loaders(loaders)
 end
 
 local function make_try_loadstring(item, chunk, name)
-  local stringified = vim.inspect(string.dump(item, true))
-  local executable_string = 'try_loadstring(' .. stringified .. ', "' .. chunk .. '", "' .. name .. '")'
-  return executable_string
+  local bytecode = string.dump(item, true)
+  local executable_string = 'try_loadstring(' .. vim.inspect(bytecode) .. ', "' .. chunk .. '", "'
+                              .. name .. '")'
+  return executable_string, bytecode
 end
 
 local function make_loaders(_, plugins)
@@ -76,8 +77,9 @@ local function make_loaders(_, plugins)
         for i, config_item in ipairs(plugin.config) do
           local executable_string = config_item
           if type(config_item) == 'function' then
-            executable_string = make_try_loadstring(config_item, 'config', name)
-            plugin.config[i] = executable_string
+            local bytecode
+            executable_string, bytecode = make_try_loadstring(config_item, 'config', name)
+            plugin.config[i] = bytecode
           end
 
           table.insert(plugin.executable_config, executable_string)
@@ -98,7 +100,7 @@ local function make_loaders(_, plugins)
         if type(plugin.setup) ~= 'table' then plugin.setup = {plugin.setup} end
         for i, setup_item in ipairs(plugin.setup) do
           if type(setup_item) == 'function' then
-            plugin.setup[i] = make_try_loadstring(setup_item, 'setup', name)
+            plugin.setup[i], _ = make_try_loadstring(setup_item, 'setup', name)
           end
         end
 
@@ -137,7 +139,7 @@ local function make_loaders(_, plugins)
 
         for _, condition in ipairs(plugin.cond) do
           if type(condition) == 'function' then
-            condition = make_try_loadstring(condition, 'condition', name)
+            condition, _ = make_try_loadstring(condition, 'condition', name)
           end
 
           conditions[condition] = conditions[condition] or {}
