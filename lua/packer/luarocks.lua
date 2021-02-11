@@ -399,7 +399,11 @@ local function ensure_packages(rocks, results, disp)
         local spec = to_install[package.name]
         if spec then
           if type(spec) == 'table' then
-            if spec.version == package.version then to_install[package.name] = nil end
+            -- if the package is on the system and the spec has no version
+            -- or it has a version and that is the version on the system do not install it again
+            if not spec.version or (spec.version and spec.version == package.version) then
+              to_install[package.name] = nil
+            end
           else
             to_install[package.name] = nil
           end
