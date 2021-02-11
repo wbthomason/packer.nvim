@@ -163,11 +163,33 @@ local function run_luarocks(args, disp, operation_name)
   end)
 end
 
+local luarocks_keys = {
+  only_server = 'only-server',
+  only_source = 'only-sources',
+  server = 'server'
+}
+
+local function format_luarocks_args(spec)
+  if vim.tbl_islist(spec) then return '' end
+  local args = {}
+  for key, value in pairs(spec) do
+    local luarock_key = luarocks_keys[key]
+    if luarock_key and type(value) == 'string' then
+      table.insert(args, string.format('--%s=%s', key, value))
+    end
+  end
+  return ' ' ..table.concat(args, ' ')
+end
+
 local function luarocks_install(package, results, disp)
   return async(function()
-    if disp then disp:task_update('luarocks-install', 'installing ' .. package) end
-    local install_result = await(run_luarocks('install ' .. package, disp, 'luarocks-install'))
-    if results then results.luarocks.installs[package] = install_result end
+    local package_name = package[1]
+    if disp then disp:task_update('luarocks-install', 'installing ' .. package_name) end
+    local args = format_luarocks_args(package)
+    local version = package.version and ' '..package.version..' ' or ''
+    local install_result = await(run_luarocks('install ' .. package_name .. version ..args, disp,
+                                'luarocks-install'))
+    if results then results.luarocks.installs[package_name] = install_result end
     return install_result
   end)
 end
@@ -178,7 +200,9 @@ local function install_packages(packages, results, disp)
     if not hererocks_is_setup() then r:and_then(await, hererocks_installer(disp)) end
     if disp then disp:task_start('luarocks-install', 'installing rocks...') end
     if results then results.luarocks.installs = {} end
-    for _, name in ipairs(packages) do r:and_then(await, luarocks_install(name, results, disp)) end
+    for _, package in ipairs(packages) do
+      r:and_then(await, luarocks_install(package, results, disp))
+    end
     r:map_ok(function()
       if disp then disp:task_succeeded('luarocks-install', 'rocks installed!') end
     end):map_err(function()
@@ -375,23 +399,23 @@ local function ensure_packages(rocks, results, disp)
         local spec = to_install[package.name]
         if spec then
           if type(spec) == 'table' then
-            if spec[2] == package.version then to_install[package.name] = nil end
+            if spec.version == package.version then to_install[package.name] = nil end
           else
             to_install[package.name] = nil
           end
         end
       end
 
-      local package_names = {}
-      for name, data in pairs(to_install) do
-        if type(data) == 'table' then
-          table.insert(package_names, fmt('%s %s', name, data[2]))
+      local package_specs = {}
+      for name, spec in pairs(to_install) do
+        if type(spec) == 'table' then
+          table.insert(package_specs, spec)
         else
-          table.insert(package_names, name)
+          table.insert(package_specs, {name})
         end
       end
 
-      return package_names
+      return package_specs
     end)
 
     results.luarocks = results.luarocks or {}
