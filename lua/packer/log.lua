@@ -20,7 +20,7 @@ local default_config = {
   use_file = true,
 
   -- Any messages above this level will be logged.
-  level = "info",
+  level = "debug",
 
   -- Level configuration
   modes = {
@@ -28,6 +28,9 @@ local default_config = {
     {name = "info", hl = "None"}, {name = "warn", hl = "WarningMsg"},
     {name = "error", hl = "ErrorMsg"}, {name = "fatal", hl = "ErrorMsg"}
   },
+
+  -- Which levels should be printed?
+  console_levels = {[3] = true, [4] = true, [5] = true, [6] = true},
 
   -- Can limit the number of decimals displayed for floats
   float_precision = 0.01
@@ -103,7 +106,9 @@ log.new = function(config, standalone)
     local lineinfo = info.short_src .. ":" .. info.currentline
 
     -- Output to console
-    if config.use_console then console_output(level_config, info, nameupper, msg) end
+    if config.use_console and config.console_levels[level] then
+      console_output(level_config, info, nameupper, msg)
+    end
 
     -- Output to log file
     if config.use_file then

@@ -5,6 +5,7 @@ local a = require('packer.async')
 local log = require('packer.log')
 local plugin_utils = require('packer.plugin_utils')
 
+local fmt = string.format
 local async = a.sync
 local await = a.wait
 
@@ -76,6 +77,7 @@ local function update_plugin(plugin, display_win, results)
         msg = actual_update and ('updated: ' .. info.revs[1] .. '...' .. info.revs[2])
                 or 'already up to date'
         if actual_update then
+          log.debug(fmt('Updated %s: %s', plugin_name, vim.inspect(info)))
           r = r:and_then(await, plugin_utils.post_update_hook(plugin, display_win))
         end
       end
@@ -83,6 +85,7 @@ local function update_plugin(plugin, display_win, results)
       if r.ok then display_win:task_succeeded(plugin_name, msg) end
     else
       display_win:task_failed(plugin_name, 'failed to update')
+      log.debug(fmt('Failed to update %s: %s', plugin_name, vim.inspect(r.err)))
     end
 
     results.updates[plugin_name] = r

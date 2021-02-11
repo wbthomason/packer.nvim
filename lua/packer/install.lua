@@ -1,8 +1,10 @@
-local a            = require('packer.async')
-local util         = require('packer.util')
-local display      = require('packer.display')
+local a = require('packer.async')
+local log = require('packer.log')
+local util = require('packer.util')
+local display = require('packer.display')
 local plugin_utils = require('packer.plugin_utils')
 
+local fmt = string.fmt
 local async = a.sync
 local await = a.wait
 
@@ -18,8 +20,10 @@ local function install_plugin(plugin, display_win, results)
     r = r:and_then(await, plugin_utils.post_update_hook(plugin, display_win))
     if r.ok then
       display_win:task_succeeded(plugin_name, 'installed')
+      log.debug('Installed ' .. plugin_name)
     else
       display_win:task_failed(plugin_name, 'failed to install')
+      log.debug(fmt('Failed to install %s: %s', plugin_name, vim.inspect(r.err)))
     end
 
     results.installs[plugin_name] = r
