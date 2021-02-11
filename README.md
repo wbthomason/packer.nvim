@@ -22,8 +22,9 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
     4. [Performing plugin management operations](#performing-plugin-management-operations)
     5. [Extending packer](#extending-packer)
     6. [Compiling Lazy-Loaders](#compiling-lazy-loaders)
-7. [Status](#status)
-8. [Contributors](#contributors)
+7. [Debugging](#debugging)
+8. [Status](#status)
+9. [Contributors](#contributors)
 
 ## Notices
 - **2021-01-19**: Basic Luarocks support has landed! Use the `rocks` key with a string or table to
@@ -457,6 +458,10 @@ If `path` is not provided to `packer.compile`, the output file will default to t
 The option `compile_on_sync`, which defaults to `true`, will run `packer.compile()` during
 `packer.sync()`, if set to `true`. Note that otherwise, you **must** run `packer.compile` yourself
 to generate the lazy-loader file!
+
+## Debugging
+`packer.nvim` logs to `stdpath(cache)/packer.nvim.log`. Looking at this file is usually a good start
+if something isn't working as expected.
 
 ## Status
 **tl;dr**: Beta. Things seem to work and most features are complete, but certainly not every edge
