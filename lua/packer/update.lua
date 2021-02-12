@@ -66,7 +66,7 @@ local function update_plugin(plugin, display_win, results)
                                        plugin.short_name)
   plugin.install_path = install_path
   return async(function()
-    if plugin.lock then return end
+    if plugin.lock or plugin.disable then return end
     display_win:task_start(plugin_name, 'updating...')
     local r = await(plugin.updater(display_win))
     if r ~= nil and r.ok then
