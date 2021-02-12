@@ -169,10 +169,10 @@ local luarocks_keys = {
   server = 'server'
 }
 
-local function format_luarocks_args(spec)
-  if vim.tbl_islist(spec) then return '' end
+local function format_luarocks_args(package)
+  if vim.tbl_islist(package) or type(package) ~= 'table' then return '' end
   local args = {}
-  for key, value in pairs(spec) do
+  for key, value in pairs(package) do
     local luarock_key = luarocks_keys[key]
     if luarock_key and type(value) == 'string' then
       table.insert(args, string.format('--%s=%s', key, value))
@@ -183,7 +183,7 @@ end
 
 local function luarocks_install(package, results, disp)
   return async(function()
-    local package_name = package[1]
+    local package_name = type(package) == 'table' and package[1] or package
     if disp then disp:task_update('luarocks-install', 'installing ' .. package_name) end
     local args = format_luarocks_args(package)
     local version = package.version and ' '..package.version..' ' or ''
@@ -287,7 +287,10 @@ local function uninstall_packages(packages, results, disp)
     if not hererocks_is_setup() then r:and_then(await, hererocks_installer(disp)) end
     if disp then disp:task_start('luarocks-remove', 'uninstalling rocks...') end
     if results then results.luarocks.removals = {} end
-    for _, name in ipairs(packages) do r:and_then(await, luarocks_remove(name, results, disp)) end
+    for _, package in ipairs(packages) do
+      local name = type(package) == "table" and package[1] or package
+      r:and_then(await, luarocks_remove(name, results, disp))
+    end
     r:map_ok(
       function() if disp then disp:task_succeeded('luarocks-remove', 'rocks cleaned!') end end)
       :map_err(function()
@@ -325,7 +328,7 @@ local function clean_packages(rocks, results, disp)
       for _, package in ipairs(installed_packages) do to_remove[package.name] = package end
       for _, rock in pairs(rocks) do
         if type(rock) == 'table' then
-          if to_remove[rock[1]] and to_remove[rock[1]].version == rock[2] then
+          if to_remove[rock[1]] and (not rock.version or to_remove[rock[1]].version == rock.version) then
             to_remove[rock[1]] = nil
           end
         else
