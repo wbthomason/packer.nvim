@@ -75,6 +75,13 @@ local function detect_after_plugin(name, plugin_path)
   return nil
 end
 
+local source_dirs = {'ftdetect', 'ftplugin', 'after/ftdetect', 'after/ftplugin'}
+local function detect_bufread(plugin_path)
+  local path = plugin_path
+  for i = 1, 4 do if #vim.fn.finddir(source_dirs[i], path) > 0 then return true end end
+  return false
+end
+
 local function make_loaders(_, plugins)
   local loaders = {}
   local configs = {}
@@ -117,6 +124,7 @@ local function make_loaders(_, plugins)
 
       if plugin.opt then
         loaders[name].after_files = detect_after_plugin(name, loaders[name].path)
+        loaders[name].needs_bufread = detect_bufread(loaders[name].path)
       end
 
       if plugin.setup then
