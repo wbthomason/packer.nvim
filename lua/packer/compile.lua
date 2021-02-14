@@ -57,15 +57,15 @@ local function make_try_loadstring(item, chunk, name)
   return executable_string, bytecode
 end
 
-local pattern = table.concat({'after', 'plugin', '**', '*.vim'}, util.get_separator())
+local after_plugin_pattern = table.concat({'after', 'plugin', '**', '*.vim'}, util.get_separator())
 local function detect_after_plugin(name, plugin_path)
-  local path = plugin_path .. util.get_separator() .. pattern
+  local path = plugin_path .. util.get_separator() .. after_plugin_pattern
   local glob_ok, files = pcall(vim.fn.glob, path, false, true)
   if not glob_ok then
     if string.find(files, 'E77') then
       return {path}
     else
-      log.error('Error running config for ' .. name)
+      log.error('Error compiling ' .. name .. ': ' .. vim.inspect(files))
       error(files)
     end
   elseif #files > 0 then
@@ -73,6 +73,34 @@ local function detect_after_plugin(name, plugin_path)
   end
 
   return nil
+end
+
+local ftdetect_patterns = {
+  table.concat({'ftdetect', '**', '*.vim'}, util.get_separator()),
+  table.concat({'after', 'ftdetect', '**', '*.vim'}, util.get_separator())
+}
+local function detect_ftdetect(name, plugin_path)
+  local paths = {
+    plugin_path .. util.get_separator() .. ftdetect_patterns[1],
+    plugin_path .. util.get_separator() .. ftdetect_patterns[2]
+  }
+  local source_paths = {}
+  for i = 1, 2 do
+    local path = paths[i]
+    local glob_ok, files = pcall(vim.fn.glob, path, false, true)
+    if not glob_ok then
+      if string.find(files, 'E77') then
+        source_paths[#source_paths + 1] = path
+      else
+        log.error('Error compiling ' .. name .. ': ' .. vim.inspect(files))
+        error(files)
+      end
+    elseif #files > 0 then
+      vim.list_extend(source_paths, files)
+    end
+  end
+
+  return source_paths
 end
 
 local source_dirs = {'ftdetect', 'ftplugin', 'after/ftdetect', 'after/ftplugin'}
@@ -94,6 +122,7 @@ local function make_loaders(_, plugins)
   local keymaps = {}
   local after = {}
   local fns = {}
+  local ftdetect_paths = {}
   for name, plugin in pairs(plugins) do
     if not plugin.disable then
       local quote_name = "'" .. name .. "'"
@@ -142,8 +171,8 @@ local function make_loaders(_, plugins)
       if plugin.ft then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
+        vim.list_extend(ftdetect_paths, detect_ftdetect(name, loaders[name].path))
         if type(plugin.ft) == 'string' then plugin.ft = {plugin.ft} end
-
         for _, ft in ipairs(plugin.ft) do
           fts[ft] = fts[ft] or {}
           table.insert(fts[ft], quote_name)
@@ -456,6 +485,15 @@ then
   end
 
   if some_ft or some_event or some_fn then table.insert(result, 'vim.cmd("augroup END")') end
+  if next(ftdetect_paths) then
+    table.insert(result, 'vim.cmd [[augroup filetypedetect]]')
+    for _, path in ipairs(ftdetect_paths) do
+      local escaped_path = vim.fn.escape(path, ' ')
+      table.insert(result, 'vim.cmd [[source ' .. escaped_path .. ']]')
+    end
+
+    table.insert(result, 'vim.cmd("augroup END")')
+  end
   table.insert(result, 'END\n')
   table.insert(result, catch_errors)
   return table.concat(result, '\n')
