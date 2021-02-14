@@ -1,3 +1,26 @@
+local separator = nil
+if jit ~= nil then
+  separator = (jit.os == 'Windows') and '\\' or '/'
+else
+  separator = (package.config:sub(1, 1) == '\\') and '\\' or '/'
+end
+
+local function handle_after_plugin(name, plugins)
+  local pattern = table.concat({'after', 'plugin', '**', '*.vim'}, separator)
+  local path = plugins[name].path .. separator .. pattern
+  local glob_ok, files = pcall(vim.fn.glob, path, false, true)
+  if not glob_ok then
+    if string.find(files, 'E77') then
+      vim.cmd('silent exe "source ' .. path .. '"')
+    else
+      print('Error running config for ' .. name)
+      error(files)
+    end
+  elseif #files > 0 then
+    for _, file in ipairs(files) do vim.cmd('silent exe "source ' .. file .. '"') end
+  end
+end
+
 local source_dirs = {'ftdetect', 'ftplugin', 'after/ftdetect', 'after/ftplugin'}
 local function handle_bufread(names, plugins)
   for _, name in ipairs(names) do
@@ -37,6 +60,7 @@ packer_load = function(names, cause, plugins)
       end
 
       vim.cmd('packadd ' .. names[i])
+      handle_after_plugin(names[i], plugins)
       if plugin.config then
         for _, config_line in ipairs(plugin.config) do
           local success, err = pcall(loadstring(config_line))
