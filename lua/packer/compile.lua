@@ -57,8 +57,8 @@ local function make_try_loadstring(item, chunk, name)
   return executable_string, bytecode
 end
 
+local pattern = table.concat({'after', 'plugin', '**', '*.vim'}, util.get_separator())
 local function detect_after_plugin(name, plugin_path)
-  local pattern = table.concat({'after', 'plugin', '**', '*.vim'}, util.get_separator())
   local path = plugin_path .. util.get_separator() .. pattern
   local glob_ok, files = pcall(vim.fn.glob, path, false, true)
   if not glob_ok then
