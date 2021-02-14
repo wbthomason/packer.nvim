@@ -57,6 +57,24 @@ local function make_try_loadstring(item, chunk, name)
   return executable_string, bytecode
 end
 
+local function detect_after_plugin(name, plugin_path)
+  local pattern = table.concat({'after', 'plugin', '**', '*.vim'}, util.get_separator())
+  local path = plugin_path .. util.get_separator() .. pattern
+  local glob_ok, files = pcall(vim.fn.glob, path, false, true)
+  if not glob_ok then
+    if string.find(files, 'E77') then
+      return {path}
+    else
+      log.error('Error running config for ' .. name)
+      error(files)
+    end
+  elseif #files > 0 then
+    return files
+  end
+
+  return nil
+end
+
 local function make_loaders(_, plugins)
   local loaders = {}
   local configs = {}
@@ -96,6 +114,10 @@ local function make_loaders(_, plugins)
         only_sequence = plugin.manual_opt == nil,
         only_setup = false
       }
+
+      if plugin.opt then
+        loaders[name].after_files = detect_after_plugin(name, loaders[name].path)
+      end
 
       if plugin.setup then
         if type(plugin.setup) ~= 'table' then plugin.setup = {plugin.setup} end
