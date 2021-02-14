@@ -35,7 +35,7 @@ local function handle_bufread(names, plugins)
 end
 
 local packer_load = nil
-local function handle_after(name, before, plugins)
+local function handle_sequencing(name, before, plugins)
   local plugin = plugins[name]
   plugin.load_after[before] = nil
   if next(plugin.load_after) == nil then packer_load({name}, {}, plugins) end
@@ -73,7 +73,7 @@ packer_load = function(names, cause, plugins)
 
       if plugin.after then
         for _, after_name in ipairs(plugin.after) do
-          handle_after(after_name, names[i], plugins)
+          handle_sequencing(after_name, names[i], plugins)
           vim.cmd('redraw')
         end
       end
