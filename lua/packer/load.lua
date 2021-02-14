@@ -1,18 +1,5 @@
-local source_dirs = {'ftdetect', 'ftplugin', 'after/ftdetect', 'after/ftplugin'}
-local function handle_bufread(names, plugins)
-  for _, name in ipairs(names) do
-    local path = plugins[name].path
-    for i = 1, 4 do
-      if #vim.fn.finddir(source_dirs[i], path) > 0 then
-        vim.cmd('doautocmd BufRead')
-        return
-      end
-    end
-  end
-end
-
 local packer_load = nil
-local function handle_after(name, before, plugins)
+local function handle_sequencing(name, before, plugins)
   local plugin = plugins[name]
   plugin.load_after[before] = nil
   if next(plugin.load_after) == nil then packer_load({name}, {}, plugins) end
@@ -20,6 +7,7 @@ end
 
 packer_load = function(names, cause, plugins)
   local some_unloaded = false
+  local needs_bufread = false
   local num_names = #names
 
   local cmd = vim.api.nvim_command
@@ -28,6 +16,7 @@ packer_load = function(names, cause, plugins)
     local plugin = plugins[names[i]]
     if not plugin.loaded then
       some_unloaded = true
+      needs_bufread = needs_bufread or plugin.needs_bufread
       if plugin.commands then
         for _, del_cmd in ipairs(plugin.commands) do cmd('silent! delcommand ' .. del_cmd) end
       end
@@ -37,6 +26,12 @@ packer_load = function(names, cause, plugins)
       end
 
       vim.cmd('packadd ' .. names[i])
+      if plugin.after_files then
+        for _, file in ipairs(plugin.after_files) do
+          cmd('silent exe "source ' .. file .. '"')
+        end
+      end
+
       if plugin.config then
         for _, config_line in ipairs(plugin.config) do
           local success, err = pcall(loadstring(config_line))
@@ -49,7 +44,7 @@ packer_load = function(names, cause, plugins)
 
       if plugin.after then
         for _, after_name in ipairs(plugin.after) do
-          handle_after(after_name, names[i], plugins)
+          handle_sequencing(after_name, names[i], plugins)
           vim.cmd('redraw')
         end
       end
@@ -59,7 +54,7 @@ packer_load = function(names, cause, plugins)
   end
 
   if not some_unloaded then return end
-  handle_bufread(names, plugins)
+  if needs_bufread then cmd('doautocmd BufRead') end
   if cause.cmd then
     local lines = cause.l1 == cause.l2 and '' or (cause.l1 .. ',' .. cause.l2)
     vim.cmd(fmt('%s%s%s %s', lines, cause.cmd, cause.bang, cause.args))

@@ -57,6 +57,31 @@ local function make_try_loadstring(item, chunk, name)
   return executable_string, bytecode
 end
 
+local pattern = table.concat({'after', 'plugin', '**', '*.vim'}, util.get_separator())
+local function detect_after_plugin(name, plugin_path)
+  local path = plugin_path .. util.get_separator() .. pattern
+  local glob_ok, files = pcall(vim.fn.glob, path, false, true)
+  if not glob_ok then
+    if string.find(files, 'E77') then
+      return {path}
+    else
+      log.error('Error running config for ' .. name)
+      error(files)
+    end
+  elseif #files > 0 then
+    return files
+  end
+
+  return nil
+end
+
+local source_dirs = {'ftdetect', 'ftplugin', 'after/ftdetect', 'after/ftplugin'}
+local function detect_bufread(plugin_path)
+  local path = plugin_path
+  for i = 1, 4 do if #vim.fn.finddir(source_dirs[i], path) > 0 then return true end end
+  return false
+end
+
 local function make_loaders(_, plugins)
   local loaders = {}
   local configs = {}
@@ -96,6 +121,11 @@ local function make_loaders(_, plugins)
         only_sequence = plugin.manual_opt == nil,
         only_setup = false
       }
+
+      if plugin.opt then
+        loaders[name].after_files = detect_after_plugin(name, loaders[name].path)
+        loaders[name].needs_bufread = detect_bufread(loaders[name].path)
+      end
 
       if plugin.setup then
         if type(plugin.setup) ~= 'table' then plugin.setup = {plugin.setup} end
