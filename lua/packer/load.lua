@@ -39,7 +39,6 @@ packer_load = function(names, cause, plugins)
 
       if plugin.after then
         for _, after_name in ipairs(plugin.after) do
-          vim.cmd('redraw')
           local after_plugin = plugins[after_name]
           after_plugin.load_after[names[i]] = nil
           if next(after_plugin.load_after) == nil then
