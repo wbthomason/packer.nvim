@@ -1,9 +1,4 @@
 local packer_load = nil
-local function handle_sequencing(name, before, plugins)
-  local plugin = plugins[name]
-  plugin.load_after[before] = nil
-  if next(plugin.load_after) == nil then packer_load({name}, {}, plugins) end
-end
 
 packer_load = function(names, cause, plugins)
   local some_unloaded = false
@@ -44,8 +39,12 @@ packer_load = function(names, cause, plugins)
 
       if plugin.after then
         for _, after_name in ipairs(plugin.after) do
-          handle_sequencing(after_name, names[i], plugins)
           vim.cmd('redraw')
+          local after_plugin = plugins[after_name]
+          after_plugin.load_after[names[i]] = nil
+          if next(after_plugin.load_after) == nil then
+            packer_load({after_name}, {}, plugins)
+          end
         end
       end
 
