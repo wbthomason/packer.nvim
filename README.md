@@ -110,7 +110,7 @@ return require('packer').startup(function()
   -- Plugins can also depend on rocks from luarocks.org:
   use {
     'my/supercoolplugin',
-    rocks = {'lpeg', {'lua-cjson', '2.1.0'}}
+    rocks = {'lpeg', {'lua-cjson', version = '2.1.0'}}
   }
 
   -- You can specify rocks in isolation
@@ -346,8 +346,14 @@ end
 
 You may specify that a plugin requires one or more Luarocks packages using the `rocks` key. This key
 takes either a string specifying the name of a package (e.g. `rocks=lpeg`), or a list specifying one or more packages.
-Entries in the list may either be strings or lists --- the latter case is used to specify a
-particular version of a package, e.g. `rocks = {'lpeg', {'lua-cjson', '2.1.0'}}`.
+Entries in the list may either be strings, a list of strings or a table --- the latter case is used to specify arguments such as the
+particular version of a package.
+Supported lua rocks keys are: `server`, `only_server`, `only-sources`
+```lua
+rocks = {'lpeg', {'lua-cjson', version = '2.1.0'}}
+use_rocks {'lua-cjson', 'lua-resty-http'}
+use_rocks {'luaformatter', server = 'https://luarocks.org/dev'}
+```
 
 Currently, `packer` only supports equality constraints on package versions.
 
