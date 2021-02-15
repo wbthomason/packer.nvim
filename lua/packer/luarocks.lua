@@ -170,7 +170,7 @@ local luarocks_keys = {
 }
 
 local function format_luarocks_args(package)
-  if vim.tbl_islist(package) or type(package) ~= 'table' then return '' end
+  if type(package) ~= 'table' then return '' end
   local args = {}
   for key, value in pairs(package) do
     local luarock_key = luarocks_keys[key]
@@ -327,11 +327,7 @@ local function clean_packages(rocks, results, disp)
       local to_remove = {}
       for _, package in ipairs(installed_packages) do to_remove[package.name] = package end
       for _, rock in pairs(rocks) do
-        if vim.tbl_islist(rock) then
-          for _,name in ipairs(rock) do
-            to_remove[name] = nil
-          end
-        elseif type(rock) == 'table' then
+        if type(rock) == 'table' then
           if to_remove[rock[1]] and (not rock.version or to_remove[rock[1]].version == rock.version) then
             to_remove[rock[1]] = nil
           end
@@ -390,11 +386,7 @@ local function ensure_packages(rocks, results, disp)
   return async(function()
     local to_install = {}
     for _, rock in pairs(rocks) do
-      if vim.tbl_islist(rock) then
-        for _,name in ipairs(rock) do
-          to_install[name] = name
-        end
-      elseif type(rock) == 'table' then
+      if type(rock) == 'table' then
         to_install[rock[1]] = rock
       else
         to_install[rock] = true
