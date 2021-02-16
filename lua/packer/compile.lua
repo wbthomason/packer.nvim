@@ -29,6 +29,45 @@ catch
 endtry
 ]]
 
+local profile_time = [[
+local time
+local profile_info
+local should_profile = os.getenv('PACKER_PROFILE')
+if should_profile then
+  local hrtime = vim.loop.hrtime
+  profile_info = {}
+  time = function(chunk, start)
+    if start then
+      profile_info[chunk] = hrtime()
+    else
+      profile_info[chunk] = (hrtime() - profile_info[chunk]) / 1e6
+    end
+  end
+else
+  time = function(chunk, start) end
+end
+]]
+
+local profile_output = [[
+local function print_profiles()
+  local sorted_times = {}
+  for chunk_name, time_taken in pairs(profile_info) do
+    sorted_times[#sorted_times + 1] = {chunk_name, time_taken}
+  end
+  table.sort(sorted_times, function(a, b) return a[2] < b[2] end)
+  local results = {}
+  for i, elem in ipairs(sorted_times) do
+    results[i] = elem[1] .. ' took ' .. elem[2] .. 'ms'
+  end
+
+  print(vim.inspect(results))
+end
+]]
+
+local conditionally_output_profile = [[
+if should_profile then print_profiles() end
+]]
+
 local try_loadstring = [[
 local function try_loadstring(s, component, name)
   local success, result = pcall(loadstring(s))
@@ -475,13 +514,15 @@ local function make_loaders(_, plugins)
   local result = {'" Automatically generated packer.nvim plugin loader code\n'}
   table.insert(result, feature_guard)
   table.insert(result, 'lua << END')
-  table.insert(result, luarocks.generate_path_setup())
-  table.insert(result, try_loadstring)
-  table.insert(result, fmt('_G.packer_plugins = %s\n', dump_loaders(loaders)))
+  table.insert(result, profile_time)
+  table.insert(result, profile_output)
+  timed_chunk(result, luarocks.generate_path_setup())
+  timed_chunk(result, try_loadstring)
+  timed_chunk(result, fmt('_G.packer_plugins = %s\n', dump_loaders(loaders)))
   -- Then the runtimepath line
   if rtp_line ~= '' then
     table.insert(result, '-- Runtimepath customization')
-    table.insert(result, rtp_line)
+    timed_chunk(result, rtp_line)
   end
 
   -- Then the module lazy loads
@@ -491,29 +532,29 @@ local function make_loaders(_, plugins)
   end
 
   -- Then setups, configs, and conditionals
-  if next(setup_lines) then vim.list_extend(result, setup_lines) end
-  if next(config_lines) then vim.list_extend(result, config_lines) end
+  if next(setup_lines) then timed_chunk(result, setup_lines) end
+  if next(config_lines) then timed_chunk(result, config_lines) end
   if next(conditionals) then
     table.insert(result, '-- Conditional loads')
-    vim.list_extend(result, conditionals)
+    timed_chunk(result, conditionals)
   end
 
   -- The sequenced loads
   if next(sequence_lines) then
     table.insert(result, '-- Load plugins in order defined by `after`')
-    vim.list_extend(result, sequence_lines)
+    timed_chunk(result, sequence_lines)
   end
 
   -- The command and keymap definitions
   if next(command_defs) then
     table.insert(result, '\n-- Command lazy-loads')
-    vim.list_extend(result, command_defs)
+    timed_chunk(result, command_defs)
     table.insert(result, '')
   end
 
   if next(keymap_defs) then
     table.insert(result, '-- Keymap lazy-loads')
-    vim.list_extend(result, keymap_defs)
+    timed_chunk(result, keymap_defs)
     table.insert(result, '')
   end
 
@@ -527,17 +568,17 @@ local function make_loaders(_, plugins)
 
   if some_ft then
     table.insert(result, '  -- Filetype lazy-loads')
-    vim.list_extend(result, ft_aucmds)
+    timed_chunk(result, ft_aucmds)
   end
 
   if some_event then
     table.insert(result, '  -- Event lazy-loads')
-    vim.list_extend(result, event_aucmds)
+    timed_chunk(result, event_aucmds)
   end
 
   if some_fn then
     table.insert(result, '  -- Function lazy-loads')
-    vim.list_extend(result, fn_aucmds)
+    timed_chunk(result, fn_aucmds)
   end
 
   if some_ft or some_event or some_fn then table.insert(result, 'vim.cmd("augroup END")') end
@@ -545,11 +586,13 @@ local function make_loaders(_, plugins)
     table.insert(result, 'vim.cmd [[augroup filetypedetect]]')
     for _, path in ipairs(ftdetect_paths) do
       local escaped_path = vim.fn.escape(path, ' ')
-      table.insert(result, 'vim.cmd [[source ' .. escaped_path .. ']]')
+      timed_chunk(result, 'vim.cmd [[source ' .. escaped_path .. ']]')
     end
 
     table.insert(result, 'vim.cmd("augroup END")')
   end
+
+  table.insert(result, conditionally_output_profile)
   table.insert(result, 'END\n')
   table.insert(result, catch_errors)
   return table.concat(result, '\n')
