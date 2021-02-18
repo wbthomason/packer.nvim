@@ -4,7 +4,7 @@ local util = require('packer.util')
 local display = require('packer.display')
 local plugin_utils = require('packer.plugin_utils')
 
-local fmt = string.fmt
+local fmt = string.format
 local async = a.sync
 local await = a.wait
 
