@@ -27,18 +27,11 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 9. [Contributors](#contributors)
 
 ## Notices
-- **2021-01-19**: Basic Luarocks support has landed! Use the `rocks` key with a string or table to
-  specify packages to install.
-- **2020-12-10**: The `disable_commands` configuration flag now affects non-`startup` use as well.
-  This means that, by default, `packer` will create commands for basic operations for you.
-- **2020-11-13**: There is now a default implementation for a floating window `open_fn` in
-  `packer.util`.
-- **2020-09-04:** Due to changes to the Neovim `extmark` api (see:
-  https://github.com/neovim/neovim/commit/3853276d9cacc99a2698117e904475dbf7033383), users will need
-  to update to a version of Neovim **after** the aforementioned PR was merged. There are currently
-  shims around the changed functions which should maintain support for earlier versions of Neovim,
-  but these are intended to be temporary and will be removed by **2020-10-04**. Therefore
-  Packer will not work with Neovim v0.4.4, which was released before the `extmark` change.
+- **2021-02-18**: Having trouble with Luarocks on macOS? See [this issue](https://github.com/wbthomason/packer.nvim/issues/180).
+- **2021-01-19**: Basic Luarocks support has landed! Use the `rocks` key with a string or table to specify packages to install.
+- **2020-12-10**: The `disable_commands` configuration flag now affects non-`startup` use as well. This means that, by default, `packer` will create commands for basic operations for you.
+- **2020-11-13**: There is now a default implementation for a floating window `open_fn` in `packer.util`.
+- **2020-09-04:** Due to changes to the Neovim `extmark` api (see: https://github.com/neovim/neovim/commit/3853276d9cacc99a2698117e904475dbf7033383), users will need to update to a version of Neovim **after** the aforementioned PR was merged. There are currently shims around the changed functions which should maintain support for earlier versions of Neovim, but these are intended to be temporary and will be removed by **2020-10-04**. Therefore Packer will not work with Neovim v0.4.4, which was released before the `extmark` change.
 
 ## Features
 - Declarative plugin specification
