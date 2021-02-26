@@ -185,9 +185,9 @@ local function make_loaders(_, plugins)
         if type(plugin.event) == 'string' then plugin.event = {plugin.event .. ' *'} end
 
         for _, event in ipairs(plugin.event) do
-	  if event:sub(#event,-1) ~= '*' then
+          if event:sub(#event,-1) ~= '*' then
             event = event ..' *'
-	  end
+          end
           events[event] = events[event] or {}
           table.insert(events[event], quote_name)
         end
