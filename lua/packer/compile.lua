@@ -182,9 +182,12 @@ local function make_loaders(_, plugins)
       if plugin.event then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        if type(plugin.event) == 'string' then plugin.event = {plugin.event} end
+        if type(plugin.event) == 'string' then plugin.event = {plugin.event .. ' *'} end
 
         for _, event in ipairs(plugin.event) do
+	  if event:sub(#event,-1) ~= '*' then
+            event = event ..' *'
+	  end
           events[event] = events[event] or {}
           table.insert(events[event], quote_name)
         end
