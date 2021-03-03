@@ -182,9 +182,18 @@ local function make_loaders(_, plugins)
       if plugin.event then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        if type(plugin.event) == 'string' then plugin.event = {plugin.event} end
+        if type(plugin.event) == 'string' then
+          if not plugin.event:find('%s') then
+            plugin.event = {plugin.event .. ' *'}
+          else
+            plugin.event = {plugin.event}
+          end
+        end
 
         for _, event in ipairs(plugin.event) do
+          if event:sub(#event,-1) ~= '*' and not event:find('%s') then
+            event = event ..' *'
+          end
           events[event] = events[event] or {}
           table.insert(events[event], quote_name)
         end
@@ -285,9 +294,9 @@ local function make_loaders(_, plugins)
   end
 
   local rtp_line = ''
-  for _, rtp in ipairs(rtps) do rtp_line = rtp_line .. '",' .. vim.fn.escape(rtp, '\\,') .. '"' end
+  for _, rtp in ipairs(rtps) do rtp_line = rtp_line .. ' .. ",' .. vim.fn.escape(rtp, '\\,') .. '"' end
 
-  if rtp_line ~= '' then rtp_line = 'vim.o.runtimepath = vim.o.runtimepath .. ' .. rtp_line end
+  if rtp_line ~= '' then rtp_line = 'vim.o.runtimepath = vim.o.runtimepath' .. rtp_line end
 
   local setup_lines = {}
   for name, plugin_setup in pairs(setup) do
