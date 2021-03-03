@@ -41,6 +41,14 @@ local log = {}
 
 local unpack = unpack or table.unpack
 
+local level_ids = {trace = 1, debug = 2, info = 3, warn = 4, error = 5, fatal = 6}
+log.cfg = function(_config)
+  local print_level = level_ids[_config.log.level]
+  local config = {console_levels = {}}
+  if print_level then for i = print_level, 6 do config.console_levels[i] = true end end
+  log.new(config, true)
+end
+
 log.new = function(config, standalone)
   config = vim.tbl_deep_extend("force", default_config, config)
   local outfile = string.format('%s/%s.log', vim.fn.stdpath('cache'), config.plugin)

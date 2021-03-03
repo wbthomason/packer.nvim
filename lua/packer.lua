@@ -66,7 +66,8 @@ local config_defaults = {
     show_all_info = true,
     keybindings = {quit = 'q', toggle_info = '<CR>', diff = 'd', prompt_revert = 'r'}
   },
-  luarocks = {python_cmd = 'python'}
+  luarocks = {python_cmd = 'python'},
+  log = {level = 'warn'}
 }
 
 local config = vim.tbl_extend('force', {}, config_defaults)
@@ -90,7 +91,7 @@ packer.init = function(user_config)
   config.start_dir = util.join_paths(config.pack_dir, 'start')
 
   for _, mod in ipairs({
-    clean, compile, display, handlers, install, plugin_types, plugin_utils, update, luarocks
+    clean, compile, display, handlers, install, plugin_types, plugin_utils, update, luarocks, log
   }) do mod.cfg(config) end
 
   plugin_utils.ensure_dirs()
