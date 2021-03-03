@@ -57,7 +57,7 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 To get started, first clone this repository to somewhere on your `packpath`, e.g.:
 ```shell
 git clone https://github.com/wbthomason/packer.nvim\
- ~/.local/share/nvim/site/pack/packer/opt/packer.nvim
+ ~/.local/share/nvim/site/pack/packer/start/packer.nvim
 ```
 
 Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lua/plugins.lua`):
@@ -142,10 +142,20 @@ return require('packer').startup(function()
 end)
 ```
 
+Note that if you get linter complaints about `use` being an undefined global, these errors are
+spurious - `packer` injects `use` into the scope of the function passed to `startup`.
+If these errors bother you, the easiest fix is to simply specify `use` as an argument to the
+function you pass to `startup`, e.g.
+```lua
+packer.startup(function(use)
+...your config...
+end)
+```
+
 `packer` provides the following commands after you've run and configured `packer` with `require('packer').startup(...)`:
 
 ```
--- You must run this whenever you make changes to your plugin configuration
+-- You must run this or `PackerSync` whenever you make changes to your plugin configuration
 :PackerCompile
 
 -- Only install missing plugins
