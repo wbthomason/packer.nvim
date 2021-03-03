@@ -285,9 +285,9 @@ local function make_loaders(_, plugins)
   end
 
   local rtp_line = ''
-  for _, rtp in ipairs(rtps) do rtp_line = rtp_line .. '",' .. vim.fn.escape(rtp, '\\,') .. '"' end
+  for _, rtp in ipairs(rtps) do rtp_line = rtp_line .. ' .. ",' .. vim.fn.escape(rtp, '\\,') .. '"' end
 
-  if rtp_line ~= '' then rtp_line = 'vim.o.runtimepath = vim.o.runtimepath .. ' .. rtp_line end
+  if rtp_line ~= '' then rtp_line = 'vim.o.runtimepath = vim.o.runtimepath' .. rtp_line end
 
   local setup_lines = {}
   for name, plugin_setup in pairs(setup) do
