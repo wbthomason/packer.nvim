@@ -510,6 +510,6 @@ end
 
 local compile = setmetatable({cfg = cfg}, {__call = make_loaders})
 
-compile.opt_keys = {'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup', 'fn'}
+compile.opt_keys = {'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup', 'fn', 'module'}
 
 return compile

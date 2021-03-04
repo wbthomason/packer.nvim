@@ -74,14 +74,32 @@ local config = vim.tbl_extend('force', {}, config_defaults)
 local plugins = nil
 local rocks = nil
 
+local function lazy_load_module(module_name)
+  for name, plugin in pairs(plugins) do
+    local formatted = vim.fn.matchstr(module_name, [[^[^./]\+]])
+    if plugin.module == formatted and not plugin.loaded then
+      vim.cmd('packadd ' .. name)
+      plugin.loaded = true
+    end
+  end
+end
+
+local function append_loader()
+    return function(mod_name)
+      lazy_load_module(mod_name)
+      return nil
+    end
+end
+
 --- Initialize packer
 -- Forwards user configuration to sub-modules, resets the set of managed plugins, and ensures that
 -- the necessary package directories exist
 packer.init = function(user_config)
   user_config = user_config or {}
   config = util.deep_extend('force', config, user_config)
-
   packer.reset()
+
+  table.insert(package.loaders, 1, append_loader())
 
   config.package_root = vim.fn.fnamemodify(config.package_root, ':p')
   local _
