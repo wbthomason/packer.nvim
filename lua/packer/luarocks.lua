@@ -166,16 +166,25 @@ end
 local luarocks_keys = {
   only_server = 'only-server',
   only_source = 'only-sources',
-  server = 'server'
 }
+
+local function is_valid_luarock_key(key)
+  return not (key == 'tree' or key == 'local')
+end
 
 local function format_luarocks_args(package)
   if type(package) ~= 'table' then return '' end
   local args = {}
   for key, value in pairs(package) do
-    local luarock_key = luarocks_keys[key]
-    if luarock_key and type(value) == 'string' then
-      table.insert(args, string.format('--%s=%s', key, value))
+    if type(key) == "string" and is_valid_luarock_key(key) then
+      local luarock_key = luarocks_keys[key] and luarocks_keys[key] or key
+      if luarock_key and type(value) == 'string' then
+        table.insert(args, string.format('--%s=%s', key, value))
+      elseif key == "env" and type(value) == "table" then
+        for name, env_value in pairs(value) do
+          table.insert(args, string.format('%s=%s', name, env_value))
+        end
+      end
     end
   end
   return ' ' ..table.concat(args, ' ')

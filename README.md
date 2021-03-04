@@ -351,11 +351,13 @@ You may specify that a plugin requires one or more Luarocks packages using the `
 takes either a string specifying the name of a package (e.g. `rocks=lpeg`), or a list specifying one or more packages.
 Entries in the list may either be strings, a list of strings or a table --- the latter case is used to specify arguments such as the
 particular version of a package.
-Supported lua rocks keys are: `server`, `only_server`, `only-sources`
+all supported luarocks keys are allowed except: `tree` and `local`. Environment variables for the luarocks command can also be
+specified using the `env` key which takes a table as the value as shown below.
 ```lua
 rocks = {'lpeg', {'lua-cjson', version = '2.1.0'}}
 use_rocks {'lua-cjson', 'lua-resty-http'}
 use_rocks {'luaformatter', server = 'https://luarocks.org/dev'}
+use_rocks {'openssl' env = {OPENSSL_DIR = "/path/to/dir"}}
 ```
 
 Currently, `packer` only supports equality constraints on package versions.
