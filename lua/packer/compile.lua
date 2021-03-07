@@ -40,6 +40,21 @@ local function try_loadstring(s, component, name)
 end
 ]]
 
+local module_loader = [[
+local function lazy_load_module(module_name)
+  if module_name == 'packer.load' then return nil end
+  local to_load = {}
+  local i = 1
+  for module_pat, plugin_name in pairs(module_lazy_loads) do
+    if string.match(module_name, module_pat) then to_load[i] = plugin_name end
+  end
+
+  require('packer.load')(to_load, {module = module_name}, _G.packer_plugins)
+end
+
+table.insert(package.loaders, 1, lazy_load_module)
+]]
+
 local function dump_loaders(loaders)
   local result = vim.deepcopy(loaders)
   for k, _ in pairs(result) do
