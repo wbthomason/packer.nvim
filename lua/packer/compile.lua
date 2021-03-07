@@ -117,7 +117,8 @@ local function make_loaders(_, plugins)
   local setup = {}
   local fts = {}
   local events = {}
-  local conditions = {}
+  local condition_ids = {}
+  local condition_bytecode = {}
   local commands = {}
   local keymaps = {}
   local after = {}
@@ -208,11 +209,12 @@ local function make_loaders(_, plugins)
 
         for _, condition in ipairs(plugin.cond) do
           if type(condition) == 'function' then
-            condition, _ = make_try_loadstring(condition, 'condition', name)
+            condition = vim.inspect(string.dump(condition, true))
+            condition_bytecode[condition] = true
           end
 
-          conditions[condition] = conditions[condition] or {}
-          table.insert(conditions[condition], name)
+          condition_ids[condition] = condition_ids[condition] or {}
+          table.insert(condition_ids[condition], name)
         end
       end
 
@@ -307,7 +309,7 @@ local function make_loaders(_, plugins)
   end
 
   local conditionals = {}
-  for condition, names in pairs(conditions) do
+  for condition, names in pairs(condition_ids) do
     local conditional_loads = {}
     for _, name in ipairs(names) do
       table.insert(conditional_loads, '\tvim.cmd [[packadd ' .. name .. ']]')
@@ -317,11 +319,13 @@ local function make_loaders(_, plugins)
         vim.list_extend(conditional_loads, lines)
       end
     end
+    local executable_conditional = condition
+    if condition_bytecode[condition] then
+      executable_conditional = 'try_loadstring(' .. condition .. ', "condition", \''
+                                 .. vim.inspect(names) .. '\')'
+    end
 
-    local conditional = [[if
-  ]] .. condition .. [[
-
-then
+    local conditional = 'if ' .. executable_conditional .. [[ then
 ]] .. table.concat(conditional_loads, '\n\t') .. '\nend\n'
 
     table.insert(conditionals, conditional)
