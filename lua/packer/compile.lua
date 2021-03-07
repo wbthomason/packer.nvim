@@ -46,7 +46,7 @@ local function lazy_load_module(module_name)
   local to_load = {}
   local i = 1
   for module_pat, plugin_name in pairs(module_lazy_loads) do
-    if string.match(module_name, module_pat) then to_load[i] = plugin_name end
+    if string.match(module_name, "^" .. module_pat) then to_load[i] = plugin_name end
   end
 
   require('packer.load')(to_load, {module = module_name}, _G.packer_plugins)
