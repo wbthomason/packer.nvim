@@ -207,8 +207,8 @@ local function make_loaders(_, plugins)
         end
 
         for _, event in ipairs(plugin.event) do
-          if event:sub(#event,-1) ~= '*' and not event:find('%s') then
-            event = event ..' *'
+          if event:sub(#event, -1) ~= '*' and not event:find('%s') then
+            event = event .. ' *'
           end
           events[event] = events[event] or {}
           table.insert(events[event], quote_name)
@@ -272,9 +272,7 @@ local function make_loaders(_, plugins)
       if plugin.fn then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-
         if type(plugin.fn) == 'string' then plugin.fn = {plugin.fn} end
-
         for _, fn in ipairs(plugin.fn) do
           fns[fn] = fns[fn] or {}
           table.insert(fns[fn], quote_name)
@@ -473,6 +471,7 @@ then
     table.insert(result, module_loader)
   end
 
+  -- Then setups, configs, and conditionals
   if next(setup_lines) then vim.list_extend(result, setup_lines) end
   if next(config_lines) then vim.list_extend(result, config_lines) end
   if next(conditionals) then
