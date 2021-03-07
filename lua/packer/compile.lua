@@ -46,13 +46,19 @@ local function lazy_load_module(module_name)
   local to_load = {}
   local i = 1
   for module_pat, plugin_name in pairs(module_lazy_loads) do
-    if string.match(module_name, "^" .. module_pat) then to_load[i] = plugin_name end
+    -- check the plugin has not already been loaded to avoid an infinite loop
+    if string.match(module_name, "^" .. module_pat) and not _G.packer_plugins[plugin_name].loaded then
+      to_load[i] = plugin_name
+    end
   end
 
   require('packer.load')(to_load, {module = module_name}, _G.packer_plugins)
 end
 
-table.insert(package.loaders, 1, lazy_load_module)
+if not vim.g.packer_custom_loader_enabled then
+  table.insert(package.loaders, 1, lazy_load_module)
+  vim.g.packer_custom_loader_enabled = true
+end
 ]]
 
 local function dump_loaders(loaders)
