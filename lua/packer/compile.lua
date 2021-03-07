@@ -138,6 +138,7 @@ local function make_loaders(_, plugins)
   local after = {}
   local fns = {}
   local ftdetect_paths = {}
+  local module_lazy_loads = {}
   for name, plugin in pairs(plugins) do
     if not plugin.disable then
       local quote_name = "'" .. name .. "'"
@@ -278,6 +279,13 @@ local function make_loaders(_, plugins)
           fns[fn] = fns[fn] or {}
           table.insert(fns[fn], quote_name)
         end
+      end
+
+      if plugin.module then
+        loaders[name].only_sequence = false
+        loaders[name].only_setup = false
+        if type(plugin.module) == 'string' then plugin.module = {plugin.module} end
+        for _, module_name in ipairs(plugin.module) do module_lazy_loads[module_name] = name end
       end
 
       if plugin.config and (not plugin.opt or loaders[name].only_setup) then
@@ -457,6 +465,12 @@ then
   if rtp_line ~= '' then
     table.insert(result, '-- Runtimepath customization')
     table.insert(result, rtp_line)
+  end
+
+  -- Then the module lazy loads
+  if next(module_lazy_loads) then
+    table.insert(result, 'local module_lazy_loads = ' .. vim.inspect(module_lazy_loads))
+    table.insert(result, module_loader)
   end
 
   if next(setup_lines) then vim.list_extend(result, setup_lines) end
