@@ -56,7 +56,7 @@ local function lazy_load_module(module_name)
 end
 
 if not vim.g.packer_custom_loader_enabled then
-  table.insert(package.loaders, 1, lazy_load_module)
+  table.insert(package.loaders, 2, lazy_load_module)
   vim.g.packer_custom_loader_enabled = true
 end
 ]]
