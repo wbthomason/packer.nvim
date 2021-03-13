@@ -329,6 +329,7 @@ use {
   fn = string or list          -- Specifies functions which load this plugin.
   cond = string, function, or list of strings/functions,   -- Specifies a conditional test to load this plugin
   setup = string or function,  -- Specifies code to run before this plugin is loaded.
+  module = string or list      -- Specifies patterns (e.g. for string.match) of Lua module names which, when required, load this plugin
 }
 ```
 
@@ -492,6 +493,7 @@ Many thanks to those who have contributed to the project! PRs and issues are alw
 list is infrequently updated; please feel free to bug me if you're not listed here and you would
 like to be.
 
+- @akinsho
 - @nanotee
 - @weilbith
 - @Iron-E
@@ -501,7 +503,6 @@ like to be.
 - @gbrlsnchs
 - @lewis6991
 - @TimUntersberger
-- @akinsho
 - @bfredl
 - @sunjon
 - @gwerbin
