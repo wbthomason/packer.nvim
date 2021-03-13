@@ -46,8 +46,7 @@ local function lazy_load_module(module_name)
   local to_load = {}
   local i = 1
   for module_pat, plugin_name in pairs(module_lazy_loads) do
-    -- check the plugin has not already been loaded to avoid an infinite loop
-    if string.match(module_name, "^" .. module_pat) and not _G.packer_plugins[plugin_name].loaded then
+    if not _G.packer_plugins[plugin_name].loaded and string.match(module_name, "^" .. module_pat) then
       to_load[i] = plugin_name
     end
   end
