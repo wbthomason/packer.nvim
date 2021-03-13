@@ -321,14 +321,15 @@ use {
   requires = string or list,   -- Specifies plugin dependencies. See "dependencies".
   rocks = string or list,      -- Specifies Luarocks dependencies for the plugin
   config = string or function, -- Specifies code to run after this plugin is loaded.
-  -- The following keys all imply lazy-loading
+  -- The setup key implies opt = true
+  setup = string or function,  -- Specifies code to run before this plugin is loaded.
+  -- The following keys all imply lazy-loading and imply opt = true
   cmd = string or list,        -- Specifies commands which load this plugin.
   ft = string or list,         -- Specifies filetypes which load this plugin.
   keys = string or list,       -- Specifies maps which load this plugin. See "Keybindings".
   event = string or list,      -- Specifies autocommand events which load this plugin.
   fn = string or list          -- Specifies functions which load this plugin.
   cond = string, function, or list of strings/functions,   -- Specifies a conditional test to load this plugin
-  setup = string or function,  -- Specifies code to run before this plugin is loaded.
   module = string or list      -- Specifies patterns (e.g. for string.match) of Lua module names which, when required, load this plugin
 }
 ```
