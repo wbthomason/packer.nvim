@@ -80,9 +80,7 @@ local rocks = nil
 packer.init = function(user_config)
   user_config = user_config or {}
   config = util.deep_extend('force', config, user_config)
-
   packer.reset()
-
   config.package_root = vim.fn.fnamemodify(config.package_root, ':p')
   local _
   config.package_root, _ = string.gsub(config.package_root, util.get_separator() .. '$', '', 1)

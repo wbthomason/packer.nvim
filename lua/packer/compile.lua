@@ -40,6 +40,26 @@ local function try_loadstring(s, component, name)
 end
 ]]
 
+local module_loader = [[
+local function lazy_load_module(module_name)
+  if module_name == 'packer.load' then return nil end
+  local to_load = {}
+  local i = 1
+  for module_pat, plugin_name in pairs(module_lazy_loads) do
+    if not _G.packer_plugins[plugin_name].loaded and string.match(module_name, "^" .. module_pat) then
+      to_load[i] = plugin_name
+    end
+  end
+
+  require('packer.load')(to_load, {module = module_name}, _G.packer_plugins)
+end
+
+if not vim.g.packer_custom_loader_enabled then
+  table.insert(package.loaders, 2, lazy_load_module)
+  vim.g.packer_custom_loader_enabled = true
+end
+]]
+
 local function dump_loaders(loaders)
   local result = vim.deepcopy(loaders)
   for k, _ in pairs(result) do
@@ -124,6 +144,7 @@ local function make_loaders(_, plugins)
   local after = {}
   local fns = {}
   local ftdetect_paths = {}
+  local module_lazy_loads = {}
   for name, plugin in pairs(plugins) do
     if not plugin.disable then
       local quote_name = "'" .. name .. "'"
@@ -192,8 +213,8 @@ local function make_loaders(_, plugins)
         end
 
         for _, event in ipairs(plugin.event) do
-          if event:sub(#event,-1) ~= '*' and not event:find('%s') then
-            event = event ..' *'
+          if event:sub(#event, -1) ~= '*' and not event:find('%s') then
+            event = event .. ' *'
           end
           events[event] = events[event] or {}
           table.insert(events[event], quote_name)
@@ -258,13 +279,18 @@ local function make_loaders(_, plugins)
       if plugin.fn then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-
         if type(plugin.fn) == 'string' then plugin.fn = {plugin.fn} end
-
         for _, fn in ipairs(plugin.fn) do
           fns[fn] = fns[fn] or {}
           table.insert(fns[fn], quote_name)
         end
+      end
+
+      if plugin.module then
+        loaders[name].only_sequence = false
+        loaders[name].only_setup = false
+        if type(plugin.module) == 'string' then plugin.module = {plugin.module} end
+        for _, module_name in ipairs(plugin.module) do module_lazy_loads[module_name] = name end
       end
 
       if plugin.config and (not plugin.opt or loaders[name].only_setup) then
@@ -448,6 +474,13 @@ local function make_loaders(_, plugins)
     table.insert(result, rtp_line)
   end
 
+  -- Then the module lazy loads
+  if next(module_lazy_loads) then
+    table.insert(result, 'local module_lazy_loads = ' .. vim.inspect(module_lazy_loads))
+    table.insert(result, module_loader)
+  end
+
+  -- Then setups, configs, and conditionals
   if next(setup_lines) then vim.list_extend(result, setup_lines) end
   if next(config_lines) then vim.list_extend(result, config_lines) end
   if next(conditionals) then
@@ -514,6 +547,6 @@ end
 
 local compile = setmetatable({cfg = cfg}, {__call = make_loaders})
 
-compile.opt_keys = {'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup', 'fn'}
+compile.opt_keys = {'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup', 'fn', 'module'}
 
 return compile
