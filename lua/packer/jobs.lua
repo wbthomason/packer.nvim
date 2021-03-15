@@ -1,202 +1,175 @@
 -- Interface with Neovim job control and provide a simple job sequencing structure
-local split = vim.split
 local loop = vim.loop
-local a = require('packer.async')
-local log = require('packer.log')
-local result = require('packer.result')
+local split = vim.split
+local trim = vim.trim
 
---- Utility function to make a "standard" logging callback for a given set of tables
--- Arguments:
--- - err_tbl: table to which err messages will be logged
--- - data_tbl: table to which data (non-err messages) will be logged
--- - pipe: the pipe for which this callback will be used. Passed in so that we can make sure all
---      output flushes before finishing reading
--- - disp: optional packer.display object for updating task status. Requires `name`
--- - name: optional string name for a current task. Used to update task status
-local function make_logging_callback(err_tbl, data_tbl, pipe, disp, name)
-  return function(err, data)
-    if err then table.insert(err_tbl, vim.trim(err)) end
-    if data ~= nil then
-      local trimmed = vim.trim(data)
-      table.insert(data_tbl, trimmed)
-      if disp then disp:task_update(name, split(trimmed, '\n')[1]) end
-    else
-      loop.read_stop(pipe)
-      loop.close(pipe)
-    end
+local a = require('packer.async')
+local await = a.wait
+
+local log = require('packer.log')
+
+local function output_callback(err, data, dest)
+  if err then
+    dest.err_count = dest.err_count + 1
+    dest.err[dest.err_count] = trim(err)
+  end
+
+  if data then
+    local trimmed = trim(data)
+    dest.data_count = dest.data_count + 1
+    dest.data[dest.data_count] = trimmed
+    if dest.disp then dest.disp:task_update(dest.task_name, split(trimmed, '\n')[1]) end
+  else
+    loop.read_stop(dest.pipe)
+    loop.close(dest.pipe)
   end
 end
 
+local function make_output_struct(data_tbl, err_tbl, pipe, task_name, disp)
+  return {
+    data = data_tbl,
+    data_count = 0,
+    err = err_tbl,
+    err_count = 0,
+    pipe = pipe,
+    disp = disp,
+    task_name = task_name
+  }
+end
+
 --- Utility function to make a table for capturing output with "standard" structure
-local function make_output_table()
-  return {err = {stdout = {}, stderr = {}}, data = {stdout = {}, stderr = {}}}
+local function make_output_table() return {err = {}, data = {}} end
+
+local function init_output(pipe, task_name, disp)
+  local output_tables = make_output_table()
+  return make_output_struct(output_tables.data, output_tables.err, pipe, task_name, disp)
 end
 
---- Utility function to merge stdout and stderr from two tables with "standard" structure (either
---  the err or data subtables, specifically)
-local function extend_output(to, from)
-  vim.list_extend(to.stdout, from.stdout)
-  vim.list_extend(to.stderr, from.stderr)
-  return to
+local function check_for_closed_pipes(pipes, check, cb, exit_code, signal)
+  for i = 1, #pipes do
+    if not loop.is_closing(pipes[i]) then return end
+    loop.check_stop(check)
+    cb(exit_code, signal)
+  end
 end
 
---- Wrapper for vim.loop.spawn. Takes a command, options, and callback just like vim.loop.spawn, but
---  (1) makes an async function and (2) ensures that all output from the command has been flushed
---  before calling the callback
-local spawn = a.wrap(function(cmd, options, callback)
-  local handle = nil
-  local timer = nil
-  handle = loop.spawn(cmd, options, function(exit_code, signal)
+local function job_cleanup(job, signal, exit_code)
+  job.handle:close()
+  if job.timer then
+    job.timer:stop()
+    job.timer:close()
+  end
+
+  local opts = job.options
+  local pipes_closed_check = loop.new_check()
+  local function check_fn()
+    check_for_closed_pipes(opts.stdio, pipes_closed_check, job.cb, exit_code, signal)
+  end
+
+  loop.check_start(pipes_closed_check, check_fn)
+end
+
+local function timer_cleanup(job)
+  job.timer:stop()
+  job.timer:close()
+  local handle = job.handle
+  if loop.is_active(handle) then
+    log.warn('Killing ' .. job.cmd .. ' due to timeout!')
+    loop.process_kill(handle, 'sigint')
     handle:close()
-    if timer ~= nil then
-      timer:stop()
-      timer:close()
-    end
+    local pipes = job.opts.stdio
+    for i = 1, #pipes do loop.close(pipes[i]) end
+    job.cb(-9999, 'sigint')
+  end
+end
 
-    loop.close(options.stdio[1])
-    local check = loop.new_check()
-    loop.check_start(check, function()
-      for _, pipe in pairs(options.stdio) do if not loop.is_closing(pipe) then return end end
-      loop.check_stop(check)
-      callback(exit_code, signal)
-    end)
-  end)
-
+local function spawn_job(cmd, options, async_cb)
+  local job = {handle = nil, timer = nil, opts = options, cb = async_cb, cmd = cmd}
+  local function job_fn(exit_code, signal) job_cleanup(job, exit_code, signal) end
+  job.handle = loop.spawn(cmd, options, job_fn)
   if options.stdio then
-    for i, pipe in pairs(options.stdio) do
-      if options.stdio_callbacks[i] then loop.read_start(pipe, options.stdio_callbacks[i]) end
+    local pipes = options.stdio
+    local output_dests = options.output_dests
+    for i = 1, #pipes do
+      if pipes[i] then
+        local function pipe_callback(err, data) output_callback(err, data, output_dests[i]) end
+        loop.read_start(pipes[i], pipe_callback)
+      end
     end
   end
 
   if options.timeout then
-    timer = loop.new_timer()
-    timer:start(options.timeout, 0, function ()
-      timer:stop()
-      timer:close()
-      if loop.is_active(handle) then
-        log.warn('Killing ' .. cmd .. ' due to timeout!')
-        loop.process_kill(handle, 'sigint')
-        handle:close()
-        for _, pipe in pairs(options.stdio) do
-          loop.close(pipe)
-        end
-        callback(-9999, 'sigint')
-      end
-    end)
-  end
-end)
-
---- Utility function to perform a common check for process success and return a result object
-local function was_successful(r)
-  if r.exit_code == 0 and (not r.output or not r.output.err or #r.output.err == 0) then
-    return result.ok(r)
-  else
-    return result.err(r)
+    job.timer = loop.new_timer()
+    local function timer_fn() timer_cleanup(job) end
+    job.timer:start(options.timeout, 0, timer_fn)
   end
 end
 
---- Main exposed function for the jobs module. Takes a task and options and returns an async
--- function that will run the task with the given opts via vim.loop.spawn
--- Arguments:
---  - task: either a string or table. If string, split, and the first component is treated as the
---    command. If table, first element is treated as the command. All subsequent elements are passed
---    as args
---  - opts: table of options. Can include the keys "options" (like the options table passed to
---    vim.loop.spawn), "success_test" (a function, called like `was_successful` (above)),
---    "capture_output" (either a boolean, in which case default output capture is set up and the
---    resulting tables are included in the result, or a set of tables, in which case output is logged
---    to the given tables)
-local run_job = function(task, opts)
-  return a.sync(function()
-    local options = opts.options or {hide = true}
-    local stdout = nil
-    local stderr = nil
-    local job_result = {exit_code = -1, signal = -1}
-    local success_test = opts.success_test or was_successful
-    local uv_err
-    local output = make_output_table()
-    local callbacks = {}
-    local output_valid = false
-    if opts.capture_output then
-      if type(opts.capture_output) == 'boolean' then
-        stdout, uv_err = loop.new_pipe(false)
-        if uv_err then
-          log.error('Failed to open stdout pipe: ' .. uv_err)
-          return result.err()
-        end
+local spawn = a.wrap(spawn_job)
 
-        stderr, uv_err = loop.new_pipe(false)
-        if uv_err then
-          log.error('Failed to open stderr pipe: ' .. uv_err)
-          return job_result
-        end
+--- Utility function to perform a common check for process success
+local function was_successful(job_result)
+  if job_result.exit_code == 0 then
+    local output_dests = job_result.output
+    for i = 1, 3 do if output_dests[i] and #output_dests[i].err > 0 then error(job_result) end end
+    return job_result
+  end
 
-        callbacks.stdout = make_logging_callback(output.err.stdout, output.data.stdout, stdout)
-        callbacks.stderr = make_logging_callback(output.err.stderr, output.data.stderr, stderr)
-        output_valid = true
-      elseif type(opts.capture_output) == 'table' then
-        if opts.capture_output.stdout then
-          stdout, uv_err = loop.new_pipe(false)
-          if uv_err then
-            log.error('Failed to open stdout pipe: ' .. uv_err)
-            return job_result
-          end
-
-          callbacks.stdout = function(err, data)
-            if data ~= nil then
-              opts.capture_output.stdout(err, data)
-            else
-              loop.read_stop(stdout)
-              loop.close(stdout)
-            end
-          end
-        end
-        if opts.capture_output.stderr then
-          stderr, uv_err = loop.new_pipe(false)
-          if uv_err then
-            log.error('Failed to open stderr pipe: ' .. uv_err)
-            return job_result
-          end
-
-          callbacks.stderr = function(err, data)
-            if data ~= nil then
-              opts.capture_output.stderr(err, data)
-            else
-              loop.read_stop(stderr)
-              loop.close(stderr)
-            end
-          end
-        end
-      end
-    end
-
-    if type(task) == 'string' then
-      local split_pattern = '%s+'
-      task = split(task, split_pattern)
-    end
-
-    local cmd = task[1]
-    if opts.timeout then
-      options.timeout = 1000 * opts.timeout
-    end
-
-    local stdin = loop.new_pipe(false)
-    options.args = {unpack(task, 2)}
-    options.stdio = {stdin, stdout, stderr}
-    options.stdio_callbacks = {nil, callbacks.stdout, callbacks.stderr}
-
-    local exit_code, signal = a.wait(spawn(cmd, options))
-    job_result = {exit_code = exit_code, signal = signal}
-    if output_valid then job_result.output = output end
-    return success_test(job_result)
-  end)
+  error(job_result)
 end
 
-local jobs = {
-  run = run_job,
-  logging_callback = make_logging_callback,
-  output_table = make_output_table,
-  extend_output = extend_output
-}
+local DEFAULT_OPTIONS = {hide = true}
+local TASK_SPLIT_PATTERN = '%s+'
+local function run_job(task, opts, async_cb)
+  local options = opts.options or DEFAULT_OPTIONS
+  local stdout = nil
+  local stderr = nil
+  local output_dests = {false, false, false}
+  local success_test = opts.success_test or was_successful
+  local uv_err
+  if opts.capture_output or opts.stdout then
+    stdout, uv_err = loop.new_pipe(false)
+    if uv_err then
+      log.error('Failed to open stdout pipe for ' .. vim.inspect(task) .. ': ' .. uv_err)
+      error(uv_err)
+    end
+  end
 
+  if opts.capture_output or opts.stderr then
+    stderr, uv_err = loop.new_pipe(false)
+    if uv_err then
+      log.error('Failed to open stderr pipe for ' .. vim.inspect(task) .. ': ' .. uv_err)
+      error(uv_err)
+    end
+  end
+
+  if opts.capture_output then
+    output_dests[2] = init_output(stdout, opts.task_name, opts.disp)
+    output_dests[3] = init_output(stderr, opts.task_name, opts.disp)
+  end
+
+  if opts.stdout then
+    output_dests[2] = make_output_struct(opts.stdout.data, opts.stdout.err, stdout, opts.task_name,
+                                         opts.disp)
+  end
+
+  if opts.stderr then
+    output_dests[3] = make_output_struct(opts.stderr.data, opts.stderr.err, stderr, opts.task_name,
+                                         opts.disp)
+  end
+
+  if type(task) == 'string' then task = split(task, TASK_SPLIT_PATTERN) end
+
+  local cmd = task[1]
+  if opts.timeout then options.timeout = 1000 * opts.timeout end
+  options.args = {unpack(task, 2)}
+  options.stdio = {nil, stdout, stderr}
+  options.output_dests = output_dests
+
+  local exit_code, signal = await(spawn(cmd, options))
+  local job_result = {task = task, exit_code = exit_code, signal = signal, output = output_dests}
+  async_cb(success_test(job_result))
+end
+
+local jobs = {run = a.wrap(run_job), init_output = init_output}
 return jobs
