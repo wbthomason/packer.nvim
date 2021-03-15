@@ -1,21 +1,24 @@
 -- Adapted from https://ms-jpq.github.io/neovim-async-tutorial/
-local co = coroutine
 local log = require('packer.log')
+local yield = coroutine.yield
+local resume = coroutine.resume
+local thread_create = coroutine.create
 
+local function EMPTY_CALLBACK() end
 local function step(func, callback)
-  local thread = co.create(func)
+  local thread = thread_create(func)
   local tick = nil
   tick = function(...)
-    local ok, val = co.resume(thread, ...)
+    local ok, val = resume(thread, ...)
     if ok then
       if type(val) == 'function' then
         val(tick)
       else
-        (callback or function() end)(val)
+        (callback or EMPTY_CALLBACK)(val)
       end
     else
       log.error('Error in coroutine: ' .. val);
-      (callback or function() end)(nil)
+      (callback or EMPTY_CALLBACK)(nil)
     end
   end
 
@@ -26,7 +29,7 @@ local function wrap(func)
   return function(...)
     local params = {...}
     return function(tick)
-      table.insert(params, tick)
+      params[#params + 1] = tick
       return func(unpack(params))
     end
   end
@@ -55,7 +58,7 @@ local function join(...)
   return thunk_all
 end
 
-local function wait_all(...) return co.yield(join(...)) end
+local function wait_all(...) return yield(join(...)) end
 
 local function pool(n, interrupt_check, ...)
   local thunks = {...}
@@ -88,10 +91,10 @@ local function pool(n, interrupt_check, ...)
   end
 end
 
-local function wait_pool(limit, ...) return co.yield(pool(limit, false, ...)) end
+local function wait_pool(limit, ...) return yield(pool(limit, false, ...)) end
 
 local function interruptible_wait_pool(limit, interrupt_check, ...)
-  return co.yield(pool(limit, interrupt_check, ...))
+  return yield(pool(limit, interrupt_check, ...))
 end
 
 local function main(f) vim.schedule(f) end
@@ -100,7 +103,7 @@ local M = {
   --- Wrapper for functions that do not take a callback to make async functions
   sync = wrap(step),
   --- Alias for yielding to await the result of an async function
-  wait = co.yield,
+  wait = yield,
   --- Await the completion of a full set of async functions
   wait_all = wait_all,
   --- Await the completion of a full set of async functions, with a limit on how many functions can
