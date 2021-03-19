@@ -436,7 +436,6 @@ packer.compile = function(output_path)
   if config.auto_reload_compiled then vim.cmd("source " .. output_path) end
   log.info('Finished compiling lazy-loaders!')
   packer.on_compile_done()
-  packer.on_complete()
 end
 
 packer.config = config
