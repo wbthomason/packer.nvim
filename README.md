@@ -472,6 +472,13 @@ The option `compile_on_sync`, which defaults to `true`, will run `packer.compile
 `packer.sync()`, if set to `true`. Note that otherwise, you **must** run `packer.compile` yourself
 to generate the lazy-loader file!
 
+### User autocommands
+`packer` runs most of its operations asyncronously. If you would like to implement automations that
+require knowing when the operations are complete, you can use the following `User` autocmds (see
+`:help User` for more info on how to use):
+
+- `PackerComplete`: Fires after install, update, clean, and sync asynchronous operations finish.
+- `PackerCompileDone`: Fires after compiling (see [the section on compilation](#compiling-lazy-loaders))
 ## Debugging
 `packer.nvim` logs to `stdpath(cache)/packer.nvim.log`. Looking at this file is usually a good start
 if something isn't working as expected.
