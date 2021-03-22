@@ -231,12 +231,19 @@ packer.set_handler = function(name, func) handlers[name] = func end
 --- Add a plugin to the managed set
 packer.use = manage
 
+--- Hook to fire events after packer operations
+packer.on_complete = function() vim.cmd [[doautocmd User PackerComplete]] end
+
+--- Hook to fire events after packer compilation
+packer.on_compile_done = function() vim.cmd [[doautocmd User PackerCompileDone]] end
+
 --- Clean operation:
 -- Finds plugins present in the `packer` package but not in the managed set
 packer.clean = function(results)
   async(function()
     await(luarocks.clean(rocks, results, nil))
     await(clean(plugins, results))
+    packer.on_complete()
   end)()
 end
 
@@ -256,6 +263,7 @@ packer.install = function(...)
 
   if #install_plugins == 0 then
     log.info('All configured plugins are installed')
+    packer.on_complete()
     return
   end
 
@@ -281,8 +289,10 @@ packer.install = function(...)
       plugin_utils.update_rplugins()
       local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
       display_win:final_results(results, delta)
+      packer.on_complete()
     else
       log.info('Nothing to install!')
+      packer.on_complete()
     end
   end)()
 end
@@ -329,6 +339,7 @@ packer.update = function(...)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta)
+    packer.on_complete()
   end)()
 end
 
@@ -384,6 +395,7 @@ packer.sync = function(...)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta)
+    packer.on_complete()
   end)()
 end
 
@@ -423,6 +435,7 @@ packer.compile = function(output_path)
   output_file:close()
   if config.auto_reload_compiled then vim.cmd("source " .. output_path) end
   log.info('Finished compiling lazy-loaders!')
+  packer.on_compile_done()
 end
 
 packer.config = config

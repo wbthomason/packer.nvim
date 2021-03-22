@@ -394,6 +394,16 @@ They can be configured by changing the value of `config.display.keybindings`
 (see |packer-configuration|). Setting it to `false` will disable all keybindings.
 Setting any of its keys to `false` will disable the corresponding keybinding.
 
+USER AUTOCMDS                                  *packer-user-autocmds*
+`packer` runs most of its operations asyncronously. If you would like to
+implement automations that require knowing when the operations are complete,
+you can use the following User autocmds (see |User| for more info on how to
+use):
+
+`PackerComplete`       Fires after install, update, clean, and sync
+                     asynchronous operations finish.
+`PackerCompileDone`    Fires after compiling (see |packer-lazy-load|)
+
 ==============================================================================
 API                                            *packer-api*
 
