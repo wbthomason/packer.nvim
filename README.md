@@ -9,6 +9,8 @@ Have questions? Start a [discussion](https://github.com/wbthomason/packer.nvim/d
 
 Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvim/issues) or a [PR](https://github.com/wbthomason/packer.nvim/pulls).
 
+**Packer is built on native packages. You may wish to read `:h packages` before continuing**
+
 ## Table of Contents
 1. [Notices](#notices)
 2. [Features](#features)
@@ -65,14 +67,14 @@ Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lu
 ```lua
 -- This file can be loaded by calling `lua require('plugins')` from your init.vim
 
--- Only required if you have packer in your `opt` pack
+-- Only required if you have packer configured as `opt`
 vim.cmd [[packadd packer.nvim]]
 -- Only if your version of Neovim doesn't have https://github.com/neovim/neovim/pull/12632 merged
 vim._update_package_paths()
 
 return require('packer').startup(function()
-  -- Packer can manage itself as an optional plugin
-  use {'wbthomason/packer.nvim', opt = true}
+  -- Packer can manage itself
+  use 'wbthomason/packer.nvim'
 
   -- Simple plugins can be specified as strings
   use '9mm/vim-closer'
