@@ -346,6 +346,8 @@ print("Vim fugitive is loaded")
 -- other custom logic
 end
 ```
+**NOTE:** this table is only available *after* `packer_compiled.vim` is loaded so cannot be used till *after* plugins
+have been loaded.
 
 #### Luarocks support
 
