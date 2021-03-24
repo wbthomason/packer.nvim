@@ -276,6 +276,11 @@ local function make_loaders(_, plugins)
         end
       end
 
+      if plugin.wants then
+        if type(plugin.wants) == 'string' then plugin.wants = {plugin.wants} end
+        loaders[name].wants = plugin.wants
+      end
+
       if plugin.fn then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
