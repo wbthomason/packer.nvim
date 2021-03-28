@@ -100,6 +100,7 @@ packer.init = function(user_config)
     vim.cmd [[command! PackerSync     lua require('packer').sync()]]
     vim.cmd [[command! PackerClean    lua require('packer').clean()]]
     vim.cmd [[command! PackerCompile  lua require('packer').compile()]]
+    vim.cmd [[command! PackerStatus  lua require('packer').status()]]
   end
 end
 
@@ -396,6 +397,13 @@ packer.sync = function(...)
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta)
     packer.on_complete()
+  end)()
+end
+
+packer.status = function ()
+  async(function ()
+    local display_win = display.open(config.display.open_fn or config.display.open_cmd)
+    display_win:status(_G.packer_plugins)
   end)()
 end
 

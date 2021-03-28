@@ -38,6 +38,72 @@ local function strip_newlines(raw_lines)
   return lines
 end
 
+local function unpack_config_value(value, value_type, formatter)
+  if value_type == "string" then
+    return {value}
+  elseif value_type == "table" then
+    local result = {}
+    for _, k in ipairs(value) do
+      local item = formatter and formatter(k) or k
+      table.insert(result, fmt('  - %s', item))
+    end
+    return result
+  end
+  return ""
+end
+
+local function format_keys(value)
+  local value_type = type(value)
+  local mapping = value_type == "string" and value or value[2]
+  local mode = value[1] ~= "" and "mode: "..value[1] or ""
+  local line = fmt('"%s", %s', mapping, mode)
+  return line
+end
+
+local function format_cmd(value)
+  return fmt('"%s"', value)
+end
+
+local function get_key_name(key)
+  if key == "path" then
+    return "opt"
+  end
+  return key
+end
+
+---format a configuration value of unknown type into a string or list of strings
+---@param key string
+---@param value any
+---@return string|string[]
+local function format_values(key, value)
+  local value_type = type(value)
+  if key == "path" then
+    local is_opt = value:match("opt") ~= nil
+    return vim.inspect(is_opt)
+  elseif key == "keys" then
+    return unpack_config_value(value, value_type, format_keys)
+  elseif key == "commands" then
+    return unpack_config_value(value, value_type, format_cmd)
+  else
+    return vim.inspect(value)
+  end
+end
+
+local status_keys = {
+  "path",
+  "commands",
+  "keys",
+  "module",
+  "as",
+  "ft",
+  "event",
+  "rocks",
+  "branch",
+  "commit",
+  "tag",
+  "lock",
+}
+
 local config = nil
 local keymaps = {
   quit = {rhs = '<cmd>lua require"packer.display".quit()<cr>', action = 'quit'},
@@ -208,10 +274,46 @@ local display_mt = {
   setup_status_syntax = function(self)
     local highlights = {
       'hi def link packerStatus         Type', 'hi def link packerStatusCommit   Constant',
-      'hi def link packerStatusSuccess  Constant', 'hi def link packerStatusFail     WarningMsg'
+      'hi def link packerStatusSuccess  Constant', 'hi def link packerStatusFail     WarningMsg',
+      'hi def link packerPackageName    Label', 'hi def link packerPackageNotLoaded    Comment',
+      'hi def link packerString         String', 'hi def link packerBool Boolean'
     }
     for _, c in ipairs(highlights) do vim.cmd(c) end
   end,
+
+  status = vim.schedule_wrap(function (self, plugins)
+    if not self:valid_display() then return end
+    self:setup_status_syntax()
+    self:update_headline_message(fmt("Total plugins: %d", vim.tbl_count(plugins)))
+
+    local plugs = {}
+    local lines = {}
+
+    local padding = string.rep(" ", 3)
+    for plug_name, plug_conf in pairs(plugins) do
+      local header_lines = {
+        fmt(" • %s ", plug_name)..(not plug_conf.loaded and '(not loaded)' or ''),
+      }
+      local config_lines = {}
+      for key, value in pairs(plug_conf) do
+        if vim.tbl_contains(status_keys, key) then
+          local details = format_values(key, value)
+          local name = get_key_name(key)
+          if type(details) == "string" then
+            -- insert a position one so that one line details appear above multiline ones
+            table.insert(config_lines, 1, fmt("%s%s: %s", padding, name, details))
+          else
+            details = vim.tbl_map(function(line) return padding .. line end, details)
+            vim.list_extend(config_lines, {fmt("%s%s: ", padding, name), unpack(details)})
+          end
+          plugs[plug_name] = {lines = config_lines, displayed = false}
+        end
+      end
+      vim.list_extend(lines, header_lines)
+    end
+    self.items = plugs
+    self:set_lines(config.header_lines, -1, lines)
+  end),
 
   --- Display the final results of an operation
   final_results = vim.schedule_wrap(function(self, results, time)
@@ -497,6 +599,10 @@ local function make_filetype_cmds(working_sym, done_sym, error_sym)
     'syn match packerHash /\\(\\s\\)[0-9a-f]\\{7,8}\\(\\s\\)/',
     'syn match packerRelDate /([^)]*)$/', 'syn match packerProgress /\\(\\[\\)\\@<=[\\=]*/',
     'syn match packerOutput /\\(Output:\\)\\|\\(Commits:\\)\\|\\(Errors:\\)/',
+    [[syn match packerPackageNotLoaded /(not loaded)$/]],
+    [[syn match packerPackageName /\(^\ • \)\@<=[^ ]*/]],
+    [[syn match packerString /\v(''|""|(['"]).{-}[^\\]\2)/]],
+    [[syn match packerBool /\<\(false\|true\)\>/]],
     'hi def link packerWorking        SpecialKey', 'hi def link packerSuccess        Question',
     'hi def link packerFail           ErrorMsg', 'hi def link packerHash           Identifier',
     'hi def link packerRelDate        Comment', 'hi def link packerProgress       Boolean',
