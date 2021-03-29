@@ -400,8 +400,8 @@ packer.sync = function(...)
   end)()
 end
 
-packer.status = function ()
-  async(function ()
+packer.status = function()
+  async(function()
     local display_win = display.open(config.display.open_fn or config.display.open_cmd)
     display_win:status(_G.packer_plugins)
   end)()

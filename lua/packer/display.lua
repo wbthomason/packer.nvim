@@ -55,19 +55,15 @@ end
 local function format_keys(value)
   local value_type = type(value)
   local mapping = value_type == "string" and value or value[2]
-  local mode = value[1] ~= "" and "mode: "..value[1] or ""
+  local mode = value[1] ~= "" and "mode: " .. value[1] or ""
   local line = fmt('"%s", %s', mapping, mode)
   return line
 end
 
-local function format_cmd(value)
-  return fmt('"%s"', value)
-end
+local function format_cmd(value) return fmt('"%s"', value) end
 
 local function get_key_name(key)
-  if key == "path" then
-    return "opt"
-  end
+  if key == "path" then return "opt" end
   return key
 end
 
@@ -90,18 +86,8 @@ local function format_values(key, value)
 end
 
 local status_keys = {
-  "path",
-  "commands",
-  "keys",
-  "module",
-  "as",
-  "ft",
-  "event",
-  "rocks",
-  "branch",
-  "commit",
-  "tag",
-  "lock",
+  "path", "commands", "keys", "module", "as", "ft", "event", "rocks", "branch", "commit", "tag",
+  "lock"
 }
 
 local config = nil
@@ -281,7 +267,7 @@ local display_mt = {
     for _, c in ipairs(highlights) do vim.cmd(c) end
   end,
 
-  status = vim.schedule_wrap(function (self, plugins)
+  status = vim.schedule_wrap(function(self, plugins)
     if not self:valid_display() then return end
     self:setup_status_syntax()
     self:update_headline_message(fmt("Total plugins: %d", vim.tbl_count(plugins)))
@@ -292,7 +278,7 @@ local display_mt = {
     local padding = string.rep(" ", 3)
     for plug_name, plug_conf in pairs(plugins) do
       local header_lines = {
-        fmt(" • %s ", plug_name)..(not plug_conf.loaded and '(not loaded)' or ''),
+        fmt(" • %s ", plug_name) .. (not plug_conf.loaded and '(not loaded)' or '')
       }
       local config_lines = {}
       for key, value in pairs(plug_conf) do
@@ -602,11 +588,10 @@ local function make_filetype_cmds(working_sym, done_sym, error_sym)
     [[syn match packerPackageNotLoaded /(not loaded)$/]],
     [[syn match packerPackageName /\(^\ • \)\@<=[^ ]*/]],
     [[syn match packerString /\v(''|""|(['"]).{-}[^\\]\2)/]],
-    [[syn match packerBool /\<\(false\|true\)\>/]],
-    'hi def link packerWorking        SpecialKey', 'hi def link packerSuccess        Question',
-    'hi def link packerFail           ErrorMsg', 'hi def link packerHash           Identifier',
-    'hi def link packerRelDate        Comment', 'hi def link packerProgress       Boolean',
-    'hi def link packerOutput         Type'
+    [[syn match packerBool /\<\(false\|true\)\>/]], 'hi def link packerWorking        SpecialKey',
+    'hi def link packerSuccess        Question', 'hi def link packerFail           ErrorMsg',
+    'hi def link packerHash           Identifier', 'hi def link packerRelDate        Comment',
+    'hi def link packerProgress       Boolean', 'hi def link packerOutput         Type'
   }
 end
 
