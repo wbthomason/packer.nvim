@@ -100,6 +100,18 @@ if not vim.g.packer_custom_loader_enabled then
 end
 ]]
 
+local function timed_chunk(chunk, name, output_table)
+  output_table = output_table or {}
+  output_table[#output_table + 1] = 'time("' .. name .. '", true)'
+  if type(chunk) == 'string' then
+    output_table[#output_table + 1] = chunk
+  else
+    vim.list_extend(output_table, chunk)
+  end
+  output_table[#output_table + 1] = 'time("' .. name .. '", false)'
+  return output_table
+end
+
 local function dump_loaders(loaders)
   local result = vim.deepcopy(loaders)
   for k, _ in pairs(result) do
@@ -366,7 +378,7 @@ local function make_loaders(_, plugins)
   local config_lines = {}
   for name, plugin_config in pairs(configs) do
     local lines = {'-- Config for: ' .. name}
-    vim.list_extend(lines, plugin_config)
+    timed_chunk(plugin_config, 'Config for ' .. name, lines)
     vim.list_extend(config_lines, lines)
   end
 
@@ -378,8 +390,11 @@ local function make_loaders(_, plugins)
   local setup_lines = {}
   for name, plugin_setup in pairs(setup) do
     local lines = {'-- Setup for: ' .. name}
-    vim.list_extend(lines, plugin_setup)
-    if loaders[name].only_setup then table.insert(lines, 'vim.cmd [[packadd ' .. name .. ']]') end
+    timed_chunk(plugin_setup, 'Setup for ' .. name, lines)
+    if loaders[name].only_setup then
+      timed_chunk('vim.cmd [[packadd ' .. name .. ']]', 'packadd for ' .. name, lines)
+    end
+
     vim.list_extend(setup_lines, lines)
   end
 
@@ -387,10 +402,10 @@ local function make_loaders(_, plugins)
   for condition, names in pairs(condition_ids) do
     local conditional_loads = {}
     for _, name in ipairs(names) do
-      table.insert(conditional_loads, '\tvim.cmd [[packadd ' .. name .. ']]')
+      timed_chunk('\tvim.cmd [[packadd ' .. name .. ']]', 'packadd for ' .. name, conditional_loads)
       if plugins[name].config then
         local lines = {'-- Config for: ' .. name}
-        vim.list_extend(lines, plugins[name].executable_config)
+        timed_chunk(plugins[name].executable_config, 'Config for ' .. name, lines)
         vim.list_extend(conditional_loads, lines)
       end
     end
@@ -400,7 +415,10 @@ local function make_loaders(_, plugins)
                                  .. vim.inspect(names) .. '\')'
     end
 
-    local conditional = 'if ' .. executable_conditional .. [[ then
+    local conditional = [[if
+  ]] .. timed_chunk(executable_conditional, 'Conditional: ' .. executable_conditional) .. [[
+
+then
 ]] .. table.concat(conditional_loads, '\n\t') .. '\nend\n'
 
     table.insert(conditionals, conditional)
@@ -516,13 +534,14 @@ local function make_loaders(_, plugins)
   table.insert(result, 'lua << END')
   table.insert(result, profile_time)
   table.insert(result, profile_output)
-  timed_chunk(result, luarocks.generate_path_setup())
-  timed_chunk(result, try_loadstring)
-  timed_chunk(result, fmt('_G.packer_plugins = %s\n', dump_loaders(loaders)))
+  timed_chunk(luarocks.generate_path_setup(), 'Luarocks path setup', result)
+  timed_chunk(try_loadstring, 'try_loadstring definition', result)
+  timed_chunk(fmt('_G.packer_plugins = %s\n', dump_loaders(loaders)), 'Defining packer_plugins',
+              result)
   -- Then the runtimepath line
   if rtp_line ~= '' then
     table.insert(result, '-- Runtimepath customization')
-    timed_chunk(result, rtp_line)
+    timed_chunk(rtp_line, 'Runtimepath customization', result)
   end
 
   -- Then the module lazy loads
@@ -532,29 +551,29 @@ local function make_loaders(_, plugins)
   end
 
   -- Then setups, configs, and conditionals
-  if next(setup_lines) then timed_chunk(result, setup_lines) end
-  if next(config_lines) then timed_chunk(result, config_lines) end
+  if next(setup_lines) then vim.list_extend(result, setup_lines) end
+  if next(config_lines) then vim.list_extend(result, config_lines) end
   if next(conditionals) then
     table.insert(result, '-- Conditional loads')
-    timed_chunk(result, conditionals)
+    vim.list_extend(result, conditionals)
   end
 
   -- The sequenced loads
   if next(sequence_lines) then
     table.insert(result, '-- Load plugins in order defined by `after`')
-    timed_chunk(result, sequence_lines)
+    timed_chunk(sequence_lines, 'Sequenced loading', result)
   end
 
   -- The command and keymap definitions
   if next(command_defs) then
     table.insert(result, '\n-- Command lazy-loads')
-    timed_chunk(result, command_defs)
+    timed_chunk(command_defs, 'Defining lazy-load commands', result)
     table.insert(result, '')
   end
 
   if next(keymap_defs) then
     table.insert(result, '-- Keymap lazy-loads')
-    timed_chunk(result, keymap_defs)
+    timed_chunk(keymap_defs, 'Defining lazy-load keymaps', result)
     table.insert(result, '')
   end
 
@@ -568,17 +587,17 @@ local function make_loaders(_, plugins)
 
   if some_ft then
     table.insert(result, '  -- Filetype lazy-loads')
-    timed_chunk(result, ft_aucmds)
+    timed_chunk(ft_aucmds, 'Defining lazy-load filetype autocommands', result)
   end
 
   if some_event then
     table.insert(result, '  -- Event lazy-loads')
-    timed_chunk(result, event_aucmds)
+    timed_chunk(event_aucmds, 'Defining lazy-load event autocommands', result)
   end
 
   if some_fn then
     table.insert(result, '  -- Function lazy-loads')
-    timed_chunk(result, fn_aucmds)
+    timed_chunk(fn_aucmds, 'Defining lazy-load function autocommands', result)
   end
 
   if some_ft or some_event or some_fn then table.insert(result, 'vim.cmd("augroup END")') end
@@ -586,7 +605,8 @@ local function make_loaders(_, plugins)
     table.insert(result, 'vim.cmd [[augroup filetypedetect]]')
     for _, path in ipairs(ftdetect_paths) do
       local escaped_path = vim.fn.escape(path, ' ')
-      timed_chunk(result, 'vim.cmd [[source ' .. escaped_path .. ']]')
+      timed_chunk('vim.cmd [[source ' .. escaped_path .. ']]',
+                  'Sourcing ftdetect script at: ' .. path, result)
     end
 
     table.insert(result, 'vim.cmd("augroup END")')
