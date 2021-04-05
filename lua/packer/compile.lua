@@ -163,12 +163,16 @@ local function make_loaders(_, plugins)
         end
       end
 
-      if plugin.rtp then table.insert(rtps, util.join_paths(plugin.install_path, plugin.rtp)) end
+      local path = plugin.install_path
+      if plugin.rtp then
+        path = util.join_paths(plugin.install_path, plugin.rtp)
+        table.insert(rtps, path)
+      end
 
       loaders[name] = {
         loaded = not plugin.opt,
         config = plugin.config,
-        path = plugin.install_path .. (plugin.rtp and plugin.rtp or ''),
+        path = path,
         only_sequence = plugin.manual_opt == nil,
         only_setup = false
       }
