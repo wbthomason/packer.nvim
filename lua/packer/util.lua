@@ -122,12 +122,12 @@ util.float = function()
   local buf = vim.api.nvim_create_buf(false, true)
   local win = vim.api.nvim_open_win(buf, true, opts)
 
-  function restore_cursor()
+  function _G.__packer_restore_cursor()
     vim.api.nvim_set_current_win(last_win)
     vim.api.nvim_win_set_cursor(last_win, last_pos)
   end
 
-  vim.cmd('autocmd! BufWipeout <buffer> lua restore_cursor()')
+  vim.cmd('autocmd! BufWipeout <buffer> lua __packer_restore_cursor()')
 
   return true, win, buf
 end
