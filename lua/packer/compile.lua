@@ -42,10 +42,6 @@ end
 
 local module_loader = [[
 
-local function escape_pattern(text)
-    return text:gsub("([^%w])", "%%%1")
-end
-
 local lazy_load_called = {}
 local to_load = {}
 
@@ -53,7 +49,7 @@ local function lazy_load_module(module_name)
   if module_name == 'packer.load' or lazy_load_called[module_name] then return nil end
   lazy_load_called[module_name] = true
   for module_pat, plugin_name in pairs(module_lazy_loads) do
-    if not _G.packer_plugins[plugin_name].loaded and string.match(module_name, "^" .. escape_pattern(module_pat)) then
+    if not _G.packer_plugins[plugin_name].loaded and string.match(module_name, "^" .. vim.pesc(module_pat)) then
       to_load[#to_load + 1] = plugin_name
     end
   end
