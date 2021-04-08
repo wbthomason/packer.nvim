@@ -29,24 +29,28 @@ catch
 endtry
 ]]
 
-local profile_time = [[
-local time
-local profile_info
-local should_profile = os.getenv('PACKER_PROFILE')
-if should_profile then
-  local hrtime = vim.loop.hrtime
-  profile_info = {}
-  time = function(chunk, start)
-    if start then
-      profile_info[chunk] = hrtime()
-    else
-      profile_info[chunk] = (hrtime() - profile_info[chunk]) / 1e6
+---@param should_profile boolean
+---@return string
+local profile_time = function (should_profile)
+  return fmt([[
+  local time
+  local profile_info
+  local should_profile = %s
+  if should_profile then
+    local hrtime = vim.loop.hrtime
+    profile_info = {}
+    time = function(chunk, start)
+      if start then
+        profile_info[chunk] = hrtime()
+      else
+        profile_info[chunk] = (hrtime() - profile_info[chunk]) / 1e6
+      end
     end
+  else
+    time = function(chunk, start) end
   end
-else
-  time = function(chunk, start) end
+  ]], vim.inspect(should_profile))
 end
-]]
 
 local profile_output = [[
 local function print_profiles()
@@ -182,7 +186,7 @@ local function detect_bufread(plugin_path)
   return false
 end
 
-local function make_loaders(_, plugins)
+local function make_loaders(_, plugins, should_profile)
   local loaders = {}
   local configs = {}
   local rtps = {}
@@ -532,7 +536,7 @@ then
   local result = {'" Automatically generated packer.nvim plugin loader code\n'}
   table.insert(result, feature_guard)
   table.insert(result, 'lua << END')
-  table.insert(result, profile_time)
+  table.insert(result, profile_time(should_profile))
   table.insert(result, profile_output)
   timed_chunk(luarocks.generate_path_setup(), 'Luarocks path setup', result)
   timed_chunk(try_loadstring, 'try_loadstring definition', result)

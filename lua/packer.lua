@@ -72,7 +72,10 @@ local config_defaults = {
     keybindings = {quit = 'q', toggle_info = '<CR>', diff = 'd', prompt_revert = 'r'}
   },
   luarocks = {python_cmd = 'python'},
-  log = {level = 'warn'}
+  log = {level = 'warn'},
+  profile = {
+    enabled = false
+  }
 }
 
 local config = vim.tbl_extend('force', {}, config_defaults)
@@ -104,7 +107,7 @@ packer.init = function(user_config)
     vim.cmd [[command! PackerUpdate   lua require('packer').update()]]
     vim.cmd [[command! PackerSync     lua require('packer').sync()]]
     vim.cmd [[command! PackerClean    lua require('packer').clean()]]
-    vim.cmd [[command! PackerCompile  lua require('packer').compile()]]
+    vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
     vim.cmd [[command! PackerStatus  lua require('packer').status()]]
   end
 end
@@ -434,13 +437,45 @@ local function refresh_configs(plugs)
   end
 end
 
+local function parse_value(value)
+  if value == "true" then
+    return true
+  end
+  if value == "false" then
+    return false
+  end
+  return value
+end
+
+local function parse_args(args)
+  local result = {}
+  if not args then return result end
+  local parts = vim.split(args, ' ')
+  for _, part in ipairs(parts) do
+    if part then
+      if part:find('=') then
+        local key, value = unpack(vim.split(part, '='))
+        result[key] = parse_value(value)
+      end
+    end
+  end
+  return result
+end
+
 --- Update the compiled lazy-loader code
--- Takes an optional argument of a path to which to output the resulting compiled code
-packer.compile = function(output_path)
-  output_path = output_path or config.compile_path
+--- Takes an optional argument of a path to which to output the resulting compiled code
+packer.compile = function(raw_args)
+  local args = parse_args(raw_args)
+  local output_path = args.output_path or config.compile_path
+  local should_profile = args.profile
+  -- the user might explicitly choose for this value to be false in which case
+  -- an or operator will not work
+  if should_profile == nil then
+    should_profile = config.profile.enabled
+  end
   refresh_configs(plugins)
   -- NOTE: we copy the plugins table so the in memory value is not mutated during compilation
-  local compiled_loader = compile(vim.deepcopy(plugins))
+  local compiled_loader = compile(vim.deepcopy(plugins), should_profile)
   output_path = vim.fn.expand(output_path)
   vim.fn.mkdir(vim.fn.fnamemodify(output_path, ":h"), 'p')
   local output_file = io.open(output_path, 'w')
