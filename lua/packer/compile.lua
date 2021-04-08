@@ -54,13 +54,13 @@ local function print_profiles()
   for chunk_name, time_taken in pairs(profile_info) do
     sorted_times[#sorted_times + 1] = {chunk_name, time_taken}
   end
-  table.sort(sorted_times, function(a, b) return a[2] < b[2] end)
+  table.sort(sorted_times, function(a, b) return a[2] > b[2] end)
   local results = {}
   for i, elem in ipairs(sorted_times) do
     results[i] = elem[1] .. ' took ' .. elem[2] .. 'ms'
   end
 
-  print(vim.inspect(results))
+  _G._packer.profile_output = results
 end
 ]]
 
@@ -416,7 +416,7 @@ local function make_loaders(_, plugins)
     end
 
     local conditional = [[if
-  ]] .. timed_chunk(executable_conditional, 'Conditional: ' .. executable_conditional) .. [[
+  ]] .. vim.inspect(timed_chunk(executable_conditional, 'Conditional: ' .. executable_conditional) ~= nil) .. [[
 
 then
 ]] .. table.concat(conditional_loads, '\n\t') .. '\nend\n'

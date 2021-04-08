@@ -16,6 +16,11 @@ local util = require('packer.util')
 local async = a.sync
 local await = a.wait
 
+--- Instantiate global packer namespace for use for
+--- callbacks and other data generated whilst packer
+--- is running
+_G._packer = {}
+
 -- Config
 local packer = {}
 local config_defaults = {
@@ -444,6 +449,15 @@ packer.compile = function(output_path)
   if config.auto_reload_compiled then vim.cmd("source " .. output_path) end
   log.info('Finished compiling lazy-loaders!')
   packer.on_compile_done()
+end
+
+packer.profile_output = function ()
+  if _G._packer.profile_output then
+    async(function()
+      local display_win = display.open(config.display.open_fn or config.display.open_cmd)
+      display_win:profile_output(_G._packer.profile_output)
+    end)()
+  end
 end
 
 packer.config = config

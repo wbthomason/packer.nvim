@@ -462,6 +462,13 @@ local display_mt = {
     end
   end,
 
+  profile_output = function (self, output)
+    for i, line in ipairs(output) do
+      output[i] = string.rep(" ", 2) .. line
+    end
+    self:set_lines(config.header_lines, -1, output)
+  end,
+
   --- Toggle the display of detailed information for a plugin in the final results display
   toggle_info = function(self)
     if not self:valid_display() then return end
