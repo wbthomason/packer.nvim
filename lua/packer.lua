@@ -74,7 +74,7 @@ local config_defaults = {
   luarocks = {python_cmd = 'python'},
   log = {level = 'warn'},
   profile = {
-    enabled = false
+    enable = false
   }
 }
 
@@ -472,7 +472,7 @@ packer.compile = function(raw_args)
   -- the user might explicitly choose for this value to be false in which case
   -- an or operator will not work
   if should_profile == nil then
-    should_profile = config.profile.enabled
+    should_profile = config.profile.enable
   end
   refresh_configs(plugins)
   -- NOTE: we copy the plugins table so the in memory value is not mutated during compilation
