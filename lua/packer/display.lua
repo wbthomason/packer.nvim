@@ -267,6 +267,14 @@ local display_mt = {
     for _, c in ipairs(highlights) do vim.cmd(c) end
   end,
 
+  setup_profile_syntax = function (_)
+    local highlights = {
+      'hi def link packerTimeHigh WarningMsg', 'hi def link packerTimeMedium Float',
+      'hi def link packerTimeLow String', 'hi def link packerTimeTrivial Comment'
+    }
+    for _, c in ipairs(highlights) do vim.cmd(c) end
+  end,
+
   status = vim.schedule_wrap(function(self, plugins)
     if not self:valid_display() then return end
     self:setup_status_syntax()
@@ -463,6 +471,7 @@ local display_mt = {
   end,
 
   profile_output = function (self, output)
+    self:setup_profile_syntax()
     local result = {}
     for i, line in ipairs(output) do
       result[i] = string.rep(" ", 2) .. line
@@ -604,9 +613,7 @@ local function make_filetype_cmds(working_sym, done_sym, error_sym)
     'hi def link packerWorking        SpecialKey', 'hi def link packerSuccess        Question',
     'hi def link packerFail           ErrorMsg', 'hi def link packerHash           Identifier',
     'hi def link packerRelDate        Comment', 'hi def link packerProgress       Boolean',
-    'hi def link packerOutput         Type', 'hi def link packerTimeHigh WarningMsg',
-    'hi def link packerTimeMedium Float', 'hi def link packerTimeLow String',
-    'hi def link packerTimeTrivial Comment',
+    'hi def link packerOutput         Type'
   }
 end
 
