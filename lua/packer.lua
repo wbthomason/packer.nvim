@@ -19,7 +19,7 @@ local await = a.wait
 --- Instantiate global packer namespace for use for
 --- callbacks and other data generated whilst packer
 --- is running
-_G._packer = {}
+_G._packer = _G._packer or {}
 
 -- Config
 local packer = {}
