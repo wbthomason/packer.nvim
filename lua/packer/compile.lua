@@ -66,7 +66,9 @@ local function save_profiles(threshold)
     end
   end
 
-  _G._packer.profile_output = results
+  if _G._packer then
+    _G._packer.profile_output = results
+  end
 end
 ]]
 
