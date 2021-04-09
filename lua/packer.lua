@@ -73,7 +73,7 @@ local config_defaults = {
   },
   luarocks = {python_cmd = 'python'},
   log = {level = 'warn'},
-  profile = {enabled = false}
+  profile = {enable = false}
 }
 
 local config = vim.tbl_extend('force', {}, config_defaults)
@@ -466,7 +466,7 @@ packer.compile = function(raw_args)
   local should_profile = args.profile
   -- the user might explicitly choose for this value to be false in which case
   -- an or operator will not work
-  if should_profile == nil then should_profile = config.profile.enabled end
+  if should_profile == nil then should_profile = config.profile.enable end
   refresh_configs(plugins)
   -- NOTE: we copy the plugins table so the in memory value is not mutated during compilation
   local compiled_loader = compile(vim.deepcopy(plugins), should_profile)
@@ -486,6 +486,8 @@ packer.profile_output = function()
       local display_win = display.open(config.display.open_fn or config.display.open_cmd)
       display_win:profile_output(_G._packer.profile_output)
     end)()
+  else
+    log.warn('You must run PackerCompile with profiling enabled first e.g. PackerProfile profile=true')
   end
 end
 
