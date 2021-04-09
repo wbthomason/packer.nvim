@@ -493,6 +493,8 @@ packer.profile_output = function ()
       local display_win = display.open(config.display.open_fn or config.display.open_cmd)
       display_win:profile_output(_G._packer.profile_output)
     end)()
+  else
+    log.warn('You must run PackerCompile with profiling enabled first e.g. PackerProfile profile=true')
   end
 end
 
