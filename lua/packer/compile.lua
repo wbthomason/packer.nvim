@@ -5,7 +5,7 @@ local fmt = string.format
 local luarocks = require('packer.luarocks')
 
 local config
-local function cfg(_config) config = _config end
+local function cfg(_config) config = _config.profile end
 
 local feature_guard = [[
 if !has('nvim-0.5')
@@ -53,7 +53,7 @@ local profile_time = function (should_profile)
 end
 
 local profile_output = [[
-local function print_profiles()
+local function save_profiles(threshold)
   local sorted_times = {}
   for chunk_name, time_taken in pairs(profile_info) do
     sorted_times[#sorted_times + 1] = {chunk_name, time_taken}
@@ -61,16 +61,28 @@ local function print_profiles()
   table.sort(sorted_times, function(a, b) return a[2] > b[2] end)
   local results = {}
   for i, elem in ipairs(sorted_times) do
-    results[i] = elem[1] .. ' took ' .. elem[2] .. 'ms'
+    if not threshold or threshold and elem[2] > threshold then
+      results[i] = elem[1] .. ' took ' .. elem[2] .. 'ms'
+    end
   end
 
   _G._packer.profile_output = results
 end
 ]]
 
-local conditionally_output_profile = [[
-if should_profile then print_profiles() end
+---@param threshold number
+---@return string
+local conditionally_output_profile = function (threshold)
+  if threshold then
+    return fmt([[
+if should_profile then save_profiles(%d) end
+]], threshold)
+  else
+    return [[
+if should_profile then save_profiles() end
 ]]
+  end
+end
 
 local try_loadstring = [[
 local function try_loadstring(s, component, name)
@@ -616,7 +628,7 @@ then
     table.insert(result, 'vim.cmd("augroup END")')
   end
 
-  table.insert(result, conditionally_output_profile)
+  table.insert(result, conditionally_output_profile(config.threshold))
   table.insert(result, 'END\n')
   table.insert(result, catch_errors)
   return table.concat(result, '\n')
