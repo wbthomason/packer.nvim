@@ -73,9 +73,7 @@ local config_defaults = {
   },
   luarocks = {python_cmd = 'python'},
   log = {level = 'warn'},
-  profile = {
-    enabled = false
-  }
+  profile = {enabled = false}
 }
 
 local config = vim.tbl_extend('force', {}, config_defaults)
@@ -439,24 +437,21 @@ local function refresh_configs(plugs)
 end
 
 local function parse_value(value)
-  if value == "true" then
-    return true
-  end
-  if value == "false" then
-    return false
-  end
+  if value == "true" then return true end
+  if value == "false" then return false end
   return value
 end
 
 local function parse_args(args)
   local result = {}
-  if not args then return result end
-  local parts = vim.split(args, ' ')
-  for _, part in ipairs(parts) do
-    if part then
-      if part:find('=') then
-        local key, value = unpack(vim.split(part, '='))
-        result[key] = parse_value(value)
+  if args then
+    local parts = vim.split(args, ' ')
+    for _, part in ipairs(parts) do
+      if part then
+        if part:find('=') then
+          local key, value = unpack(vim.split(part, '='))
+          result[key] = parse_value(value)
+        end
       end
     end
   end
@@ -471,9 +466,7 @@ packer.compile = function(raw_args)
   local should_profile = args.profile
   -- the user might explicitly choose for this value to be false in which case
   -- an or operator will not work
-  if should_profile == nil then
-    should_profile = config.profile.enabled
-  end
+  if should_profile == nil then should_profile = config.profile.enabled end
   refresh_configs(plugins)
   -- NOTE: we copy the plugins table so the in memory value is not mutated during compilation
   local compiled_loader = compile(vim.deepcopy(plugins), should_profile)
@@ -487,7 +480,7 @@ packer.compile = function(raw_args)
   packer.on_compile_done()
 end
 
-packer.profile_output = function ()
+packer.profile_output = function()
   if _G._packer.profile_output then
     async(function()
       local display_win = display.open(config.display.open_fn or config.display.open_cmd)
