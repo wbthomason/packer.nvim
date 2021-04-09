@@ -24,9 +24,10 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
     4. [Performing plugin management operations](#performing-plugin-management-operations)
     5. [Extending packer](#extending-packer)
     6. [Compiling Lazy-Loaders](#compiling-lazy-loaders)
-7. [Debugging](#debugging)
-8. [Status](#status)
-9. [Contributors](#contributors)
+7. [Profiling](#profiling)
+8. [Debugging](#debugging)
+9. [Status](#status)
+10. [Contributors](#contributors)
 
 ## Notices
 - **2021-02-18**: Having trouble with Luarocks on macOS? See [this issue](https://github.com/wbthomason/packer.nvim/issues/180).
@@ -483,6 +484,33 @@ require knowing when the operations are complete, you can use the following `Use
 
 - `PackerComplete`: Fires after install, update, clean, and sync asynchronous operations finish.
 - `PackerCompileDone`: Fires after compiling (see [the section on compilation](#compiling-lazy-loaders))
+
+## Profiling
+Packer has built in functionality that can allow you to profile the time taking loading your plugins.
+In order to use this functionality you must either enable profiling in your config, or pass in an argument
+when running packer compile.
+
+#### Setup via config
+```lua
+config = {
+  profile = {
+    enable = true,
+    threshold = 1 -- the amount in ms that a plugins load time must be over for it to be included in the profile
+  }
+}
+```
+
+#### Using the packer compile command
+```vim
+:PackerCompile profile=true
+" or
+:PackerCompile profile=false
+```
+
+#### Profiling usage
+This will rebuild your `packer_compiled.vim` with profiling code included. In order to visualise the output of the profile
+Restart your neovim and run `PackerProfile`. This will open a window with the output of your profiling.
+
 ## Debugging
 `packer.nvim` logs to `stdpath(cache)/packer.nvim.log`. Looking at this file is usually a good start
 if something isn't working as expected.
