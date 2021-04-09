@@ -592,13 +592,20 @@ local function make_filetype_cmds(working_sym, done_sym, error_sym)
     'syn match packerHash /\\(\\s\\)[0-9a-f]\\{7,8}\\(\\s\\)/',
     'syn match packerRelDate /([^)]*)$/', 'syn match packerProgress /\\(\\[\\)\\@<=[\\=]*/',
     'syn match packerOutput /\\(Output:\\)\\|\\(Commits:\\)\\|\\(Errors:\\)/',
+    [[syn match packerTimeHigh /\d\{3\}\.\d\+ms/]],
+    [[syn match packerTimeMedium /\d\{2\}\.\d\+ms/]],
+    [[syn match packerTimeLow /\d\.\d\+ms/]],
+    [[syn match packerTimeTrivial /0\.\d\+ms/]],
     [[syn match packerPackageNotLoaded /(not loaded)$/]],
     [[syn match packerPackageName /\(^\ • \)\@<=[^ ]*/]],
     [[syn match packerString /\v(''|""|(['"]).{-}[^\\]\2)/]],
-    [[syn match packerBool /\<\(false\|true\)\>/]], 'hi def link packerWorking        SpecialKey',
-    'hi def link packerSuccess        Question', 'hi def link packerFail           ErrorMsg',
-    'hi def link packerHash           Identifier', 'hi def link packerRelDate        Comment',
-    'hi def link packerProgress       Boolean', 'hi def link packerOutput         Type'
+    [[syn match packerBool /\<\(false\|true\)\>/]],
+    'hi def link packerWorking        SpecialKey', 'hi def link packerSuccess        Question',
+    'hi def link packerFail           ErrorMsg', 'hi def link packerHash           Identifier',
+    'hi def link packerRelDate        Comment', 'hi def link packerProgress       Boolean',
+    'hi def link packerOutput         Type', 'hi def link packerTimeHigh WarningMsg',
+    'hi def link packerTimeMedium Float', 'hi def link packerTimeLow String',
+    'hi def link packerTimeTrivial Comment',
   }
 end
 
