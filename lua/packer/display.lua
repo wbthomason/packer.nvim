@@ -463,10 +463,11 @@ local display_mt = {
   end,
 
   profile_output = function (self, output)
+    local result = {}
     for i, line in ipairs(output) do
-      output[i] = string.rep(" ", 2) .. line
+      result[i] = string.rep(" ", 2) .. line
     end
-    self:set_lines(config.header_lines, -1, output)
+    self:set_lines(config.header_lines, -1, result)
   end,
 
   --- Toggle the display of detailed information for a plugin in the final results display
