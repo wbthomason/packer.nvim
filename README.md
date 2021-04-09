@@ -284,6 +284,10 @@ default configuration values (and structure of the configuration table) are:
   },
   luarocks = {
     python_cmd = 'python' -- Set the python command to use for running hererocks
+  },
+  profile = {
+    enable = false,
+    threshold = 1, -- integer in milliseconds, plugins which load faster than this won't be shown in profile output
   }
 }
 ```
@@ -486,7 +490,7 @@ require knowing when the operations are complete, you can use the following `Use
 - `PackerCompileDone`: Fires after compiling (see [the section on compilation](#compiling-lazy-loaders))
 
 ## Profiling
-Packer has built in functionality that can allow you to profile the time taking loading your plugins.
+Packer has built in functionality that can allow you to profile the time taken loading your plugins.
 In order to use this functionality you must either enable profiling in your config, or pass in an argument
 when running packer compile.
 
@@ -509,7 +513,7 @@ config = {
 
 #### Profiling usage
 This will rebuild your `packer_compiled.vim` with profiling code included. In order to visualise the output of the profile
-Restart your neovim and run `PackerProfile`. This will open a window with the output of your profiling.
+restart your neovim and run `PackerProfile`. This will open a window with the output of your profiling.
 
 ## Debugging
 `packer.nvim` logs to `stdpath(cache)/packer.nvim.log`. Looking at this file is usually a good start
