@@ -109,6 +109,7 @@ packer.init = function(user_config)
     vim.cmd [[command! PackerClean    lua require('packer').clean()]]
     vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
     vim.cmd [[command! PackerStatus  lua require('packer').status()]]
+    vim.cmd [[command! PackerProfile  lua require('packer').profile_output()]]
   end
 end
 
