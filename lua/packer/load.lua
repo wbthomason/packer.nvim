@@ -35,10 +35,14 @@ packer_load = function(names, cause, plugins)
         end
       end
 
+      -- set plugin as loaded before config is run in case something in the config
+      -- tries to load this same plugin again
+      plugin.loaded = true
       if plugin.config then
         for _, config_line in ipairs(plugin.config) do
           local success, err = pcall(loadstring(config_line))
           if not success then
+            plugin.loaded = false
             print('Error running config for ' .. names[i])
             error(err)
           end
@@ -54,8 +58,6 @@ packer_load = function(names, cause, plugins)
           end
         end
       end
-
-      plugins[names[i]].loaded = true
     end
   end
 
