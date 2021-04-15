@@ -332,7 +332,8 @@ use {
   event = string or list,      -- Specifies autocommand events which load this plugin.
   fn = string or list          -- Specifies functions which load this plugin.
   cond = string, function, or list of strings/functions,   -- Specifies a conditional test to load this plugin
-  module = string or list      -- Specifies patterns (e.g. for string.match) of Lua module names which, when required, load this plugin
+  module = string or list      -- Specifies Lua module names for require. When requiring a string which starts
+                               -- with one of these module names, the plugin will be loaded.
 }
 ```
 
