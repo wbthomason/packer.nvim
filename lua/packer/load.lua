@@ -10,6 +10,7 @@ packer_load = function(names, cause, plugins)
   for i = 1, num_names do
     local plugin = plugins[names[i]]
     if not plugin.loaded then
+      plugin.loaded = true
       some_unloaded = true
       needs_bufread = needs_bufread or plugin.needs_bufread
 
@@ -54,8 +55,6 @@ packer_load = function(names, cause, plugins)
           end
         end
       end
-
-      plugins[names[i]].loaded = true
     end
   end
 
