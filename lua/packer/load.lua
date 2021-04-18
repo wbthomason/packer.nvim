@@ -1,10 +1,8 @@
 local packer_load = nil
-
 packer_load = function(names, cause, plugins)
   local some_unloaded = false
   local needs_bufread = false
   local num_names = #names
-
   local cmd = vim.api.nvim_command
   local fmt = string.format
   for i = 1, num_names do
@@ -13,7 +11,6 @@ packer_load = function(names, cause, plugins)
       plugin.loaded = true
       some_unloaded = true
       needs_bufread = needs_bufread or plugin.needs_bufread
-
       if plugin.wants then
         for _, wanted_name in ipairs(plugin.wants) do packer_load({wanted_name}, {}, plugins) end
       end
@@ -26,7 +23,7 @@ packer_load = function(names, cause, plugins)
         for _, key in ipairs(plugin.keys) do cmd(fmt('silent! %sunmap %s', key[1], key[2])) end
       end
 
-      vim.cmd('packadd ' .. names[i])
+      cmd('packadd ' .. names[i])
       if plugin.after_files then
         for _, file in ipairs(plugin.after_files) do
           cmd('silent exe "source ' .. file .. '"')
