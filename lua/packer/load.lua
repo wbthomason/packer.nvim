@@ -15,10 +15,7 @@ packer_load = function(names, cause, plugins)
       needs_bufread = needs_bufread or plugin.needs_bufread
 
       if plugin.wants then
-        for _, wanted_name in ipairs(plugin.wants) do
-          local wanted_plugin = plugins[wanted_name]
-          packer_load({wanted_name}, {}, plugins)
-        end
+        for _, wanted_name in ipairs(plugin.wants) do packer_load({wanted_name}, {}, plugins) end
       end
 
       if plugin.commands then
