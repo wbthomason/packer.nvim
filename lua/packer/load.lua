@@ -8,6 +8,8 @@ packer_load = function(names, cause, plugins)
   for i = 1, num_names do
     local plugin = plugins[names[i]]
     if not plugin.loaded then
+      -- Set the plugin as loaded before config is run in case something in the config tries to load
+      -- this same plugin again
       plugin.loaded = true
       some_unloaded = true
       needs_bufread = needs_bufread or plugin.needs_bufread
