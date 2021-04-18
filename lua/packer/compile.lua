@@ -41,10 +41,10 @@ end
 ]]
 
 local module_loader = [[
-local lazy_load_called = {}
+local lazy_load_called = {['packer.load'] = true}
 local function lazy_load_module(module_name)
   local to_load = {}
-  if module_name == 'packer.load' or lazy_load_called[module_name] then return nil end
+  if lazy_load_called[module_name] then return nil end
   lazy_load_called[module_name] = true
   for module_pat, plugin_name in pairs(module_lazy_loads) do
     if not _G.packer_plugins[plugin_name].loaded and string.match(module_name, "^" .. vim.pesc(module_pat)) then
