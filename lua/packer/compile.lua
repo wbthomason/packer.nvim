@@ -47,7 +47,7 @@ local function lazy_load_module(module_name)
   if lazy_load_called[module_name] then return nil end
   lazy_load_called[module_name] = true
   for module_pat, plugin_name in pairs(module_lazy_loads) do
-    if not _G.packer_plugins[plugin_name].loaded and string.match(module_name, "^" .. vim.pesc(module_pat)) then
+    if not _G.packer_plugins[plugin_name].loaded and string.match(module_name, module_pat)then
       to_load[#to_load + 1] = plugin_name
     end
   end
@@ -300,7 +300,9 @@ local function make_loaders(_, plugins)
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
         if type(plugin.module) == 'string' then plugin.module = {plugin.module} end
-        for _, module_name in ipairs(plugin.module) do module_lazy_loads[module_name] = name end
+        for _, module_name in ipairs(plugin.module) do
+          module_lazy_loads['^' .. vim.pesc(module_name)] = name
+        end
       end
 
       if plugin.config and (not plugin.opt or loaders[name].only_setup) then
