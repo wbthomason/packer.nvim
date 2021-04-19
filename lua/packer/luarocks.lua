@@ -164,14 +164,9 @@ local function run_luarocks(args, disp, operation_name)
   end)
 end
 
-local luarocks_keys = {
-  only_server = 'only-server',
-  only_source = 'only-sources',
-}
+local luarocks_keys = {only_server = 'only-server', only_source = 'only-sources'}
 
-local function is_valid_luarock_key(key)
-  return not (key == 'tree' or key == 'local')
-end
+local function is_valid_luarock_key(key) return not (key == 'tree' or key == 'local') end
 
 local function format_luarocks_args(package)
   if type(package) ~= 'table' then return '' end
@@ -188,7 +183,7 @@ local function format_luarocks_args(package)
       end
     end
   end
-  return ' ' ..table.concat(args, ' ')
+  return ' ' .. table.concat(args, ' ')
 end
 
 local function luarocks_install(package, results, disp)
@@ -196,9 +191,9 @@ local function luarocks_install(package, results, disp)
     local package_name = type(package) == 'table' and package[1] or package
     if disp then disp:task_update('luarocks-install', 'installing ' .. package_name) end
     local args = format_luarocks_args(package)
-    local version = package.version and ' '..package.version..' ' or ''
-    local install_result = await(run_luarocks('install ' .. package_name .. version ..args, disp,
-                                'luarocks-install'))
+    local version = package.version and ' ' .. package.version .. ' ' or ''
+    local install_result = await(run_luarocks('install ' .. package_name .. version .. args, disp,
+                                              'luarocks-install'))
     if results then results.luarocks.installs[package_name] = install_result end
     return install_result
   end)
