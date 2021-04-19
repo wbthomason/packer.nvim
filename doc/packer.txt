@@ -374,6 +374,36 @@ The option `compile_on_sync`, which defaults to `true`, will run
 Note that otherwise, you **must** run `packer.compile` yourself to generate
 the lazy-loader file!
 
+PROFILING PLUGINS                              *packer-profiling*
+You can measure how long it takes your plugins to load using packer's builtin
+profiling functionality.
+In order to use this functionality you must either enable profiling in your config, or pass in an argument
+when running packer compile.
+
+Setup via config >
+  config = {
+    profile = {
+      enable = true,
+      threshold = 1 -- the amount in ms that a plugins load time must be over for it to be included in the profile
+    }
+  }
+<
+
+Using the packer compile command
+>
+  :PackerCompile profile=true
+  " or
+  :PackerCompile profile=false
+<
+
+NOTE you can also set a `threshold` in your profile config which is a number
+in `ms` above which plugin load times will be show e.g. if you set a threshold
+value of `3` then any plugin that loads slower than `3ms` will not be included in
+the output window.
+
+This will rebuild your `packer_compiled.vim` with profiling code included. In order to visualise the output of the profile
+Restart your neovim and run `PackerProfile`. This will open a window with the output of your profiling.
+
 EXTENDING PACKER                               *packer-extending*
 You can add custom key handlers to `packer` by calling
 `packer.set_handler(name, func)` where `name` is the key you wish to handle

@@ -16,6 +16,11 @@ local util = require('packer.util')
 local async = a.sync
 local await = a.wait
 
+--- Instantiate global packer namespace for use for
+--- callbacks and other data generated whilst packer
+--- is running
+_G._packer = _G._packer or {}
+
 -- Config
 local packer = {}
 local config_defaults = {
@@ -67,7 +72,8 @@ local config_defaults = {
     keybindings = {quit = 'q', toggle_info = '<CR>', diff = 'd', prompt_revert = 'r'}
   },
   luarocks = {python_cmd = 'python'},
-  log = {level = 'warn'}
+  log = {level = 'warn'},
+  profile = {enable = false}
 }
 
 local config = vim.tbl_extend('force', {}, config_defaults)
@@ -99,8 +105,9 @@ packer.init = function(user_config)
     vim.cmd [[command! PackerUpdate   lua require('packer').update()]]
     vim.cmd [[command! PackerSync     lua require('packer').sync()]]
     vim.cmd [[command! PackerClean    lua require('packer').clean()]]
-    vim.cmd [[command! PackerCompile  lua require('packer').compile()]]
+    vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
     vim.cmd [[command! PackerStatus  lua require('packer').status()]]
+    vim.cmd [[command! PackerProfile  lua require('packer').profile_output()]]
   end
 end
 
@@ -429,13 +436,40 @@ local function refresh_configs(plugs)
   end
 end
 
+local function parse_value(value)
+  if value == "true" then return true end
+  if value == "false" then return false end
+  return value
+end
+
+local function parse_args(args)
+  local result = {}
+  if args then
+    local parts = vim.split(args, ' ')
+    for _, part in ipairs(parts) do
+      if part then
+        if part:find('=') then
+          local key, value = unpack(vim.split(part, '='))
+          result[key] = parse_value(value)
+        end
+      end
+    end
+  end
+  return result
+end
+
 --- Update the compiled lazy-loader code
--- Takes an optional argument of a path to which to output the resulting compiled code
-packer.compile = function(output_path)
-  output_path = output_path or config.compile_path
+--- Takes an optional argument of a path to which to output the resulting compiled code
+packer.compile = function(raw_args)
+  local args = parse_args(raw_args)
+  local output_path = args.output_path or config.compile_path
+  local should_profile = args.profile
+  -- the user might explicitly choose for this value to be false in which case
+  -- an or operator will not work
+  if should_profile == nil then should_profile = config.profile.enable end
   refresh_configs(plugins)
   -- NOTE: we copy the plugins table so the in memory value is not mutated during compilation
-  local compiled_loader = compile(vim.deepcopy(plugins))
+  local compiled_loader = compile(vim.deepcopy(plugins), should_profile)
   output_path = vim.fn.expand(output_path)
   vim.fn.mkdir(vim.fn.fnamemodify(output_path, ":h"), 'p')
   local output_file = io.open(output_path, 'w')
@@ -444,6 +478,17 @@ packer.compile = function(output_path)
   if config.auto_reload_compiled then vim.cmd("source " .. output_path) end
   log.info('Finished compiling lazy-loaders!')
   packer.on_compile_done()
+end
+
+packer.profile_output = function()
+  if _G._packer.profile_output then
+    async(function()
+      local display_win = display.open(config.display.open_fn or config.display.open_cmd)
+      display_win:profile_output(_G._packer.profile_output)
+    end)()
+  else
+    log.warn('You must run PackerCompile with profiling enabled first e.g. PackerProfile profile=true')
+  end
 end
 
 packer.config = config

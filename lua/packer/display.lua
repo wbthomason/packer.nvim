@@ -267,6 +267,14 @@ local display_mt = {
     for _, c in ipairs(highlights) do vim.cmd(c) end
   end,
 
+  setup_profile_syntax = function (_)
+    local highlights = {
+      'hi def link packerTimeHigh WarningMsg', 'hi def link packerTimeMedium Float',
+      'hi def link packerTimeLow String', 'hi def link packerTimeTrivial Comment'
+    }
+    for _, c in ipairs(highlights) do vim.cmd(c) end
+  end,
+
   status = vim.schedule_wrap(function(self, plugins)
     if not self:valid_display() then return end
     self:setup_status_syntax()
@@ -462,6 +470,15 @@ local display_mt = {
     end
   end,
 
+  profile_output = function (self, output)
+    self:setup_profile_syntax()
+    local result = {}
+    for i, line in ipairs(output) do
+      result[i] = string.rep(" ", 2) .. line
+    end
+    self:set_lines(config.header_lines, -1, result)
+  end,
+
   --- Toggle the display of detailed information for a plugin in the final results display
   toggle_info = function(self)
     if not self:valid_display() then return end
@@ -585,13 +602,18 @@ local function make_filetype_cmds(working_sym, done_sym, error_sym)
     'syn match packerHash /\\(\\s\\)[0-9a-f]\\{7,8}\\(\\s\\)/',
     'syn match packerRelDate /([^)]*)$/', 'syn match packerProgress /\\(\\[\\)\\@<=[\\=]*/',
     'syn match packerOutput /\\(Output:\\)\\|\\(Commits:\\)\\|\\(Errors:\\)/',
+    [[syn match packerTimeHigh /\d\{3\}\.\d\+ms/]],
+    [[syn match packerTimeMedium /\d\{2\}\.\d\+ms/]],
+    [[syn match packerTimeLow /\d\.\d\+ms/]],
+    [[syn match packerTimeTrivial /0\.\d\+ms/]],
     [[syn match packerPackageNotLoaded /(not loaded)$/]],
     [[syn match packerPackageName /\(^\ • \)\@<=[^ ]*/]],
     [[syn match packerString /\v(''|""|(['"]).{-}[^\\]\2)/]],
-    [[syn match packerBool /\<\(false\|true\)\>/]], 'hi def link packerWorking        SpecialKey',
-    'hi def link packerSuccess        Question', 'hi def link packerFail           ErrorMsg',
-    'hi def link packerHash           Identifier', 'hi def link packerRelDate        Comment',
-    'hi def link packerProgress       Boolean', 'hi def link packerOutput         Type'
+    [[syn match packerBool /\<\(false\|true\)\>/]],
+    'hi def link packerWorking        SpecialKey', 'hi def link packerSuccess        Question',
+    'hi def link packerFail           ErrorMsg', 'hi def link packerHash           Identifier',
+    'hi def link packerRelDate        Comment', 'hi def link packerProgress       Boolean',
+    'hi def link packerOutput         Type'
   }
 end
 
