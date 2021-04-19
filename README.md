@@ -30,6 +30,8 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 10. [Contributors](#contributors)
 
 ## Notices
+- **2021-04-19**: `packer` now provides built-in profiling for your config via the `packer_compiled`
+  file. Take a look at [the docs](#profiling) for more information!
 - **2021-02-18**: Having trouble with Luarocks on macOS? See [this issue](https://github.com/wbthomason/packer.nvim/issues/180).
 - **2021-01-19**: Basic Luarocks support has landed! Use the `rocks` key with a string or table to specify packages to install.
 - **2020-12-10**: The `disable_commands` configuration flag now affects non-`startup` use as well. This means that, by default, `packer` will create commands for basic operations for you.
