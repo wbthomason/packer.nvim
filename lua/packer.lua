@@ -108,6 +108,7 @@ packer.init = function(user_config)
     vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
     vim.cmd [[command! PackerStatus  lua require('packer').status()]]
     vim.cmd [[command! PackerProfile  lua require('packer').profile_output()]]
+    vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad lua require('packer').loader(<q-args>)]]
   end
 end
 
@@ -489,6 +490,26 @@ packer.profile_output = function()
   else
     log.warn('You must run PackerCompile with profiling enabled first e.g. PackerProfile profile=true')
   end
+end
+
+-- Load plugins
+-- @param plugins string String of space separated plugins names
+--                      intended for PackerLoad command
+packer.loader = function(plugins_names)
+  local plugin_list = vim.tbl_filter(function(name) return #name > 0 end,
+                                     vim.split(plugins_names, ' '))
+  require('packer.load')(plugin_list, {}, _G.packer_plugins)
+end
+
+-- Completion for not yet loaded plugins
+-- Intended to provide completion for PackerLoad command
+packer.loader_complete = function(lead, _, _)
+  local completion_list = {}
+  for name, plugin in pairs(_G.packer_plugins) do
+    if vim.startswith(name, lead) and not plugin.loaded then table.insert(completion_list, name) end
+  end
+  table.sort(completion_list)
+  return completion_list
 end
 
 packer.config = config
