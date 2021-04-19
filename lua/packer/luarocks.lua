@@ -66,6 +66,7 @@ local function hererocks_installer(disp)
         if disp then disp:task_succeeded('luarocks-hererocks', 'installed hererocks!') end
       end):map_err(function(err)
       if disp then disp:task_failed('luarocks-hererocks', 'failed to install hererocks!') end
+      log.error('Failed to install hererocks: ' .. vim.inspect(err))
       return {msg = 'Error installing luarocks', data = err, output = output}
     end)
     return r
