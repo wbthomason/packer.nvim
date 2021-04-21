@@ -67,10 +67,9 @@ local clean_plugins = function(_, plugins, results)
       if await(display.ask_user('Removing the following directories. OK? (y/N)', lines)) then
         results.removals = dirty_plugins
         log.debug('Removed ' .. vim.inspect(dirty_plugins))
-        if util.is_windows then
-          for _, path in ipairs(dirty_plugins) do os.execute('cmd /C rmdir /S /Q ' .. path) end
-        else
-          os.execute('rm -rf ' .. table.concat(dirty_plugins, ' '))
+        for _, path in ipairs(dirty_plugins) do
+          local result = vim.fn.delete(path, 'rf')
+          if result == -1 then log.warn('Could not remove ' .. path) end
         end
       else
         log.warn('Cleaning cancelled!')
