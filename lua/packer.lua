@@ -69,6 +69,7 @@ local config_defaults = {
     header_lines = 2,
     title = 'packer.nvim',
     show_all_info = true,
+    prompt_border = 'double',
     keybindings = {quit = 'q', toggle_info = '<CR>', diff = 'd', prompt_revert = 'r'}
   },
   luarocks = {python_cmd = 'python'},

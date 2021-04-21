@@ -278,6 +278,7 @@ default configuration values (and structure of the configuration table) are:
     moved_sym = '→', -- The symbol for a plugin which was moved (e.g. from opt to start)
     header_sym = '━', -- The symbol for the header line in packer's display
     show_all_info = true, -- Should packer show all update details automatically?
+    prompt_border = 'double', -- Border style of prompt popups.
     keybindings = { -- Keybindings for the display window
       quit = 'q',
       toggle_info = '<CR>',
