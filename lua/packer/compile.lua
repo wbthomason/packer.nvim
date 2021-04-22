@@ -31,7 +31,7 @@ endtry
 
 ---@param should_profile boolean
 ---@return string
-local profile_time = function (should_profile)
+local profile_time = function(should_profile)
   return fmt([[
   local time
   local profile_info
@@ -73,7 +73,7 @@ end
 
 ---@param threshold number
 ---@return string
-local conditionally_output_profile = function (threshold)
+local conditionally_output_profile = function(threshold)
   if threshold then
     return fmt([[
 if should_profile then save_profiles(%d) end
@@ -125,7 +125,24 @@ local function timed_chunk(chunk, name, output_table)
   else
     vim.list_extend(output_table, chunk)
   end
+
   output_table[#output_table + 1] = 'time("' .. name .. '", false)'
+  return output_table
+end
+
+-- We special-case timing for conditionals because we can't directly wrap the condition test
+local function timed_condition(condition, body, name, output_table)
+  output_table = output_table or {}
+  local condition_time_call = 'time("' .. name .. '", '
+  output_table[#output_table + 1] = condition_time_call .. 'true)'
+  output_table[#output_table + 1] = 'if'
+  output_table[#output_table + 1] = condition
+  output_table[#output_table + 1] = 'then'
+  output_table[#output_table + 1] = condition_time_call .. 'false)'
+  output_table[#output_table + 1] = body
+  output_table[#output_table + 1] = 'else'
+  output_table[#output_table + 1] = condition_time_call .. 'false)'
+  output_table[#output_table + 1] = 'end'
   return output_table
 end
 
@@ -434,13 +451,9 @@ local function make_loaders(_, plugins, should_profile)
                                  .. vim.inspect(names) .. '\')'
     end
 
-    local conditional = [[if
-  ]] .. vim.inspect(timed_chunk(executable_conditional, 'Conditional: ' .. executable_conditional) ~= nil) .. [[
-
-then
-]] .. table.concat(conditional_loads, '\n\t') .. '\nend\n'
-
-    table.insert(conditionals, conditional)
+    vim.list_extend(conditionals,
+                    timed_condition(executable_conditional, table.concat(conditional_loads, '\n\t'),
+                                    'Condition for ' .. vim.inspect(names):gsub('"', "'")))
   end
 
   local command_defs = {}
