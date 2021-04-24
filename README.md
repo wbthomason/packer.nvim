@@ -281,6 +281,7 @@ default configuration values (and structure of the configuration table) are:
     keybindings = { -- Keybindings for the display window
       quit = 'q',
       toggle_info = '<CR>',
+      diff = 'd',
       prompt_revert = 'r',
     }
   },
