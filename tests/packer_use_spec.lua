@@ -9,14 +9,18 @@ describe("Packer use tests", function()
 
   it("should set the correct install path", function ()
     local spec = {"test/plugin1"}
-    use(spec)
+    packer.startup(function()
+      use(spec)
+    end)
     assert.truthy(spec.install_path)
     assert.equal(spec.install_path, packer_path ..spec.short_name)
   end)
 
   it("should add metadata to a plugin from a spec", function ()
     local spec = {"test/plugin1"}
-    use(spec)
+    packer.startup(function()
+      use(spec)
+    end)
     assert.equal(spec.name, "test/plugin1")
     assert.equal(spec.path, "test/plugin1")
   end)
