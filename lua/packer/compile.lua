@@ -408,7 +408,7 @@ local function make_loaders(_, plugins, should_profile)
   for event, names in pairs(events) do
     table.insert(event_aucmds, fmt(
                    'vim.cmd [[au %s ++once lua require("packer.load")({%s}, { event = "%s" }, _G.packer_plugins)]]',
-                   event, table.concat(names, ', '), event))
+                   event, table.concat(names, ', '), event:gsub([[\]], [[\\]])))
   end
 
   local config_lines = {}
