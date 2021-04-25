@@ -6,26 +6,26 @@ on:
     branches:
       - master
 
-    jobs:
-      build:
-        name: Run tests
-        runs-on: ubuntu-latest
+jobs:
+  build:
+    name: Run tests
+    runs-on: ubuntu-latest
 
-        steps:
-          - uses: actions/checkout@v2
-          - run: date +%F > todays-date
-          - name: Restore cache for today's nightly.
-            uses: actions/cache@v2
-            with:
-              path: _neovim
-              key: ${{ runner.os }}-x64-${{ hashFiles('todays-date') }}
+    steps:
+      - uses: actions/checkout@v2
+      - run: date +%F > todays-date
+      - name: Restore cache for today's nightly.
+        uses: actions/cache@v2
+        with:
+          path: _neovim
+          key: ${{ runner.os }}-x64-${{ hashFiles('todays-date') }}
 
-          - name: Prepare plenary
-            run: |
-              git clone --depth 1 https://github.com/nvim-lua/plenary.nvim ~/.local/share/nvim/site/pack/vendor/start/plenary.nvim
-              ln -s $(pwd) ~/.local/share/nvim/site/pack/vendor/start
-          - name: Run tests
-            run: |
-              curl -OL https://raw.githubusercontent.com/norcalli/bot-ci/master/scripts/github-actions-setup.sh
-              source github-actions-setup.sh nightly-x64
-              nvim --headless --noplugin -u tests/minimal.vim -c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal.vim'}"
+      - name: Prepare plenary
+        run: |
+          git clone --depth 1 https://github.com/nvim-lua/plenary.nvim ~/.local/share/nvim/site/pack/vendor/start/plenary.nvim
+          ln -s $(pwd) ~/.local/share/nvim/site/pack/vendor/start
+      - name: Run tests
+        run: |
+          curl -OL https://raw.githubusercontent.com/norcalli/bot-ci/master/scripts/github-actions-setup.sh
+          source github-actions-setup.sh nightly-x64
+          nvim --headless --noplugin -u tests/minimal.vim -c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal.vim'}"
