@@ -488,7 +488,7 @@ packer.profile_output = function()
       display_win:profile_output(_G._packer.profile_output)
     end)()
   else
-    log.warn('You must run PackerCompile with profiling enabled first e.g. PackerProfile profile=true')
+    log.warn('You must run PackerCompile with profiling enabled first e.g. PackerCompile profile=true')
   end
 end
 
