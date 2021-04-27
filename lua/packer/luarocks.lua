@@ -11,13 +11,27 @@ local async = a.sync
 local await = a.wait
 
 local config = nil
+local function cfg(_config) config = _config.luarocks end
+local function warn_need_luajit() log.error('LuaJIT is required for Luarocks functionality!') end
 
 local lua_version = nil
 if jit then
   local jit_version = string.gsub(jit.version, 'LuaJIT ', '')
   lua_version = {lua = string.gsub(_VERSION, 'Lua ', ''), jit = jit_version, dir = jit_version}
 else
-  lua_version = {lua = string.gsub(_VERSION, 'Lua ', ''), jit = nil, dir = nil}
+  return {
+    handle_command = warn_need_luajit,
+    install_commands = warn_need_luajit,
+    list = warn_need_luajit,
+    install_hererocks = warn_need_luajit,
+    setup_paths = warn_need_luajit,
+    uninstall = warn_need_luajit,
+    clean = warn_need_luajit,
+    install = warn_need_luajit,
+    ensure = warn_need_luajit,
+    generate_path_setup = function() return '' end,
+    cfg = cfg
+  }
 end
 
 local cache_path = vim.fn.stdpath('cache')
@@ -396,8 +410,6 @@ local function ensure_packages(rocks, results, disp)
     return r:and_then(await, install_packages(r.ok, results, disp))
   end)
 end
-
-local function cfg(_config) config = _config.luarocks end
 
 local function handle_command(cmd, ...)
   local task
