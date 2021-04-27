@@ -7,6 +7,13 @@ packer_load = function(names, cause, plugins)
   local fmt = string.format
   for i = 1, num_names do
     local plugin = plugins[names[i]]
+    if not plugin then
+      local err_message = 'Error: attempted to load ' .. names[i]
+                            .. ' which is not present in plugins table!'
+      print(err_message)
+      error(err_message)
+    end
+
     if not plugin.loaded then
       -- Set the plugin as loaded before config is run in case something in the config tries to load
       -- this same plugin again
