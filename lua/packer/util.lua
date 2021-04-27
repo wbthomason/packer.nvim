@@ -100,7 +100,7 @@ util.deep_extend = function(policy, ...)
 end
 
 -- Credit to @crs for the original function
-util.float = function()
+util.float = function(opts)
   local last_win = vim.api.nvim_get_current_win()
   local last_pos = vim.api.nvim_win_get_cursor(last_win)
   local columns = vim.o.columns
@@ -110,14 +110,15 @@ util.float = function()
   local left = math.ceil((columns - width) * 0.5)
   local top = math.ceil((lines - height) * 0.5 - 1)
 
-  local opts = {
+  opts = vim.tbl_deep_extend('force', {
     relative = 'editor',
     style = 'minimal',
+    border = 'double',
     width = width,
     height = height,
     col = left,
     row = top
-  }
+  }, opts or {})
 
   local buf = vim.api.nvim_create_buf(false, true)
   local win = vim.api.nvim_open_win(buf, true, opts)
