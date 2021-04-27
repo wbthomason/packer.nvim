@@ -22,11 +22,23 @@ labels: bug
 ### packer files
 
 <details>
+<summary>Plugin specification file(s)</summary>
+
+Post or link your plugin specification files here, if you aren't able to provide a minimal
+reproducer
+
+</details>
+
+<details>
 <summary>packer log file</summary>
+
 Post the contents of ~/.cache/nvim/packer.nvim.log here
+
 </details>
 
 <details>
 <summary>packer compiled file</summary>
+
 Post the contents of `packer_compiled.vim` here
+
 </details>
