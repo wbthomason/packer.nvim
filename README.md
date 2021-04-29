@@ -174,6 +174,9 @@ end)
 
 -- Performs `PackerClean` and then `PackerUpdate`
 :PackerSync
+
+-- Loads opt plugin immediately
+:PackerLoad completion-nvim ale
 ```
 
 You can configure Neovim to automatically run `:PackerCompile` whenever `plugins.lua` is updated with an autocommand:

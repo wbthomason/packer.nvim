@@ -122,6 +122,9 @@ Remove any disabled or unused plugins.
 `PackerSync`                                    *packer-commands-sync*
 Perform `PackerClean` and then `PackerUpdate`.
 
+`PackerLoad`                                    *packer-commands-load*
+Loads opt plugin immediately
+
 ==============================================================================
 USAGE                                          *packer-usage*
 
@@ -174,6 +177,7 @@ commands work well for this purpose: >
   command! PackerSync packadd packer.nvim | lua require('plugins').sync()
   command! PackerClean packadd packer.nvim | lua require('plugins').clean()
   command! PackerCompile packadd packer.nvim | lua require('plugins').compile('~/.config/nvim/plugin/packer_load.vim')
+  command! -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad | lua require('packer').loader(<q-args>)
 
 CONFIGURATION                                  *packer-configuration*
 `packer` provides the following configuration variables, presented in the
