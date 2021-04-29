@@ -480,6 +480,9 @@ local function make_loaders(_, plugins, should_profile)
 
   local sequence_loads = {}
   for pre, posts in pairs(after) do
+    if plugins[pre] == nil then
+     error(string.format("Compile.lua dependency not loaded %s %s", pre, vim.inspect(posts))) 
+    end
     if plugins[pre].opt then
       loaders[pre].after = posts
     elseif plugins[pre].only_config then
