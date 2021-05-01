@@ -251,7 +251,8 @@ packer.on_compile_done = function() vim.cmd [[doautocmd User PackerCompileDone]]
 -- Finds plugins present in the `packer` package but not in the managed set
 packer.clean = function(results)
   async(function()
-    await(luarocks.clean(rocks, results, nil))
+    local luarocks_clean_task = luarocks.clean(rocks, results, nil)
+    if luarocks_clean_task ~= nil then await(luarocks_clean_task) end
     await(clean(plugins, results))
     packer.on_complete()
   end)()
@@ -283,7 +284,8 @@ packer.install = function(...)
     await(clean(plugins, results))
     local tasks, display_win = install(plugins, install_plugins, results)
     if next(tasks) then
-      table.insert(tasks, luarocks.ensure(rocks, results, display_win))
+      local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
+      if luarocks_ensure_task ~= nil then table.insert(tasks, luarocks_ensure_task) end
       table.insert(tasks, 1, function() return not display.status.running end)
       table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
       display_win:update_headline_message('installing ' .. #tasks - 2 .. ' / ' .. #tasks - 2
@@ -329,7 +331,8 @@ packer.update = function(...)
     local update_tasks
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
-    table.insert(tasks, luarocks.ensure(rocks, results, display_win))
+    local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
+    if luarocks_ensure_task ~= nil then table.insert(tasks, luarocks_ensure_task) end
     table.insert(tasks, 1, function() return not display.status.running end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     display_win:update_headline_message('updating ' .. #tasks - 2 .. ' / ' .. #tasks - 2
@@ -382,8 +385,10 @@ packer.sync = function(...)
     local update_tasks
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
-    table.insert(tasks, luarocks.clean(rocks, results, display_win))
-    table.insert(tasks, luarocks.ensure(rocks, results, display_win))
+    local luarocks_clean_task = luarocks.clean(rocks, results, display_win)
+    if luarocks_clean_task ~= nil then table.insert(tasks, luarocks_clean_task) end
+    local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
+    if luarocks_ensure_task ~= nil then table.insert(tasks, luarocks_ensure_task) end
     table.insert(tasks, 1, function() return not display.status.running end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     display_win:update_headline_message(
@@ -489,7 +494,8 @@ packer.profile_output = function()
       display_win:profile_output(_G._packer.profile_output)
     end)()
   else
-    log.warn('You must run PackerCompile with profiling enabled first e.g. PackerCompile profile=true')
+    log.warn(
+      'You must run PackerCompile with profiling enabled first e.g. PackerCompile profile=true')
   end
 end
 
