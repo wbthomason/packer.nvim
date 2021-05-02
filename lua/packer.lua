@@ -269,7 +269,7 @@ packer.on_compile_done = function() vim.cmd [[doautocmd User PackerCompileDone]]
 --- Clean operation:
 -- Finds plugins present in the `packer` package but not in the managed set
 packer.clean = function(results)
-  local a = require_and_configure('async')
+  local a = require('packer.async')
   local async = a.sync
   local await = a.wait
   local luarocks = require_and_configure('luarocks')
@@ -293,7 +293,7 @@ local function args_or_all(...) return util.nonempty_or({...}, vim.tbl_keys(plug
 packer.install = function(...)
   local plugin_utils = require_and_configure('plugin_utils')
   local log = require_and_configure('log')
-  local a = require_and_configure('async')
+  local a = require('packer.async')
   local async = a.sync
   local await = a.wait
   local luarocks = require_and_configure('luarocks')
@@ -353,7 +353,7 @@ end
 packer.update = function(...)
   local plugin_utils = require_and_configure('plugin_utils')
   require_and_configure('log')
-  local a = require_and_configure('async')
+  local a = require('packer.async')
   local async = a.sync
   local await = a.wait
   local luarocks = require_and_configure('luarocks')
@@ -363,6 +363,7 @@ packer.update = function(...)
   local update = require_and_configure('update')
 
   manage_all_plugins()
+
   local update_plugins = args_or_all(...)
   async(function()
     local start_time = vim.fn.reltime()
@@ -414,7 +415,7 @@ end
 packer.sync = function(...)
   local plugin_utils = require_and_configure('plugin_utils')
   require_and_configure('log')
-  local a = require_and_configure('async')
+  local a = require('packer.async')
   local async = a.sync
   local await = a.wait
   local luarocks = require_and_configure('luarocks')
@@ -472,7 +473,7 @@ packer.sync = function(...)
 end
 
 packer.status = function()
-  local async = require_and_configure('async').sync
+  local async = require('packer.async').sync
   local display = require_and_configure('display')
   require_and_configure('log')
 
@@ -554,7 +555,7 @@ packer.compile = function(raw_args)
 end
 
 packer.profile_output = function()
-  local async = require_and_configure('async').sync
+  local async = require('packer.async').sync
   local display = require_and_configure('display')
   local log = require_and_configure('log')
 
