@@ -82,13 +82,14 @@ local configurable_modules = {
   luarocks = false,
   log = false
 }
+
 local function require_and_configure(module_name)
   local fully_qualified_name = 'packer.' .. module_name
   local module = require(fully_qualified_name)
-  if configurable_modules[module_name] == true then return module end
-  if configurable_modules[module_name] == false then
-    module.cfg(config)
+  if not configurable_modules[module_name] and module.cfg then
     configurable_modules[module_name] = true
+    module.cfg(config)
+    return module
   end
 
   return module
