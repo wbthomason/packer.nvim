@@ -87,7 +87,11 @@ plugin_utils.update_helptags = vim.schedule_wrap(function(...)
   end
 end)
 
-plugin_utils.update_rplugins = vim.schedule_wrap(function() vim.cmd [[silent UpdateRemotePlugins]] end)
+plugin_utils.update_rplugins = vim.schedule_wrap(function()
+  if vim.fn.exists(':UpdateRemotePlugins') == 2 then
+    vim.cmd [[silent UpdateRemotePlugins]]
+  end
+end)
 
 plugin_utils.ensure_dirs = function()
   if vim.fn.isdirectory(config.opt_dir) == 0 then vim.fn.mkdir(config.opt_dir, 'p') end
