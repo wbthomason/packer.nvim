@@ -489,6 +489,10 @@ The option `compile_on_sync`, which defaults to `true`, will run `packer.compile
 `packer.sync()`, if set to `true`. Note that otherwise, you **must** run `packer.compile` yourself
 to generate the lazy-loader file!
 
+**NOTE:** If you use a function value for `config` or `setup` keys in any plugin specifications, it
+**must not** have any upvalues (i.e. captures). We currently use Lua's `string.dump` to compile
+config/setup functions to bytecode, which has this limitation.
+
 ### User autocommands
 `packer` runs most of its operations asyncronously. If you would like to implement automations that
 require knowing when the operations are complete, you can use the following `User` autocmds (see
