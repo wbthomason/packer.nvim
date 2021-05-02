@@ -423,9 +423,9 @@ packer.sync = function(...)
   local install = require_and_configure('install')
   local display = require_and_configure('display')
   local update = require_and_configure('update')
-  local sync_plugins = args_or_all(...)
-
   manage_all_plugins()
+
+  local sync_plugins = args_or_all(...)
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
