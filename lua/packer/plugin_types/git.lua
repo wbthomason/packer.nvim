@@ -339,12 +339,23 @@ git.setup = function(plugin)
         :and_then(await, jobs.run(update_cmd, update_opts))
         :and_then(await, jobs.run(submodule_cmd, update_opts))
         :map_err(function(err)
-          plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
-
-          return {
-            msg = fmt('Error pulling updates for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
-            data = err,
-          }
+          plugin.output = {err = vim.list_extend(update_info.err, update_info.output), data = {}}
+          -- TODO should retrying be inside of the map error function
+          local git_err = update_info.err and update_info.err[1] or nil
+          if git_err and git_err:match(vim.pesc("Not possible to fast-forward")) then
+            local update_with_rebase = update_cmd:gsub('rebase=false', 'rebase=true')
+            r = await(jobs.run, update_with_rebase,
+                      {success_test = exit_ok, capture_output = update_callbacks})
+            r:and_then(await, jobs.run(submodule_cmd,
+                      {success_test = exit_ok, capture_output = update_callbacks}))
+            else
+              return {
+                msg = fmt('Error pulling updates for %s: %s', plugin_name,
+                table.concat(update_info.output, '\n')),
+                data = git_err
+              }
+          end
+          print("error in here: " .. vim.inspect(git_err))
         end)
 
       disp:task_update(plugin_name, 'checking updated commit...')
