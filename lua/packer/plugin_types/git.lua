@@ -173,6 +173,15 @@ git.setup = function(plugin)
     end)
   end
 
+  plugin.remote_url = function ()
+    return async(function ()
+      return await(jobs.run(fmt("%s remote get-url origin", config.exec_cmd),
+      {capture_output = true, cwd = plugin.install_path })):map_ok(function (data)
+        return { remote = data.output.data.stdout[1] }
+      end)
+    end)
+  end
+
   plugin.updater = function(disp)
     return async(function()
       local update_info = {err = {}, revs = {}, output = {}, messages = {}}

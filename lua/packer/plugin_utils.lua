@@ -100,26 +100,43 @@ plugin_utils.ensure_dirs = function()
 end
 
 plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins)
-  if opt_plugins == nil or start_plugins == nil then
-    opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
-  end
-
-  -- NOTE/TODO: In the case of a plugin gaining/losing an alias, this will force a clean and
-  -- reinstall
-  local missing_plugins = {}
-  for _, plugin_name in ipairs(vim.tbl_keys(plugins)) do
-    local plugin = plugins[plugin_name]
-
-    local plugin_path = util.join_paths(config[plugin.opt and 'opt_dir' or 'start_dir'],
-                                        plugin.short_name)
-    local plugin_installed = (plugin.opt and opt_plugins or start_plugins)[plugin_path]
-
-    if not plugin_installed or plugin.type ~= plugin_utils.guess_dir_type(plugin_path) then
-      table.insert(missing_plugins, plugin_name)
+  return a.sync(function ()
+    if opt_plugins == nil or start_plugins == nil then
+      opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
     end
-  end
 
-  return missing_plugins
+    -- NOTE/TODO: In the case of a plugin gaining/losing an alias, this will force a clean and
+    -- reinstall
+    local missing_plugins = {}
+    for _, plugin_name in ipairs(vim.tbl_keys(plugins)) do
+      local plugin = plugins[plugin_name]
+
+      local plugin_path = util.join_paths(config[plugin.opt and 'opt_dir' or 'start_dir'],
+      plugin.short_name)
+      local plugin_installed = (plugin.opt and opt_plugins or start_plugins)[plugin_path]
+
+      await(a.main)
+      local guessed_type = plugin_utils.guess_dir_type(plugin_path)
+      if not plugin_installed or plugin.type ~= guessed_type then
+        table.insert(missing_plugins, plugin_name)
+      end
+      if guessed_type == plugin_utils.git_plugin_type then
+        local r = await(plugin.remote_url())
+        local remote = r.ok and r.ok.remote or nil
+        if remote then
+          local parts = vim.split(remote, "/")
+          local repo_name = util.join_paths(unpack(vim.list_slice(parts, #parts - 1, #parts)))
+          repo_name = repo_name:gsub("%.git", "")
+          if repo_name and repo_name ~= plugin.name then
+            table.insert(missing_plugins, plugin_name)
+          end
+        end
+      end
+    end
+
+    await(a.main)
+    return missing_plugins
+  end)
 end
 
 plugin_utils.load_plugin = function(plugin)

@@ -268,17 +268,18 @@ packer.install = function(...)
   local install_plugins
   if ... then
     install_plugins = {...}
-  else
-    install_plugins = plugin_utils.find_missing_plugins(plugins)
   end
-
-  if #install_plugins == 0 then
-    log.info('All configured plugins are installed')
-    packer.on_complete()
-    return
-  end
-
   async(function()
+    if not install_plugins then
+      install_plugins = await(plugin_utils.find_missing_plugins(plugins))
+    end
+
+    if #install_plugins == 0 then
+      log.info('All configured plugins are installed')
+      packer.on_complete()
+      return
+    end
+
     local start_time = vim.fn.reltime()
     local results = {}
     await(clean(plugins, results))
@@ -320,9 +321,8 @@ packer.update = function(...)
     local start_time = vim.fn.reltime()
     local results = {}
     await(clean(plugins, results))
-    local missing_plugins, installed_plugins = util.partition(
-                                                 plugin_utils.find_missing_plugins(plugins),
-                                                 update_plugins)
+    local missing = await(plugin_utils.find_missing_plugins(plugins))
+    local missing_plugins, installed_plugins = util.partition(missing, update_plugins)
 
     update.fix_plugin_types(plugins, missing_plugins, results)
     local _
@@ -369,9 +369,8 @@ packer.sync = function(...)
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
-    local missing_plugins, installed_plugins = util.partition(
-                                                 plugin_utils.find_missing_plugins(plugins),
-                                                 sync_plugins)
+    local r = await(plugin_utils.find_missing_plugins(plugins))
+    local missing_plugins, installed_plugins = util.partition(r or {}, sync_plugins)
 
     update.fix_plugin_types(plugins, missing_plugins, results)
     local _
