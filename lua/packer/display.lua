@@ -590,30 +590,39 @@ display_mt.__index = display_mt
 
 -- TODO: Option for no colors
 local function make_filetype_cmds(working_sym, done_sym, error_sym)
+  local function look_back(str)
+    return string.format([[\(%s\)\@%d<=]], str, #str)
+  end
   return {
     -- Adapted from https://github.com/kristijanhusak/vim-packager
     'setlocal buftype=nofile bufhidden=wipe nobuflisted nolist noswapfile nowrap nospell nonumber norelativenumber nofoldenable signcolumn=no',
-    'syntax clear', 'syn match packerWorking /^ ' .. working_sym .. '/',
+    'syntax clear',
+    'syn match packerWorking /^ ' .. working_sym .. '/',
     'syn match packerSuccess /^ ' .. done_sym .. '/',
     'syn match packerFail /^ ' .. error_sym .. '/',
-    'syn match packerStatus /\\(^+.*—\\)\\@<=\\s.*$/',
-    'syn match packerStatusSuccess /\\(^ ' .. done_sym .. '.*\\)\\@<=\\s.*$/',
-    'syn match packerStatusFail /\\(^ ' .. error_sym .. '.*\\)\\@<=\\s.*$/',
-    'syn match packerStatusCommit /\\(^\\*.*—\\)\\@<=\\s.*$/',
+    'syn match packerStatus /^+.*—\\zs\\s.*$/',
+    'syn match packerStatusSuccess /' .. look_back('^ ' .. done_sym) .. '\\s.*$/',
+    'syn match packerStatusFail /' .. look_back('^ ' .. error_sym) .. '\\s.*$/',
+    'syn match packerStatusCommit /^\\*.*—\\zs\\s.*$/',
     'syn match packerHash /\\(\\s\\)[0-9a-f]\\{7,8}\\(\\s\\)/',
-    'syn match packerRelDate /([^)]*)$/', 'syn match packerProgress /\\(\\[\\)\\@<=[\\=]*/',
+    'syn match packerRelDate /([^)]*)$/',
+    'syn match packerProgress /\\[\\zs[\\=]*/',
     'syn match packerOutput /\\(Output:\\)\\|\\(Commits:\\)\\|\\(Errors:\\)/',
     [[syn match packerTimeHigh /\d\{3\}\.\d\+ms/]],
     [[syn match packerTimeMedium /\d\{2\}\.\d\+ms/]],
     [[syn match packerTimeLow /\d\.\d\+ms/]],
     [[syn match packerTimeTrivial /0\.\d\+ms/]],
     [[syn match packerPackageNotLoaded /(not loaded)$/]],
-    [[syn match packerPackageName /\(^\ • \)\@<=[^ ]*/]],
+    [[syn match packerPackageName /^\ • \zs[^ ]*/]],
     [[syn match packerString /\v(''|""|(['"]).{-}[^\\]\2)/]],
     [[syn match packerBool /\<\(false\|true\)\>/]],
-    'hi def link packerWorking        SpecialKey', 'hi def link packerSuccess        Question',
-    'hi def link packerFail           ErrorMsg', 'hi def link packerHash           Identifier',
-    'hi def link packerRelDate        Comment', 'hi def link packerProgress       Boolean',
+
+    'hi def link packerWorking        SpecialKey',
+    'hi def link packerSuccess        Question',
+    'hi def link packerFail           ErrorMsg',
+    'hi def link packerHash           Identifier',
+    'hi def link packerRelDate        Comment',
+    'hi def link packerProgress       Boolean',
     'hi def link packerOutput         Type'
   }
 end
