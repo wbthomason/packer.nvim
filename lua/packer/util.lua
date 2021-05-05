@@ -110,6 +110,14 @@ util.float = function(opts)
   local left = math.ceil((columns - width) * 0.5)
   local top = math.ceil((lines - height) * 0.5 - 1)
 
+  --- TODO: this is an impromptu fix for
+  --- https://github.com/wbthomason/packer.nvim/pull/325#issuecomment-832874005
+  --- ideally we should decide if the string argument passed to display openers is
+  --- required or not
+  if type(opts) ~= "table" then
+    opts = {}
+  end
+
   opts = vim.tbl_deep_extend('force', {
     relative = 'editor',
     style = 'minimal',
