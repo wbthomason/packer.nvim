@@ -56,7 +56,7 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 - You need to be running Neovim v0.5.0+; `packer` makes use of extmarks and other newly-added Neovim
   features.
 - If you are on Windows 10, you need developer mode enabled in order to use local plugins (`packer`
-  needs to use `mklink`, which requires admin privileges - credit to @TimUntersberger for this note)
+  needs to use `mklink`, which requires admin privileges - credit to [@TimUntersberger](https://github.com/TimUntersberger) for this note)
 
 ## Quickstart
 To get started, first clone this repository to somewhere on your `packpath`, e.g.:
