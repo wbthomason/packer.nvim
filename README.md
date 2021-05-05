@@ -24,6 +24,8 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
     4. [Performing plugin management operations](#performing-plugin-management-operations)
     5. [Extending packer](#extending-packer)
     6. [Compiling Lazy-Loaders](#compiling-lazy-loaders)
+	7. [User autocommands](#user-autocommands)
+	8. [Using a floating window](#using-a-floating-window)
 7. [Profiling](#profiling)
 8. [Debugging](#debugging)
 9. [Status](#status)
@@ -500,6 +502,34 @@ require knowing when the operations are complete, you can use the following `Use
 
 - `PackerComplete`: Fires after install, update, clean, and sync asynchronous operations finish.
 - `PackerCompileDone`: Fires after compiling (see [the section on compilation](#compiling-lazy-loaders))
+
+### Using a floating window
+You can configure Packer to use a floating window for command outputs by passing a utility
+function to `packer`'s config:
+```lua
+packer.startup(function()
+  -- Your plugins here
+end, {
+  display = {
+    open_fn = require('packer.util').float,
+  }
+})
+```
+
+By default, this floating window will show doubled borders. If you want to customize the window
+appearance, you can pass a configuration to `float`, which is the same configuration that would be
+passed to `nvim_open_win`:
+```lua
+packer.startup(function()
+  -- Your plugins here
+end, {
+  display = {
+    open_fn = function()
+      return require('packer.util').float({ border = 'single' })
+    end
+  }
+})
+```
 
 ## Profiling
 Packer has built in functionality that can allow you to profile the time taken loading your plugins.
