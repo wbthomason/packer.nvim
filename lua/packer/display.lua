@@ -101,6 +101,10 @@ local keymaps = {
   prompt_revert = {
     rhs = '<cmd>lua require"packer.display".prompt_revert()<cr>',
     action = 'revert an update'
+  },
+  retry = {
+    rhs = '<cmd>lua require"packer.display".retry()<cr>',
+    action = 'retry'
   }
 }
 
@@ -110,7 +114,8 @@ local keymap_display_order = {
   [1] = 'quit',
   [2] = 'toggle_info',
   [3] = 'diff',
-  [4] = 'prompt_revert'
+  [4] = 'prompt_revert',
+  [5] = 'retry'
 }
 
 --- Utility function to prompt a user with a question in a floating window
@@ -338,11 +343,15 @@ local display_mt = {
       end
     end
 
+    display.status.any_failed_install = false
+    display.status.any_failed_update = false
+
     if results.installs then
       for plugin, result in pairs(results.installs) do
         table.insert(item_order, plugin)
         table.insert(raw_lines, fmt(' %s %s %s', result.ok and config.done_sym or config.error_sym,
                                     result.ok and 'Installed' or 'Failed to install', plugin))
+        display.status.any_failed_install = display.status.any_failed_install or not result.ok
       end
     end
 
@@ -364,6 +373,7 @@ local display_mt = {
         else
           failed_update = true
           actual_update = false
+          display.status.any_failed_update = true
           table.insert(item_order, plugin_name)
           table.insert(message, fmt(' %s Failed to update %s', config.error_sym, plugin_name))
         end
@@ -402,10 +412,13 @@ local display_mt = {
     if #raw_lines == 0 then table.insert(raw_lines, ' Everything already up to date!') end
 
     table.insert(raw_lines, '')
+    local show_retry = display.status.any_failed_install or display.status.any_failed_update
     for _, keymap in ipairs(keymap_display_order) do
       if keymaps[keymap].lhs then
-        table.insert(raw_lines,
-                     fmt(" Press '%s' to %s", keymaps[keymap].lhs, keymaps[keymap].action))
+        if not (keymap == "retry") or show_retry then
+          table.insert(raw_lines,
+                       fmt(" Press '%s' to %s", keymaps[keymap].lhs, keymaps[keymap].action))
+        end
       end
     end
 
@@ -705,6 +718,14 @@ display.diff = function() if display.status.disp then display.status.disp:diff()
 
 display.prompt_revert = function()
   if display.status.disp then display.status.disp:prompt_revert() end
+end
+
+display.retry = function()
+  if display.status.any_failed_install then
+      require("packer").install()
+  elseif display.status.any_failed_update then
+      require("packer").update()
+  end
 end
 
 --- Async prompt_user
