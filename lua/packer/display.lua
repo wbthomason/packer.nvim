@@ -344,7 +344,7 @@ local display_mt = {
     end
 
     display.status.any_failed_install = false
-    display.status.any_failed_update = false
+    display.status.failed_update_list = {}
 
     if results.installs then
       for plugin, result in pairs(results.installs) do
@@ -373,7 +373,7 @@ local display_mt = {
         else
           failed_update = true
           actual_update = false
-          display.status.any_failed_update = true
+          table.insert(display.status.failed_update_list, plugin.short_name)
           table.insert(item_order, plugin_name)
           table.insert(message, fmt(' %s Failed to update %s', config.error_sym, plugin_name))
         end
@@ -393,6 +393,7 @@ local display_mt = {
           table.insert(raw_lines,
                        fmt(' %s %s %s', result.ok and config.done_sym or config.error_sym,
                            result.ok and 'Installed' or 'Failed to install', package))
+          display.status.any_failed_install = display.status.any_failed_install or not result.ok
         end
       end
 
@@ -412,7 +413,7 @@ local display_mt = {
     if #raw_lines == 0 then table.insert(raw_lines, ' Everything already up to date!') end
 
     table.insert(raw_lines, '')
-    local show_retry = display.status.any_failed_install or display.status.any_failed_update
+    local show_retry = display.status.any_failed_install or #display.status.failed_update_list > 0
     for _, keymap in ipairs(keymap_display_order) do
       if keymaps[keymap].lhs then
         if not (keymap == "retry") or show_retry then
@@ -723,8 +724,8 @@ end
 display.retry = function()
   if display.status.any_failed_install then
       require("packer").install()
-  elseif display.status.any_failed_update then
-      require("packer").update()
+  elseif #display.status.failed_update_list > 0 then
+      require("packer").update(unpack(display.status.failed_update_list))
   end
 end
 
