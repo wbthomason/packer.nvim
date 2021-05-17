@@ -287,7 +287,7 @@ local display_mt = {
     local padding = string.rep(" ", 3)
     for plug_name, plug_conf in pairs(plugins) do
       local header_lines = {
-        fmt(" • %s ", plug_name) .. (not plug_conf.loaded and '(not loaded)' or '')
+        fmt(" • %s", plug_name) .. (not plug_conf.loaded and ' (not loaded)' or '')
       }
       local config_lines = {}
       for key, value in pairs(plug_conf) do
