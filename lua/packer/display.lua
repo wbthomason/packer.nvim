@@ -254,7 +254,7 @@ local display_mt = {
     local width = api.nvim_win_get_width(self.win) - 2
     local pad_width = math.max(math.floor((width - string.len(headline)) / 2.0), 0)
     self:set_lines(0, config.header_lines - 1,
-                   {string.rep(' ', pad_width) .. headline .. string.rep(' ', pad_width)})
+                   {string.rep(' ', pad_width) .. headline})
   end),
 
   --- Setup new syntax group links for the status window
@@ -287,7 +287,7 @@ local display_mt = {
     local padding = string.rep(" ", 3)
     for plug_name, plug_conf in pairs(plugins) do
       local header_lines = {
-        fmt(" • %s ", plug_name) .. (not plug_conf.loaded and '(not loaded)' or '')
+        fmt(" • %s", plug_name) .. (not plug_conf.loaded and ' (not loaded)' or '')
       }
       local config_lines = {}
       for key, value in pairs(plug_conf) do
@@ -634,7 +634,7 @@ local function make_header(disp)
   local pad_width = math.floor((width - string.len(config.title)) / 2.0)
   api.nvim_buf_set_lines(disp.buf, 0, 1, true, {
     string.rep(' ', pad_width) .. config.title,
-    ' ' .. string.rep(config.header_sym, width - 2) .. ' '
+    ' ' .. string.rep(config.header_sym, width - 2)
   })
 end
 
