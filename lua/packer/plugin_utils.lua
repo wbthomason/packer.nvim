@@ -88,9 +88,7 @@ plugin_utils.update_helptags = vim.schedule_wrap(function(...)
 end)
 
 plugin_utils.update_rplugins = vim.schedule_wrap(function()
-  if vim.fn.exists(':UpdateRemotePlugins') == 2 then
-    vim.cmd [[silent UpdateRemotePlugins]]
-  end
+  if vim.fn.exists(':UpdateRemotePlugins') == 2 then vim.cmd [[silent UpdateRemotePlugins]] end
 end)
 
 plugin_utils.ensure_dirs = function()
@@ -109,14 +107,12 @@ plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins
   local missing_plugins = {}
   for _, plugin_name in ipairs(vim.tbl_keys(plugins)) do
     local plugin = plugins[plugin_name]
-
     local plugin_path = util.join_paths(config[plugin.opt and 'opt_dir' or 'start_dir'],
                                         plugin.short_name)
     local plugin_installed = (plugin.opt and opt_plugins or start_plugins)[plugin_path]
 
-    if not plugin_installed or plugin.type ~= plugin_utils.guess_dir_type(plugin_path) then
-      table.insert(missing_plugins, plugin_name)
-    end
+    if (not plugin_installed or plugin.type ~= plugin_utils.guess_dir_type(plugin_path))
+      and not plugin.disable then table.insert(missing_plugins, plugin_name) end
   end
 
   return missing_plugins
@@ -177,14 +173,13 @@ plugin_utils.post_update_hook = function(plugin, disp)
           local cmd = {
             os.getenv('SHELL'), '-c', 'cd ' .. plugin.install_path .. ' && ' .. plugin.run
           }
-          return await(jobs.run(cmd, {capture_output = hook_callbacks})):map_err(
-                   function(err)
-              return {
-                msg = string.format('Error running post update hook: %s',
-                                    table.concat(hook_output.output, '\n')),
-                data = err
-              }
-            end)
+          return await(jobs.run(cmd, {capture_output = hook_callbacks})):map_err(function(err)
+            return {
+              msg = string.format('Error running post update hook: %s',
+                                  table.concat(hook_output.output, '\n')),
+              data = err
+            }
+          end)
         end
       else
         -- TODO/NOTE: This case should also capture output in case of error. The minor difficulty is
