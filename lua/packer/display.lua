@@ -588,11 +588,10 @@ local display_mt = {
 
 display_mt.__index = display_mt
 
+local function look_back(str) return string.format([[\(%s\)\@%d<=]], str, #str) end
+
 -- TODO: Option for no colors
 local function make_filetype_cmds(working_sym, done_sym, error_sym)
-  local function look_back(str)
-    return string.format([[\(%s\)\@%d<=]], str, #str)
-  end
   return {
     -- Adapted from https://github.com/kristijanhusak/vim-packager
     'setlocal buftype=nofile bufhidden=wipe nobuflisted nolist noswapfile nowrap nospell nonumber norelativenumber nofoldenable signcolumn=no',
