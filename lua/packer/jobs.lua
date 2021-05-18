@@ -180,6 +180,8 @@ local run_job = function(task, opts)
       options.timeout = 1000 * opts.timeout
     end
 
+    options.cwd = opts.cwd
+
     local stdin = loop.new_pipe(false)
     options.args = {unpack(task, 2)}
     options.stdio = {stdin, stdout, stderr}

@@ -174,10 +174,8 @@ plugin_utils.post_update_hook = function(plugin, disp)
             stdout = jobs.logging_callback(hook_output.err, hook_output.output, nil, disp,
                                            plugin_name)
           }
-          local cmd = {
-            os.getenv('SHELL'), '-c', 'cd ' .. plugin.install_path .. ' && ' .. plugin.run
-          }
-          return await(jobs.run(cmd, {capture_output = hook_callbacks})):map_err(
+          local cmd = {os.getenv('SHELL') or vim.o.shell, '-c', plugin.run}
+          return await(jobs.run(cmd, {capture_output = hook_callbacks, cwd = plugin.install_path})):map_err(
                    function(err)
               return {
                 msg = string.format('Error running post update hook: %s',
