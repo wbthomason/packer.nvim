@@ -275,7 +275,7 @@ default configuration values (and structure of the configuration table) are:
   display = {
     non_interactive = false, -- If true, disable display windows for all operations
     open_fn  = nil, -- An optional function to open a window for packer's display
-    open_cmd = '65vnew [packer]', -- An optional command to open a window for packer's display
+    open_cmd = '65vnew \\[packer\\]', -- An optional command to open a window for packer's display
     working_sym = '⟳', -- The symbol for a plugin being installed/updated
     error_sym = '✗', -- The symbol for a plugin with an error in installation/updating
     done_sym = '✓', -- The symbol for a plugin which has completed installation/updating
