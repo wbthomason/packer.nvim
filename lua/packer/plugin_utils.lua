@@ -88,9 +88,7 @@ plugin_utils.update_helptags = vim.schedule_wrap(function(...)
 end)
 
 plugin_utils.update_rplugins = vim.schedule_wrap(function()
-  if vim.fn.exists(':UpdateRemotePlugins') == 2 then
-    vim.cmd [[silent UpdateRemotePlugins]]
-  end
+  if vim.fn.exists(':UpdateRemotePlugins') == 2 then vim.cmd [[silent UpdateRemotePlugins]] end
 end)
 
 plugin_utils.ensure_dirs = function()
@@ -150,44 +148,48 @@ plugin_utils.post_update_hook = function(plugin, disp)
   local plugin_name = util.get_plugin_full_name(plugin)
   return a.sync(function()
     if plugin.run or not plugin.opt then
-      await(vim.schedule)
+      await(a.main)
       plugin_utils.load_plugin(plugin)
     end
     if plugin.run then
-      disp:task_update(plugin_name, 'running post update hook...')
-      if type(plugin.run) == 'function' then
-        if pcall(plugin.run, plugin) then
-          return result.ok()
+      if type(plugin.run) ~= 'table' then plugin.run = {plugin.run} end
+      disp:task_update(plugin_name, 'running post update hooks...')
+      for _, task in ipairs(plugin.run) do
+        if type(task) == 'function' then
+          if pcall(task, plugin) then
+            return result.ok()
+          else
+            return result.err({msg = 'Error running post update hook'})
+          end
+        elseif type(task) == 'string' then
+          if string.sub(task, 1, 1) == ':' then
+            await(a.main)
+            vim.cmd(string.sub(task, 2))
+            return result.ok()
+          else
+            local hook_output = {err = {}, output = {}}
+            local hook_callbacks = {
+              stderr = jobs.logging_callback(hook_output.err, hook_output.output, nil, disp,
+                                             plugin_name),
+              stdout = jobs.logging_callback(hook_output.err, hook_output.output, nil, disp,
+                                             plugin_name)
+            }
+            local cmd = {os.getenv('SHELL') or vim.o.shell, '-c', task}
+            return
+              await(jobs.run(cmd, {capture_output = hook_callbacks, cwd = plugin.install_path})):map_err(
+                function(err)
+                  return {
+                    msg = string.format('Error running post update hook: %s',
+                                        table.concat(hook_output.output, '\n')),
+                    data = err
+                  }
+                end)
+          end
         else
-          return result.err({msg = 'Error running post update hook'})
+          -- TODO/NOTE: This case should also capture output in case of error. The minor difficulty is
+          -- what to do if the plugin's run table (i.e. this case) already specifies output handling.
+          return await(jobs.run(task))
         end
-      elseif type(plugin.run) == 'string' then
-        if string.sub(plugin.run, 1, 1) == ':' then
-          await(a.main)
-          vim.cmd(string.sub(plugin.run, 2))
-          return result.ok()
-        else
-          local hook_output = {err = {}, output = {}}
-          local hook_callbacks = {
-            stderr = jobs.logging_callback(hook_output.err, hook_output.output, nil, disp,
-                                           plugin_name),
-            stdout = jobs.logging_callback(hook_output.err, hook_output.output, nil, disp,
-                                           plugin_name)
-          }
-          local cmd = {os.getenv('SHELL') or vim.o.shell, '-c', plugin.run}
-          return await(jobs.run(cmd, {capture_output = hook_callbacks, cwd = plugin.install_path})):map_err(
-                   function(err)
-              return {
-                msg = string.format('Error running post update hook: %s',
-                                    table.concat(hook_output.output, '\n')),
-                data = err
-              }
-            end)
-        end
-      else
-        -- TODO/NOTE: This case should also capture output in case of error. The minor difficulty is
-        -- what to do if the plugin's run table (i.e. this case) already specifies output handling.
-        return await(jobs.run(plugin.run))
       end
     else
       return result.ok()
