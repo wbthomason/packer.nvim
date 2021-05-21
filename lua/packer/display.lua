@@ -104,7 +104,7 @@ local keymaps = {
   },
   retry = {
     rhs = '<cmd>lua require"packer.display".retry()<cr>',
-    action = 'retry'
+    action = 'retry failed operations'
   }
 }
 
