@@ -26,7 +26,7 @@ REQUIREMENTS                                     *packer-intro-requirements*
   on this to detect whether you are running Windows or a Unix-like OS (for path
   separators)
 - If you are on Windows 10, you need developer mode enabled in order to use
-  local plugins (`packer` needs to use `mklink`, which requires admin privileges
+  local plugins (creating symbolic links requires admin privileges on Windows
   - credit to @TimUntersberger for this note)
 
 ==============================================================================
