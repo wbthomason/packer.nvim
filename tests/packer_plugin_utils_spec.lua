@@ -8,7 +8,7 @@ a.describe("Packer post update hooks", function()
   local run_hook = plugin_utils.post_update_hook
 
   before_each(function()
-    vim.fn.mkdir(test_plugin_path)
+    vim.fn.mkdir(test_plugin_path, "p")
   end)
 
   after_each(function()
