@@ -124,8 +124,14 @@ plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins
         local r = await(plugin.remote_url())
         local remote = r.ok and r.ok.remote or nil
         if remote then
-          local parts = vim.split(remote, "/")
-          local repo_name = util.join_paths(unpack(vim.list_slice(parts, #parts - 1, #parts)))
+          local repo_name
+          if remote:match('git@github.com') then
+            local parts = vim.split(remote, ":")
+            repo_name = parts[#parts]
+          else
+            local parts = vim.split(remote, "/")
+            repo_name = util.join_paths(unpack(vim.list_slice(parts, #parts - 1, #parts)))
+          end
           repo_name = repo_name:gsub("%.git", "")
           if repo_name and repo_name ~= plugin.name then
             table.insert(missing_plugins, plugin_name)
