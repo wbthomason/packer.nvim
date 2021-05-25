@@ -266,9 +266,7 @@ local function args_or_all(...) return util.nonempty_or({...}, vim.tbl_keys(plug
 -- Installs missing plugins, then updates helptags and rplugins
 packer.install = function(...)
   local install_plugins
-  if ... then
-    install_plugins = {...}
-  end
+  if ... then install_plugins = {...} end
   async(function()
     if not install_plugins then
       install_plugins = await(plugin_utils.find_missing_plugins(plugins))

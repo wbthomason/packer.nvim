@@ -1,8 +1,6 @@
 local util = require("packer.util")
 
-local M = {
-  base_dir = "/tmp/__packer_tests__"
-}
+local M = {base_dir = "/tmp/__packer_tests__"}
 
 ---Create a fake git repository
 ---@param name string
@@ -17,10 +15,6 @@ end
 
 ---Remove directories created for test purposes
 ---@vararg string
-function M.cleanup_dirs(...)
-  for _,dir in ipairs({...}) do
-    vim.fn.delete(dir, "rf")
-  end
-end
+function M.cleanup_dirs(...) for _, dir in ipairs({...}) do vim.fn.delete(dir, "rf") end end
 
 return M
