@@ -343,20 +343,21 @@ git.setup = function(plugin)
           local git_err = update_info.err and update_info.err[1] or nil
           --- Retry the update command if the issue was that we were unable to update because
           --- the upstream repository has been rebased
+          local n = result.ok()
           if git_err and git_err:match(vim.pesc("Not possible to fast-forward")) then
             local update_with_rebase = update_cmd:gsub('rebase=false', 'rebase=true')
-            r = await(jobs.run, update_with_rebase,
+            n = await(jobs.run, update_with_rebase,
                       {success_test = exit_ok, capture_output = update_callbacks})
-            r:and_then(await, jobs.run(submodule_cmd,
+            n:and_then(await, jobs.run(submodule_cmd,
                       {success_test = exit_ok, capture_output = update_callbacks}))
-            return r
-            else
-              return {
-                msg = fmt('Error pulling updates for %s: %s', plugin_name,
-                table.concat(update_info.output, '\n')),
-                data = git_err
-              }
+          else
+            n = result.err({
+              msg = fmt('Error pulling updates for %s: %s', plugin_name,
+              table.concat(update_info.output, '\n')),
+              data = git_err
+            })
           end
+          return n
         end)
 
       disp:task_update(plugin_name, 'checking updated commit...')
