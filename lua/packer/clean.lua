@@ -25,7 +25,7 @@ local clean_plugins = function(_, plugins, results)
     results.removals = results.removals or {}
     await(a.main)
     local opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
-    local missing_plugins = plugin_utils.find_missing_plugins(plugins, opt_plugins, start_plugins)
+    local missing_plugins = await(plugin_utils.find_missing_plugins(plugins))
     -- turn the list into a hashset-like structure
     for idx, plugin_name in ipairs(missing_plugins) do
       missing_plugins[plugin_name] = true

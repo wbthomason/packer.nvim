@@ -88,9 +88,7 @@ plugin_utils.update_helptags = vim.schedule_wrap(function(...)
 end)
 
 plugin_utils.update_rplugins = vim.schedule_wrap(function()
-  if vim.fn.exists(':UpdateRemotePlugins') == 2 then
-    vim.cmd [[silent UpdateRemotePlugins]]
-  end
+  if vim.fn.exists(':UpdateRemotePlugins') == 2 then vim.cmd [[silent UpdateRemotePlugins]] end
 end)
 
 plugin_utils.ensure_dirs = function()
@@ -100,26 +98,49 @@ plugin_utils.ensure_dirs = function()
 end
 
 plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins)
-  if opt_plugins == nil or start_plugins == nil then
-    opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
-  end
-
-  -- NOTE/TODO: In the case of a plugin gaining/losing an alias, this will force a clean and
-  -- reinstall
-  local missing_plugins = {}
-  for _, plugin_name in ipairs(vim.tbl_keys(plugins)) do
-    local plugin = plugins[plugin_name]
-
-    local plugin_path = util.join_paths(config[plugin.opt and 'opt_dir' or 'start_dir'],
-                                        plugin.short_name)
-    local plugin_installed = (plugin.opt and opt_plugins or start_plugins)[plugin_path]
-
-    if not plugin_installed or plugin.type ~= plugin_utils.guess_dir_type(plugin_path) then
-      table.insert(missing_plugins, plugin_name)
+  return a.sync(function()
+    if opt_plugins == nil or start_plugins == nil then
+      opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
     end
-  end
 
-  return missing_plugins
+    -- NOTE/TODO: In the case of a plugin gaining/losing an alias, this will force a clean and
+    -- reinstall
+    local missing_plugins = {}
+    for _, plugin_name in ipairs(vim.tbl_keys(plugins)) do
+      local plugin = plugins[plugin_name]
+
+      local plugin_path = util.join_paths(config[plugin.opt and 'opt_dir' or 'start_dir'],
+                                          plugin.short_name)
+      local plugin_installed = (plugin.opt and opt_plugins or start_plugins)[plugin_path]
+
+      await(a.main)
+      local guessed_type = plugin_utils.guess_dir_type(plugin_path)
+      if not plugin_installed or plugin.type ~= guessed_type then
+        table.insert(missing_plugins, plugin_name)
+      end
+      if guessed_type == plugin_utils.git_plugin_type then
+        local r = await(plugin.remote_url())
+        local remote = r.ok and r.ok.remote or nil
+        if remote then
+          local repo_name
+          if remote:match('git@github.com') then
+            local parts = vim.split(remote, ":")
+            repo_name = parts[#parts]
+          else
+            local parts = vim.split(remote, "/")
+            repo_name = util.join_paths(unpack(vim.list_slice(parts, #parts - 1, #parts)))
+          end
+          repo_name = repo_name:gsub("%.git", "")
+          if repo_name and repo_name ~= plugin.name then
+            table.insert(missing_plugins, plugin_name)
+          end
+        end
+      end
+    end
+
+    await(a.main)
+    return missing_plugins
+  end)
 end
 
 plugin_utils.load_plugin = function(plugin)
@@ -175,14 +196,15 @@ plugin_utils.post_update_hook = function(plugin, disp)
                                            plugin_name)
           }
           local cmd = {os.getenv('SHELL') or vim.o.shell, '-c', plugin.run}
-          return await(jobs.run(cmd, {capture_output = hook_callbacks, cwd = plugin.install_path})):map_err(
-                   function(err)
-              return {
-                msg = string.format('Error running post update hook: %s',
-                                    table.concat(hook_output.output, '\n')),
-                data = err
-              }
-            end)
+          return
+            await(jobs.run(cmd, {capture_output = hook_callbacks, cwd = plugin.install_path})):map_err(
+              function(err)
+                return {
+                  msg = string.format('Error running post update hook: %s',
+                                      table.concat(hook_output.output, '\n')),
+                  data = err
+                }
+              end)
         end
       else
         -- TODO/NOTE: This case should also capture output in case of error. The minor difficulty is
