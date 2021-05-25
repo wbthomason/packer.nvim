@@ -322,6 +322,7 @@ packer.update = function(...)
     local missing = await(plugin_utils.find_missing_plugins(plugins))
     local missing_plugins, installed_plugins = util.partition(missing, update_plugins)
 
+    await(a.main)
     update.fix_plugin_types(plugins, missing_plugins, results)
     local _
     _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)

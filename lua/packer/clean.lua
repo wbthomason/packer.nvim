@@ -63,6 +63,7 @@ local clean_plugins = function(_, plugins, results)
     if next(dirty_plugins) then
       local lines = {}
       for _, path in ipairs(dirty_plugins) do table.insert(lines, '  - ' .. path) end
+      await(a.main)
       if await(display.ask_user('Removing the following directories. OK? (y/N)', lines)) then
         results.removals = dirty_plugins
         log.debug('Removed ' .. vim.inspect(dirty_plugins))

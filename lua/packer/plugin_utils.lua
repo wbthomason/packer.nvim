@@ -100,6 +100,7 @@ end
 plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins)
   return a.sync(function()
     if opt_plugins == nil or start_plugins == nil then
+      await(a.main)
       opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
     end
 
@@ -130,7 +131,6 @@ plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins
       end
     end
 
-    await(a.main)
     return missing_plugins
   end)
 end
