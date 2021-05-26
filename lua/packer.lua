@@ -281,6 +281,7 @@ packer.install = function(...)
     local start_time = vim.fn.reltime()
     local results = {}
     await(clean(plugins, results))
+    await(a.main)
     local tasks, display_win = install(plugins, install_plugins, results)
     if next(tasks) then
       local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
@@ -326,8 +327,10 @@ packer.update = function(...)
     update.fix_plugin_types(plugins, missing_plugins, results)
     local _
     _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)
+    await(a.main)
     local tasks, display_win = install(plugins, missing_plugins, results)
     local update_tasks
+    await(a.main)
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
     local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
@@ -371,6 +374,7 @@ packer.sync = function(...)
     local r = await(plugin_utils.find_missing_plugins(plugins))
     local missing_plugins, installed_plugins = util.partition(r or {}, sync_plugins)
 
+    await(a.main)
     update.fix_plugin_types(plugins, missing_plugins, results)
     local _
     _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)
@@ -379,8 +383,10 @@ packer.sync = function(...)
       _, installed_plugins = util.partition(vim.tbl_keys(results.removals), installed_plugins)
     end
 
+    await(a.main)
     local tasks, display_win = install(plugins, missing_plugins, results)
     local update_tasks
+    await(a.main)
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
     local luarocks_clean_task = luarocks.clean(rocks, results, display_win)
