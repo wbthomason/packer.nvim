@@ -242,7 +242,7 @@ packer.set_handler = function(name, func) handlers[name] = func end
 packer.use = manage
 
 --- Hook to fire events after packer operations
-packer.on_complete = function() vim.cmd [[doautocmd User PackerComplete]] end
+packer.on_complete = vim.schedule_wrap(function() vim.cmd [[doautocmd User PackerComplete]] end)
 
 --- Hook to fire events after packer compilation
 packer.on_compile_done = function() vim.cmd [[doautocmd User PackerCompileDone]] end
@@ -278,6 +278,7 @@ packer.install = function(...)
       return
     end
 
+    await(a.main)
     local start_time = vim.fn.reltime()
     local results = {}
     await(clean(plugins, results))
