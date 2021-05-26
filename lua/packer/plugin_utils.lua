@@ -109,24 +109,25 @@ plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins
     local missing_plugins = {}
     for _, plugin_name in ipairs(vim.tbl_keys(plugins)) do
       local plugin = plugins[plugin_name]
+      if not plugin.disable then
+        local plugin_path = util.join_paths(config[plugin.opt and 'opt_dir' or 'start_dir'],
+                                            plugin.short_name)
+        local plugin_installed = (plugin.opt and opt_plugins or start_plugins)[plugin_path]
 
-      local plugin_path = util.join_paths(config[plugin.opt and 'opt_dir' or 'start_dir'],
-                                          plugin.short_name)
-      local plugin_installed = (plugin.opt and opt_plugins or start_plugins)[plugin_path]
-
-      await(a.main)
-      local guessed_type = plugin_utils.guess_dir_type(plugin_path)
-      if not plugin_installed or plugin.type ~= guessed_type then
-        table.insert(missing_plugins, plugin_name)
-      end
-      if guessed_type == plugin_utils.git_plugin_type then
-        local r = await(plugin.remote_url())
-        local remote = r.ok and r.ok.remote or nil
-        if remote then
-          local parts = vim.split(remote, '[:/]')
-          local repo_name = parts[#parts - 1] .. '/' .. parts[#parts]
-          repo_name = repo_name:gsub("%.git", "")
-          if repo_name ~= plugin.name then table.insert(missing_plugins, plugin_name) end
+        await(a.main)
+        local guessed_type = plugin_utils.guess_dir_type(plugin_path)
+        if not plugin_installed or plugin.type ~= guessed_type then
+          table.insert(missing_plugins, plugin_name)
+        end
+        if guessed_type == plugin_utils.git_plugin_type then
+          local r = await(plugin.remote_url())
+          local remote = r.ok and r.ok.remote or nil
+          if remote then
+            local parts = vim.split(remote, '[:/]')
+            local repo_name = parts[#parts - 1] .. '/' .. parts[#parts]
+            repo_name = repo_name:gsub("%.git", "")
+            if repo_name ~= plugin.name then table.insert(missing_plugins, plugin_name) end
+          end
         end
       end
     end
