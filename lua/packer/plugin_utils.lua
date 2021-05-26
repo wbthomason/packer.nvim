@@ -118,15 +118,22 @@ plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins
         local guessed_type = plugin_utils.guess_dir_type(plugin_path)
         if not plugin_installed or plugin.type ~= guessed_type then
           table.insert(missing_plugins, plugin_name)
-        end
-        if guessed_type == plugin_utils.git_plugin_type then
+        elseif guessed_type == plugin_utils.git_plugin_type then
           local r = await(plugin.remote_url())
           local remote = r.ok and r.ok.remote or nil
           if remote then
+            -- Form a Github-style user/repo string
             local parts = vim.split(remote, '[:/]')
             local repo_name = parts[#parts - 1] .. '/' .. parts[#parts]
             repo_name = repo_name:gsub("%.git", "")
-            if repo_name ~= plugin.name then table.insert(missing_plugins, plugin_name) end
+
+            -- Also need to test for "full URL" plugin names, but normalized to get rid of the
+            -- protocol
+            local normalized_remote = remote:gsub("https://", ""):gsub("ssh://git@", "")
+            local normalized_plugin_name = plugin.name:gsub("https://", ""):gsub("ssh://git@", "")
+            if (normalized_remote ~= normalized_plugin_name) and (repo_name ~= plugin.name) then
+              table.insert(missing_plugins, plugin_name)
+            end
           end
         end
       end
