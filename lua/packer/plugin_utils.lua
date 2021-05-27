@@ -131,7 +131,9 @@ plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins
             -- protocol
             local normalized_remote = remote:gsub("https://", ""):gsub("ssh://git@", "")
             local normalized_plugin_name = plugin.name:gsub("https://", ""):gsub("ssh://git@", "")
-            if (normalized_remote ~= normalized_plugin_name) and (repo_name ~= plugin.name) then
+                                             :gsub("\\", "/")
+            if (normalized_remote ~= normalized_plugin_name)
+              and (repo_name ~= normalized_plugin_name) then
               table.insert(missing_plugins, plugin_name)
             end
           end
