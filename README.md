@@ -507,28 +507,30 @@ require knowing when the operations are complete, you can use the following `Use
 You can configure Packer to use a floating window for command outputs by passing a utility
 function to `packer`'s config:
 ```lua
-packer.startup(function()
+packer.startup({function()
   -- Your plugins here
-end, {
+end,
+config = {
   display = {
     open_fn = require('packer.util').float,
   }
-})
+}})
 ```
 
 By default, this floating window will show doubled borders. If you want to customize the window
 appearance, you can pass a configuration to `float`, which is the same configuration that would be
 passed to `nvim_open_win`:
 ```lua
-packer.startup(function()
+packer.startup({function()
   -- Your plugins here
-end, {
+end,
+config = {
   display = {
     open_fn = function()
       return require('packer.util').float({ border = 'single' })
     end
   }
-})
+}})
 ```
 
 ## Profiling
