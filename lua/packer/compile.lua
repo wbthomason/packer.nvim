@@ -19,7 +19,7 @@ end
 
 vim.cmd('packadd packer.nvim')
 
-local comp_success, _ = pcall(function()
+local comp_success, comp_err = pcall(function()
 ]=]
 
 local catch_errors = [=[
@@ -28,7 +28,7 @@ end)
 if not comp_success then
   vim.cmd([[
   echohl ErrorMsg
-  echom "Error in packer_compiled: " .. v:exception
+  echom "Error in packer_compiled: " .. comp_err
   echom "Please check your config for correctness"
   echohl None
   ]])
