@@ -26,7 +26,7 @@ local packer = {}
 local config_defaults = {
   ensure_dependencies = true,
   package_root = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
-  compile_path = util.join_paths(vim.fn.stdpath('config'), 'lua', 'plugin', 'packer_compiled.lua'),
+  compile_path = util.join_paths(vim.fn.stdpath('config'), 'plugin', 'packer_compiled.vim'),
   plugin_package = 'packer',
   max_jobs = nil,
   auto_clean = true,
@@ -487,7 +487,7 @@ packer.compile = function(raw_args)
   local output_file = io.open(output_path, 'w')
   output_file:write(compiled_loader)
   output_file:close()
-  if config.auto_reload_compiled then dofile(output_path) end
+  if config.auto_reload_compiled then vim.cmd("source " .. output_path) end
   log.info('Finished compiling lazy-loaders!')
   packer.on_compile_done()
 end

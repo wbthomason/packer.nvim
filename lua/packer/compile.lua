@@ -28,7 +28,7 @@ end)
 if not comp_success then
   vim.cmd([[
   echohl ErrorMsg
-  echom "Error in packer_compiled: " .. comp_err
+  echom "Error in packer_compiled: "]] .. comp_err .. [[
   echom "Please check your config for correctness"
   echohl None
   ]])
@@ -567,7 +567,8 @@ local function make_loaders(_, plugins, should_profile)
   -- Output everything:
 
   -- First, the Lua code
-  local result = {'-- Automatically generated packer.nvim plugin loader code\n'}
+  local result = {'" Automatically generated packer.nvim plugin loader code\n'}
+  table.insert(result, 'lua << END')
   table.insert(result, feature_guard)
   table.insert(result, profile_time(should_profile))
   table.insert(result, profile_output)
@@ -651,6 +652,7 @@ local function make_loaders(_, plugins, should_profile)
 
   table.insert(result, conditionally_output_profile(config.threshold))
   table.insert(result, catch_errors)
+  table.insert(result, 'END\n')
   return table.concat(result, '\n')
 end
 
