@@ -344,9 +344,8 @@ git.setup = function(plugin)
           --- Retry the update command if the issue was that we were unable to update because
           --- the upstream repository has been rebased
           local n = result.ok()
-          if git_err and git_err:match(vim.pesc("Not possible to fast-forward")) then
-            local update_with_rebase = update_cmd:gsub('rebase=false', 'rebase=true')
-            n = await(jobs.run, update_with_rebase,
+          if git_err and git_err:tolower():match(vim.pesc("not possible to fast-forward")) then
+            n = await(jobs.run, config.exec_cmd .. fmt(config.subcommands.retry, install_to),
                       {success_test = exit_ok, capture_output = update_callbacks})
             n:and_then(await, jobs.run(submodule_cmd,
                       {success_test = exit_ok, capture_output = update_callbacks}))

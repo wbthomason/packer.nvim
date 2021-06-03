@@ -25,6 +25,7 @@ local config_defaults = {
     cmd = 'git',
     subcommands = {
       update = 'pull --ff-only --progress --rebase=false',
+      retry = 'reset --hard @{u}',
       install = 'clone --depth %i --no-single-branch --progress',
       fetch = 'fetch --depth 999999 --progress',
       checkout = 'checkout %s --',
