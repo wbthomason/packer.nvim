@@ -128,6 +128,29 @@ local handle_checkouts = function(plugin, dest, disp)
   end)
 end
 
+--- Helper to check whether the output of a git update was a divergence error
+--- git does not provide a specific error code which can be used to programmatically
+--- determine if a git merge has failed due to diverging histories, so this function
+--- checks the contents of the error message against fairly predictable error messages
+---@param err string
+---@return boolean
+local function has_upstream_diverged(err)
+  if err then
+    -- TODO: improve these checks/patterns if possible
+    local errors = {
+      'diverged',
+      'refusing to merge unrelated histories',
+      'not possible to fast-forward',
+    }
+    for _, item in ipairs(errors) do
+      if err:lower():match(vim.pesc(item)) then
+        return true
+      end
+    end
+  end
+  return false
+end
+
 git.setup = function(plugin)
   local plugin_name = util.get_plugin_full_name(plugin)
   local install_to = plugin.install_path
@@ -334,30 +357,40 @@ git.setup = function(plugin)
       end
 
       disp:task_update(plugin_name, 'pulling updates...')
-      r:and_then(await,
-                 jobs.run(update_cmd, {success_test = exit_ok, capture_output = update_callbacks}))
-        :and_then(await, jobs.run(submodule_cmd,
-                                  {success_test = exit_ok, capture_output = update_callbacks}))
-        :or_else(function(_)
-          plugin.output = {err = vim.list_extend(update_info.err, update_info.output), data = {}}
-          local git_err = update_info.err and update_info.err[1] or nil
-          --- Retry the update command if the issue was that we were unable to update because
-          --- the upstream repository has been rebased
-          local n = result.ok()
-          if git_err and git_err:tolower():match(vim.pesc("not possible to fast-forward")) then
-            n = await(jobs.run, config.exec_cmd .. fmt(config.subcommands.retry, install_to),
-                      {success_test = exit_ok, capture_output = update_callbacks})
-            n:and_then(await, jobs.run(submodule_cmd,
-                      {success_test = exit_ok, capture_output = update_callbacks}))
-          else
-            n = result.err({
-              msg = fmt('Error pulling updates for %s: %s', plugin_name,
-              table.concat(update_info.output, '\n')),
-              data = git_err
-            })
-          end
-          return n
-        end)
+      r
+        :and_then(await, jobs.run(update_cmd, { success_test = exit_ok, capture_output = update_callbacks }))
+        :and_then(await, jobs.run(submodule_cmd, { success_test = exit_ok, capture_output = update_callbacks }))
+        :or_else(
+          await,
+          async(function()
+            plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
+            local git_err = update_info.err and update_info.err[1] or nil
+            --- Retry the update command if the issue was that we were unable to update because
+            --- the upstream repository has been rebased
+            local n = result.ok()
+            if has_upstream_diverged(git_err) then
+              n = await(
+                jobs.run,
+                config.exec_cmd .. fmt(config.subcommands.retry, install_to),
+                { success_test = exit_ok, capture_output = update_callbacks }
+              )
+              n
+                :and_then(await, jobs.run(submodule_cmd, { success_test = exit_ok, capture_output = update_callbacks }))
+                :map_err(function(err)
+                  return {
+                    msg = fmt('Failed to retry update for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
+                    data = err,
+                  }
+                end)
+            else
+              n = result.err {
+                msg = fmt('Error pulling updates for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
+                data = git_err,
+              }
+            end
+            return n
+          end)
+        )
 
       disp:task_update(plugin_name, 'checking updated commit...')
       r
