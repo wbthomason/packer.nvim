@@ -163,7 +163,7 @@ local function make_try_loadstring(item, chunk, name)
   return executable_string, bytecode
 end
 
-local after_plugin_pattern = table.concat({'after', 'plugin', '**', '*.vim'}, util.get_separator())
+local after_plugin_pattern = table.concat({'after', 'plugin', '**/*.vim'}, util.get_separator())
 local function detect_after_plugin(name, plugin_path)
   local path = plugin_path .. util.get_separator() .. after_plugin_pattern
   local glob_ok, files = pcall(vim.fn.glob, path, false, true)
@@ -182,8 +182,8 @@ local function detect_after_plugin(name, plugin_path)
 end
 
 local ftdetect_patterns = {
-  table.concat({'ftdetect', '**', '*.vim'}, util.get_separator()),
-  table.concat({'after', 'ftdetect', '**', '*.vim'}, util.get_separator())
+  table.concat({'ftdetect', '**/*.vim'}, util.get_separator()),
+  table.concat({'after', 'ftdetect', '**/*.vim'}, util.get_separator())
 }
 local function detect_ftdetect(name, plugin_path)
   local paths = {
