@@ -46,7 +46,7 @@ local function get_function_source(func)
   local src_data = debug.getinfo(func, 'S')
   if not src_data or not src_data.short_src
     or not src_data.linedefined or not src_data.lastlinedefined then
-    return '"' .. string.dump(func) ..'"'
+    return vim.inspect(string.dump(func))
   end
   local ok, src = pcall(fget_lines, src_data.source:sub(2), src_data.linedefined, src_data.lastlinedefined)
   if ok and src then
@@ -56,7 +56,7 @@ local function get_function_source(func)
     return table.concat(src, '\n')
   end
   if not ok then vim.api.nvim_err_writeln(src) end
-  return '"' .. string.dump(func) ..'"'
+  return vim.inspect(string.dump(func))
 end
 
 
