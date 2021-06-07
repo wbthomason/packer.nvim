@@ -41,7 +41,10 @@ packer_load = function(names, cause, plugins)
 
       if plugin.config then
         for _, config_line in ipairs(plugin.config) do
-          local success, err = pcall(loadstring(config_line))
+          local success, err = pcall(loadstring('('..config_line..')()'))
+          if not success then
+            success, result = pcall(loadstring(config_line))
+          end
           if not success then
             print('Error running config for ' .. names[i])
             error(err)
