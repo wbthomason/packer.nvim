@@ -7,6 +7,59 @@ local luarocks = require('packer.luarocks')
 local config
 local function cfg(_config) config = _config.profile end
 
+-- Get function source code if possible
+local files_cache = {}
+
+--  Reads the file_path and caches it's contents for future use
+local function cache_file(file_path)
+  local stat = vim.loop.fs_stat(file_path)
+  if not stat then return false end
+  if not files_cache[file_path] or files_cache[file_path].last_mtime < stat.mtime.sec then
+    files_cache[file_path] = {
+      data = {},
+      last_mtime=vim.loop.fs_stat(file_path).mtime.sec
+    }
+    local file = io.open(file_path, 'r')
+    local line = file:read('*l')
+    while line do
+      table.insert(files_cache[file_path].data, line)
+      line = file:read('*l')
+    end
+    file:close()
+  end
+  return true
+end
+
+-- Returns table containing lines from start to end in file_path
+local function fget_lines(file_path, start, stop)
+  if not cache_file(file_path) then error('file '.. tostring(file_path) .. ' not found') end
+  if start < 1 or stop > #files_cache[file_path].data then
+    error(fmt('Range %d-%d in file %s is out of bounds', start, stop, file_path))
+  end
+  local lines = vim.list_slice(files_cache[file_path].data, start, stop)
+  return lines
+end
+
+-- Returns funcs source of string.dump value
+local function get_function_source(func)
+  if type(func) ~= 'function' then return '' end
+  local src_data = debug.getinfo(func, 'S')
+  if not src_data or not src_data.short_src
+    or not src_data.linedefined or not src_data.lastlinedefined then
+    return '"' .. string.dump(func) ..'"'
+  end
+  local ok, src = pcall(fget_lines, src_data.source:sub(2), src_data.linedefined, src_data.lastlinedefined)
+  if ok and src then
+    local len = #src
+    src[1] = src[1]:sub(src[1]:find('function(.*)'))
+    src[len] = src[len]:sub(1,src[len]:find('end') + 2)
+    return table.concat(src, '\n')
+  end
+  if not ok then vim.api.nvim_err_writeln(src) end
+  return '"' .. string.dump(func) ..'"'
+end
+
+
 local feature_guard = [[
 if !has('nvim-0.5')
   echohl WarningMsg
@@ -87,7 +140,12 @@ end
 
 local try_loadstring = [[
 local function try_loadstring(s, component, name)
-  local success, result = pcall(loadstring(s))
+  local success, result 
+  if type(s) == 'string' then
+    success, result = pcall(loadstring(s))
+  elseif type(s) == 'function' then
+    success, result = pcall(s)
+  end
   if not success then
     vim.schedule(function()
       vim.api.nvim_notify('packer.nvim: Error running ' .. component .. ' for ' .. name .. ': ' .. result, vim.log.levels.ERROR, {})
@@ -161,14 +219,12 @@ local function make_try_loadstring(item, chunk, name)
   local executable_string, bytecode
   if type(item) == 'string' then
     bytecode = item
-    local function_body = fmt(
-[[(function()
+    executable_string = fmt([[try_loadstring(function()
   %s
-end)()]], item)
-    executable_string = fmt('try_loadstring([[%s]], "%s", "%s")', function_body, chunk, name)
+end, "%s", "%s")]], item, chunk, name)
   elseif type(item) == 'function' then
-    bytecode = string.dump(item, true)
-    executable_string = 'try_loadstring(' .. vim.inspect(bytecode) .. ', "'
+    bytecode = get_function_source(item)
+    executable_string = 'try_loadstring('..bytecode..', "'
     .. chunk .. '", "' .. name .. '")'
   end
   return executable_string, bytecode
