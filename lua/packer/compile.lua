@@ -158,9 +158,19 @@ local function dump_loaders(loaders)
 end
 
 local function make_try_loadstring(item, chunk, name)
-  local bytecode = string.dump(item, true)
-  local executable_string = 'try_loadstring(' .. vim.inspect(bytecode) .. ', "' .. chunk .. '", "'
-                              .. name .. '")'
+  local executable_string, bytecode
+  if type(item) == 'string' then
+    bytecode = item
+    local function_body = fmt(
+[[(function()
+  %s
+end)()]], item)
+    executable_string = fmt('try_loadstring([[%s]], "%s", "%s")', function_body, chunk, name)
+  elseif type(item) == 'function' then
+    bytecode = string.dump(item, true)
+    executable_string = 'try_loadstring(' .. vim.inspect(bytecode) .. ', "'
+    .. chunk .. '", "' .. name .. '")'
+  end
   return executable_string, bytecode
 end
 
@@ -240,11 +250,9 @@ local function make_loaders(_, plugins, should_profile)
         if type(plugin.config) ~= 'table' then plugin.config = {plugin.config} end
         for i, config_item in ipairs(plugin.config) do
           local executable_string = config_item
-          if type(config_item) == 'function' then
-            local bytecode
-            executable_string, bytecode = make_try_loadstring(config_item, 'config', name)
-            plugin.config[i] = bytecode
-          end
+          local bytecode
+          executable_string, bytecode = make_try_loadstring(config_item, 'config', name)
+          plugin.config[i] = bytecode
 
           table.insert(plugin.executable_config, executable_string)
         end
@@ -272,9 +280,7 @@ local function make_loaders(_, plugins, should_profile)
       if plugin.setup then
         if type(plugin.setup) ~= 'table' then plugin.setup = {plugin.setup} end
         for i, setup_item in ipairs(plugin.setup) do
-          if type(setup_item) == 'function' then
-            plugin.setup[i], _ = make_try_loadstring(setup_item, 'setup', name)
-          end
+          plugin.setup[i], _ = make_try_loadstring(setup_item, 'setup', name)
         end
 
         loaders[name].only_setup = plugin.manual_opt == nil
