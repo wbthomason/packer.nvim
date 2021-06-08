@@ -20,11 +20,8 @@ local function cache_file(file_path)
       last_mtime=vim.loop.fs_stat(file_path).mtime.sec
     }
     local file = io.open(file_path, 'r')
-    local line = file:read('*l')
-    while line do
-      table.insert(files_cache[file_path].data, line)
-      line = file:read('*l')
-    end
+    local file_data = file:read('*a')
+    files_cache[file_path].data = vim.split(file_data, '\n')
     file:close()
   end
   return true
