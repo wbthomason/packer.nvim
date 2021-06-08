@@ -198,7 +198,7 @@ local function dump_loaders(loaders)
     result[k].only_sequence = nil
   end
 
-  return vim.inspect(result)
+  return vim.inspect(result):gsub("\"(function.-end)\"", '%1'):gsub("\\n", "\n"):gsub("\\\"", "\"")
 end
 
 local function make_try_loadstring(item, chunk, name)
