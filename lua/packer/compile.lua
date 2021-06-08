@@ -205,9 +205,11 @@ local function make_try_loadstring(item, chunk, name)
   local executable_string, bytecode
   if type(item) == 'string' then
     bytecode = item
-    executable_string = fmt([[try_loadstring(function()
+    local function_body = fmt(
+[[(function()
   %s
-end, "%s", "%s")]], item, chunk, name)
+end)()]], item)
+  executable_string = fmt('try_loadstring([[%s]], "%s", "%s")', function_body, chunk, name)
   elseif type(item) == 'function' then
     bytecode = get_function_source(item)
     executable_string = 'try_loadstring('..bytecode..', "'
