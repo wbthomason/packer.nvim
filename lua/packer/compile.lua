@@ -60,18 +60,7 @@ local function get_function_source(func)
 end
 
 
-local feature_guard = [[
-if !has('nvim-0.5')
-  echohl WarningMsg
-  echom "Invalid Neovim version for packer.nvim!"
-  echohl None
-  finish
-endif
-
-packadd packer.nvim
-
-try
-]]
+local feature_guard = [[if !has('nvim-0.5') | echohl WarningMsg | echom "Invalid Neovim version for packer.nvim!" | echohl None | finish | endif | packadd packer.nvim | try]]
 
 local catch_errors = [[
 catch
@@ -628,9 +617,8 @@ local function make_loaders(_, plugins, should_profile)
   -- Output everything:
 
   -- First, the Lua code
-  local result = {'" Automatically generated packer.nvim plugin loader code\n'}
-  table.insert(result, feature_guard)
-  table.insert(result, 'lua << END')
+  local result = {}
+  table.insert(result, feature_guard .. ' | lua << END')
   table.insert(result, profile_time(should_profile))
   table.insert(result, profile_output)
   timed_chunk(luarocks.generate_path_setup(), 'Luarocks path setup', result)
