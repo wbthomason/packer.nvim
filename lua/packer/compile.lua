@@ -191,6 +191,21 @@ local function timed_condition(condition, body, name, output_table)
   return output_table
 end
 
+local function unwrap_function_src(data)
+  local func_start, func_body, func_end, pos
+  pos = 1
+  repeat
+    local func_start = data:find("\"function.-end\"", pos)
+    local func_body = data:match("\"(function.-end)\"", pos)
+    if not func_start or not func_body then break end
+    func_end = func_start + #func_body + 1
+    func_body = func_body:gsub("\\n", "\n"):gsub("\\\"", "\"")
+    data = table.concat{data:sub(1, func_start - 1), func_body, data:sub(func_end+1)}
+    pos = func_end
+  until false
+  return data
+end
+
 local function dump_loaders(loaders)
   local result = vim.deepcopy(loaders)
   for k, _ in pairs(result) do
@@ -198,7 +213,7 @@ local function dump_loaders(loaders)
     result[k].only_sequence = nil
   end
 
-  return vim.inspect(result):gsub("\"(function.-end)\"", '%1'):gsub("\\n", "\n"):gsub("\\\"", "\"")
+  return unwrap_function_src(vim.inspect(result))
 end
 
 local function make_try_loadstring(item, chunk, name)
