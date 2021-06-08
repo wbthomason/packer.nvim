@@ -383,7 +383,7 @@ local function make_loaders(_, plugins, should_profile)
 
         for _, condition in ipairs(plugin.cond) do
           if type(condition) == 'function' then
-            condition = vim.inspect(string.dump(condition, true))
+            condition = get_function_source(condition)
             condition_bytecode[condition] = true
           end
 
