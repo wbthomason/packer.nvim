@@ -205,9 +205,6 @@ if fn.empty(fn.glob(install_path)) > 0 then
 end
 ```
 
-Note that this will install `packer` as an `opt` plugin; if you want `packer` to be a `start`
-plugin, you must modify the value of `install_path` in the above snippet.
-
 ## Usage
 
 The above snippets give some examples of `packer` features and use. Examples include:
