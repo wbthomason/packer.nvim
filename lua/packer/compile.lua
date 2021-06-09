@@ -637,9 +637,9 @@ local function make_loaders(_, plugins, should_profile)
   if next(ftdetect_paths) then
     table.insert(result, 'vim.cmd [[augroup filetypedetect]]')
     for _, path in ipairs(ftdetect_paths) do
-      local escaped_path = vim.fn.escape(path, ' ')
+      local escaped_path = vim.fn.escape(path, ' \\')
       timed_chunk('vim.cmd [[source ' .. escaped_path .. ']]',
-                  'Sourcing ftdetect script at: ' .. path, result)
+                  'Sourcing ftdetect script at: ' .. escaped_path, result)
     end
 
     table.insert(result, 'vim.cmd("augroup END")')
