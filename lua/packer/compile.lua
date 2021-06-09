@@ -191,6 +191,11 @@ local function timed_condition(condition, body, name, output_table)
   return output_table
 end
 
+--- Result of loaders can contain funcrion source codes in keys like config
+--- This function removes the quotations(") surrounding function so they
+--- are represented as actual functions in packer_compiled
+--@param data (string) stringified loaders
+--@return string data with functions unquoted
 local function unwrap_function_src(data)
   local func_start, func_body, func_end, pos
   pos = 1
