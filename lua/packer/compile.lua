@@ -120,14 +120,14 @@ end
 
 local function timed_chunk(chunk, name, output_table)
   output_table = output_table or {}
-  output_table[#output_table + 1] = 'time("' .. name .. '", true)'
+  output_table[#output_table + 1] = 'time([[' .. name .. ']], true)'
   if type(chunk) == 'string' then
     output_table[#output_table + 1] = chunk
   else
     vim.list_extend(output_table, chunk)
   end
 
-  output_table[#output_table + 1] = 'time("' .. name .. '", false)'
+  output_table[#output_table + 1] = 'time([[' .. name .. ']], false)'
   return output_table
 end
 
@@ -637,7 +637,7 @@ local function make_loaders(_, plugins, should_profile)
   if next(ftdetect_paths) then
     table.insert(result, 'vim.cmd [[augroup filetypedetect]]')
     for _, path in ipairs(ftdetect_paths) do
-      local escaped_path = vim.fn.escape(path, ' \\')
+      local escaped_path = vim.fn.escape(path, ' ')
       timed_chunk('vim.cmd [[source ' .. escaped_path .. ']]',
                   'Sourcing ftdetect script at: ' .. escaped_path, result)
     end
