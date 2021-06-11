@@ -56,18 +56,6 @@ local function get_function_source(func)
   return vim.inspect(string.dump(func))
 end
 
-
-local feature_guard = [[if !has('nvim-0.5') | echohl WarningMsg | echom "Invalid Neovim version for packer.nvim!" | echohl None | finish | endif | packadd packer.nvim | try]]
-
-local catch_errors = [[
-catch
-  echohl ErrorMsg
-  echom "Error in packer_compiled: " .. v:exception
-  echom "Please check your config for correctness"
-  echohl None
-endtry
-]]
-
 ---@param should_profile boolean
 ---@return string
 local profile_time = function(should_profile)
@@ -90,6 +78,13 @@ local profile_time = function(should_profile)
   end
   ]], vim.inspect(should_profile))
 end
+
+local feature_guard = [[
+if vim.fn.has('nvim-0.5') ~= 1 then
+  vim.api.nvim_echo({{"Invalid Neovim version for packer.nvim!", "WarningMsg"}, true, {}})
+  return
+end
+]]
 
 local profile_output = [[
 local function save_profiles(threshold)
@@ -633,8 +628,9 @@ local function make_loaders(_, plugins, should_profile)
   -- Output everything:
 
   -- First, the Lua code
-  local result = {}
-  table.insert(result, feature_guard .. ' | lua << END')
+  local result = {'-- Automatically generated packer.nvim plugin loader code\n'}
+
+  table.insert(result, feature_guard )
   table.insert(result, profile_time(should_profile))
   table.insert(result, profile_output)
   timed_chunk(luarocks.generate_path_setup(), 'Luarocks path setup', result)
@@ -716,8 +712,6 @@ local function make_loaders(_, plugins, should_profile)
   end
 
   table.insert(result, conditionally_output_profile(config.threshold))
-  table.insert(result, 'END\n')
-  table.insert(result, catch_errors)
   return table.concat(result, '\n')
 end
 
