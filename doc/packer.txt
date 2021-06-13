@@ -282,11 +282,18 @@ you still need to provide a location string for the name of the plugin.
 
 POST-UPDATE HOOKS                              *packer-plugin-hooks* 
 You may specify operations to be run after successful installs/updates of a
-plugin with the `run` key in a plugin specification. This key may either be a
-Lua function, which will be called with the `plugin` table for this plugin
-(containing the information passed to |packer.use()| as well as output from
-the installation/update commands, the installation path of the plugin, etc.),
-or a string.
+plugin with the `run` key. This key may either be a Lua function, which will be
+called with the `plugin` table for this plugin (containing the information
+passed to `use` as well as output from the installation/update commands, the
+installation path of the plugin, etc.), a string, or a table of functions and
+strings.
+
+If an element of `run` is a string, then either:
+
+1. If the first character of `run` is ":", it is treated as a Neovim command and
+executed. 
+2. Otherwise, `run` is treated as a shell command and run in the installation
+directory of the plugin via `$SHELL -c '<run>'`.
 
 DEPENDENCIES                                   *packer-plugin-dependencies*
 Plugins may specify dependencies via the `requires` key in their specification
@@ -538,7 +545,7 @@ invoked as follows:
     tag = string,                -- Specifies a git tag to use
     commit = string,             -- Specifies a git commit to use
     lock = boolean,              -- Skip this plugin in updates/syncs
-    run = string or function,    -- Post-update/install hook. See |packer-plugin-hooks|
+    run = string, function, or table  -- Post-update/install hook. See |packer-plugin-hooks|
     requires = string or list    -- Specifies plugin dependencies. See |packer-plugin-dependencies|
     config = string or function, -- Specifies code to run after this plugin is loaded.
     rocks = string or list,      -- Specifies Luarocks dependencies for the plugin
