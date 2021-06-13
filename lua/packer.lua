@@ -260,6 +260,8 @@ local function manage_all_plugins()
   end
 end
 
+packer.__manage_all = manage_all_plugins
+
 --- Hook to fire events after packer operations
 packer.on_complete = function() vim.cmd [[doautocmd User PackerComplete]] end
 
