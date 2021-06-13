@@ -32,7 +32,7 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 10. [Contributors](#contributors)
 
 ## Notices
-- **2021-06-06**: Your Neovim must include https://github.com/neovim/neovim/pull/14531; `packer` uses the `noautocmd` key.
+- **2021-06-06**: Your Neovim must include https://github.com/neovim/neovim/pull/14659; `packer` uses the `noautocmd` key.
 - **2021-04-19**: `packer` now provides built-in profiling for your config via the `packer_compiled`
   file. Take a look at [the docs](#profiling) for more information!
 - **2021-02-18**: Having trouble with Luarocks on macOS? See [this issue](https://github.com/wbthomason/packer.nvim/issues/180).
