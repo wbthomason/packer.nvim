@@ -1,32 +1,16 @@
 -- TODO: Performance analysis/tuning
 -- TODO: Merge start plugins?
-local a = require('packer.async')
-local clean = require('packer.clean')
-local compile = require('packer.compile')
-local display = require('packer.display')
-local handlers = require('packer.handlers')
-local install = require('packer.install')
-local log = require('packer.log')
-local luarocks = require('packer.luarocks')
-local plugin_types = require('packer.plugin_types')
-local plugin_utils = require('packer.plugin_utils')
-local update = require('packer.update')
 local util = require('packer.util')
 
-local async = a.sync
-local await = a.wait
-
---- Instantiate global packer namespace for use for
---- callbacks and other data generated whilst packer
---- is running
-_G._packer = _G._packer or {}
+local join_paths = util.join_paths
+local stdpath = vim.fn.stdpath
 
 -- Config
 local packer = {}
 local config_defaults = {
   ensure_dependencies = true,
-  package_root = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
-  compile_path = util.join_paths(vim.fn.stdpath('config'), 'plugin', 'packer_compiled.vim'),
+  package_root = join_paths(stdpath('data'), 'site', 'pack'),
+  compile_path = join_paths(stdpath('config'), 'plugin', 'packer_compiled.vim'),
   plugin_package = 'packer',
   max_jobs = nil,
   auto_clean = true,
@@ -77,9 +61,39 @@ local config_defaults = {
   profile = {enable = false}
 }
 
+--- Initialize global namespace for use for callbacks and other data generated whilst packer is
+--- running
+_G._packer = _G._packer or {}
+
 local config = vim.tbl_extend('force', {}, config_defaults)
 local plugins = nil
+local plugin_specifications = nil
 local rocks = nil
+
+local configurable_modules = {
+  clean = false,
+  compile = false,
+  display = false,
+  handlers = false,
+  install = false,
+  plugin_types = false,
+  plugin_utils = false,
+  update = false,
+  luarocks = false,
+  log = false
+}
+
+local function require_and_configure(module_name)
+  local fully_qualified_name = 'packer.' .. module_name
+  local module = require(fully_qualified_name)
+  if not configurable_modules[module_name] and module.cfg then
+    configurable_modules[module_name] = true
+    module.cfg(config)
+    return module
+  end
+
+  return module
+end
 
 --- Initialize packer
 -- Forwards user configuration to sub-modules, resets the set of managed plugins, and ensures that
@@ -91,35 +105,33 @@ packer.init = function(user_config)
   config.package_root = vim.fn.fnamemodify(config.package_root, ':p')
   local _
   config.package_root, _ = string.gsub(config.package_root, util.get_separator() .. '$', '', 1)
-  config.pack_dir = util.join_paths(config.package_root, config.plugin_package)
-  config.opt_dir = util.join_paths(config.pack_dir, 'opt')
-  config.start_dir = util.join_paths(config.pack_dir, 'start')
-
-  for _, mod in ipairs({
-    clean, compile, display, handlers, install, plugin_types, plugin_utils, update, luarocks, log
-  }) do mod.cfg(config) end
-
+  config.pack_dir = join_paths(config.package_root, config.plugin_package)
+  config.opt_dir = join_paths(config.pack_dir, 'opt')
+  config.start_dir = join_paths(config.pack_dir, 'start')
+  local plugin_utils = require_and_configure('plugin_utils')
   plugin_utils.ensure_dirs()
+  if not config.disable_commands then packer.make_commands() end
+end
 
-  if not config.disable_commands then
-    vim.cmd [[command! PackerInstall  lua require('packer').install()]]
-    vim.cmd [[command! PackerUpdate   lua require('packer').update()]]
-    vim.cmd [[command! PackerSync     lua require('packer').sync()]]
-    vim.cmd [[command! PackerClean    lua require('packer').clean()]]
-    vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
-    vim.cmd [[command! PackerStatus  lua require('packer').status()]]
-    vim.cmd [[command! PackerProfile  lua require('packer').profile_output()]]
-    vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad lua require('packer').loader(<q-args>)]]
-  end
+packer.make_commands = function()
+  vim.cmd [[command! PackerInstall           lua require('packer').install()]]
+  vim.cmd [[command! PackerUpdate            lua require('packer').update()]]
+  vim.cmd [[command! PackerSync              lua require('packer').sync()]]
+  vim.cmd [[command! PackerClean             lua require('packer').clean()]]
+  vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
+  vim.cmd [[command! PackerStatus            lua require('packer').status()]]
+  vim.cmd [[command! PackerProfile           lua require('packer').profile_output()]]
+  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad lua require('packer').loader(<q-args>)]]
 end
 
 packer.reset = function()
   plugins = {}
+  plugin_specifications = {}
   rocks = {}
 end
 
 --- Add a Luarocks package to be managed
-local function use_rocks(rock)
+packer.use_rocks = function(rock)
   if type(rock) == 'string' then rock = {rock} end
   if not vim.tbl_islist(rock) and type(rock[1]) == "string" then
     rocks[rock[1]] = rock
@@ -130,8 +142,6 @@ local function use_rocks(rock)
     end
   end
 end
-
-packer.use_rocks = use_rocks
 
 --- The main logic for adding a plugin (and any dependencies) to the managed set
 -- Can be invoked with (1) a single plugin spec as a string, (2) a single plugin spec table, or (3)
@@ -145,6 +155,7 @@ manage = function(plugin)
     return
   end
 
+  local log = require_and_configure('log')
   if plugin[1] == vim.NIL or plugin[1] == nil then
     log.warn('Nil plugin name provided!')
     return
@@ -152,7 +163,6 @@ manage = function(plugin)
 
   local path = vim.fn.expand(plugin[1])
   local name_segments = vim.split(path, util.get_separator())
-
   local segment_idx = #name_segments
   local name = plugin.as or name_segments[segment_idx]
   while name == '' and segment_idx > 0 do
@@ -189,6 +199,7 @@ manage = function(plugin)
     plugin.opt = true
   end
 
+  local compile = require_and_configure('compile')
   for _, key in ipairs(compile.opt_keys) do
     if plugin[key] then
       plugin.opt = true
@@ -196,14 +207,17 @@ manage = function(plugin)
     end
   end
 
-  plugin.install_path = util.join_paths(plugin.opt and config.opt_dir or config.start_dir,
-                                        plugin.short_name)
+  plugin.install_path = join_paths(plugin.opt and config.opt_dir or config.start_dir,
+                                   plugin.short_name)
 
+  local plugin_utils = require_and_configure('plugin_utils')
+  local plugin_types = require_and_configure('plugin_types')
+  local handlers = require_and_configure('handlers')
   if not plugin.type then plugin_utils.guess_type(plugin) end
   if plugin.type ~= plugin_utils.custom_plugin_type then plugin_types[plugin.type].setup(plugin) end
   for k, v in pairs(plugin) do if handlers[k] then handlers[k](plugins, plugin, v) end end
   plugins[plugin.short_name] = plugin
-  if plugin.rocks then use_rocks(plugin.rocks) end
+  if plugin.rocks then packer.use_rocks(plugin.rocks) end
 
   if plugin.requires and config.ensure_dependencies then
     if type(plugin.requires) == 'string' then plugin.requires = {plugin.requires} end
@@ -228,7 +242,6 @@ manage = function(plugin)
         end
 
         if config.transitive_disable and plugin.disable then req.disable = true end
-
         manage(req)
       end
     end
@@ -236,10 +249,18 @@ manage = function(plugin)
 end
 
 --- Add a new keyword handler
-packer.set_handler = function(name, func) handlers[name] = func end
+packer.set_handler = function(name, func) require_and_configure('handlers')[name] = func end
 
 --- Add a plugin to the managed set
-packer.use = manage
+packer.use = function(plugin) plugin_specifications[#plugin_specifications + 1] = plugin end
+
+local function manage_all_plugins()
+  if plugins == nil or next(plugins) == nil then
+    for _, spec in ipairs(plugin_specifications) do manage(spec) end
+  end
+end
+
+packer.__manage_all = manage_all_plugins
 
 --- Hook to fire events after packer operations
 packer.on_complete = vim.schedule_wrap(function() vim.cmd [[doautocmd User PackerComplete]] end)
@@ -250,6 +271,14 @@ packer.on_compile_done = function() vim.cmd [[doautocmd User PackerCompileDone]]
 --- Clean operation:
 -- Finds plugins present in the `packer` package but not in the managed set
 packer.clean = function(results)
+  local a = require('packer.async')
+  local async = a.sync
+  local await = a.wait
+  local luarocks = require_and_configure('luarocks')
+  local clean = require_and_configure('clean')
+  require_and_configure('display')
+
+  manage_all_plugins()
   async(function()
     local luarocks_clean_task = luarocks.clean(rocks, results, nil)
     if luarocks_clean_task ~= nil then await(luarocks_clean_task) end
@@ -265,6 +294,17 @@ local function args_or_all(...) return util.nonempty_or({...}, vim.tbl_keys(plug
 -- managed plugins.
 -- Installs missing plugins, then updates helptags and rplugins
 packer.install = function(...)
+  local plugin_utils = require_and_configure('plugin_utils')
+  local log = require_and_configure('log')
+  local a = require('packer.async')
+  local async = a.sync
+  local await = a.wait
+  local luarocks = require_and_configure('luarocks')
+  local clean = require_and_configure('clean')
+  local install = require_and_configure('install')
+  local display = require_and_configure('display')
+
+  manage_all_plugins()
   local install_plugins
   if ... then install_plugins = {...} end
   async(function()
@@ -316,6 +356,19 @@ end
 -- Fixes plugin types, installs missing plugins, then updates installed plugins and updates helptags
 -- and rplugins
 packer.update = function(...)
+  local plugin_utils = require_and_configure('plugin_utils')
+  require_and_configure('log')
+  local a = require('packer.async')
+  local async = a.sync
+  local await = a.wait
+  local luarocks = require_and_configure('luarocks')
+  local clean = require_and_configure('clean')
+  local install = require_and_configure('install')
+  local display = require_and_configure('display')
+  local update = require_and_configure('update')
+
+  manage_all_plugins()
+
   local update_plugins = args_or_all(...)
   async(function()
     local start_time = vim.fn.reltime()
@@ -368,6 +421,18 @@ end
 --  - Install missing plugins and update installed plugins
 --  - Update helptags and rplugins
 packer.sync = function(...)
+  local plugin_utils = require_and_configure('plugin_utils')
+  require_and_configure('log')
+  local a = require('packer.async')
+  local async = a.sync
+  local await = a.wait
+  local luarocks = require_and_configure('luarocks')
+  local clean = require_and_configure('clean')
+  local install = require_and_configure('install')
+  local display = require_and_configure('display')
+  local update = require_and_configure('update')
+  manage_all_plugins()
+
   local sync_plugins = args_or_all(...)
   async(function()
     local start_time = vim.fn.reltime()
@@ -420,6 +485,11 @@ packer.sync = function(...)
 end
 
 packer.status = function()
+  local async = require('packer.async').sync
+  local display = require_and_configure('display')
+  require_and_configure('log')
+
+  manage_all_plugins()
   async(function()
     local display_win = display.open(config.display.open_fn or config.display.open_cmd)
     display_win:status(_G.packer_plugins)
@@ -473,6 +543,10 @@ end
 --- Update the compiled lazy-loader code
 --- Takes an optional argument of a path to which to output the resulting compiled code
 packer.compile = function(raw_args)
+  local compile = require_and_configure('compile')
+  local log = require_and_configure('log')
+
+  manage_all_plugins()
   local args = parse_args(raw_args)
   local output_path = args.output_path or config.compile_path
   local should_profile = args.profile
@@ -493,6 +567,11 @@ packer.compile = function(raw_args)
 end
 
 packer.profile_output = function()
+  local async = require('packer.async').sync
+  local display = require_and_configure('display')
+  local log = require_and_configure('log')
+
+  manage_all_plugins()
   if _G._packer.profile_output then
     async(function()
       local display_win = display.open(config.display.open_fn or config.display.open_cmd)
@@ -539,6 +618,7 @@ packer.config = config
 --  overrides as another element:
 --  packer.startup({{'tjdevries/colorbuddy.vim'}, config = { ... }})
 packer.startup = function(spec)
+  local log = require_and_configure('log')
   local user_func = nil
   local user_config = nil
   local user_plugins = nil
