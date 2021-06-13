@@ -35,7 +35,7 @@ packer_load = function(names, cause, plugins)
       cmd('packadd ' .. names[i])
       if plugin.after_files then
         for _, file in ipairs(plugin.after_files) do
-          cmd('silent exe "source ' .. file .. '"')
+          cmd('silent source ' .. file)
         end
       end
 

@@ -32,6 +32,7 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 10. [Contributors](#contributors)
 
 ## Notices
+- **2021-06-06**: Your Neovim must include https://github.com/neovim/neovim/pull/14531; `packer` uses the `noautocmd` key.
 - **2021-04-19**: `packer` now provides built-in profiling for your config via the `packer_compiled`
   file. Take a look at [the docs](#profiling) for more information!
 - **2021-02-18**: Having trouble with Luarocks on macOS? See [this issue](https://github.com/wbthomason/packer.nvim/issues/180).
@@ -57,8 +58,8 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 ## Requirements
 - You need to be running Neovim v0.5.0+; `packer` makes use of extmarks and other newly-added Neovim
   features.
-- If you are on Windows 10, you need developer mode enabled in order to use local plugins (`packer`
-  needs to use `mklink`, which requires admin privileges - credit to @TimUntersberger for this note)
+- If you are on Windows 10, you need developer mode enabled in order to use local plugins (creating
+  symbolic links requires admin privileges on Windows - credit to @TimUntersberger for this note)
 
 ## Quickstart
 To get started, first clone this repository to somewhere on your `packpath`, e.g.:
@@ -196,16 +197,13 @@ configuration to, add the following snippet (which is due to @Iron-E) somewhere 
 local execute = vim.api.nvim_command
 local fn = vim.fn
 
-local install_path = fn.stdpath('data')..'/site/pack/packer/opt/packer.nvim'
+local install_path = fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
 
 if fn.empty(fn.glob(install_path)) > 0 then
   fn.system({'git', 'clone', 'https://github.com/wbthomason/packer.nvim', install_path})
   execute 'packadd packer.nvim'
 end
 ```
-
-Note that this will install `packer` as an `opt` plugin; if you want `packer` to be a `start`
-plugin, you must modify the value of `install_path` in the above snippet.
 
 ## Usage
 
@@ -275,7 +273,7 @@ default configuration values (and structure of the configuration table) are:
   display = {
     non_interactive = false, -- If true, disable display windows for all operations
     open_fn  = nil, -- An optional function to open a window for packer's display
-    open_cmd = '65vnew [packer]', -- An optional command to open a window for packer's display
+    open_cmd = '65vnew \\[packer\\]', -- An optional command to open a window for packer's display
     working_sym = '⟳', -- The symbol for a plugin being installed/updated
     error_sym = '✗', -- The symbol for a plugin with an error in installation/updating
     done_sym = '✓', -- The symbol for a plugin which has completed installation/updating
@@ -507,28 +505,30 @@ require knowing when the operations are complete, you can use the following `Use
 You can configure Packer to use a floating window for command outputs by passing a utility
 function to `packer`'s config:
 ```lua
-packer.startup(function()
+packer.startup({function()
   -- Your plugins here
-end, {
+end,
+config = {
   display = {
     open_fn = require('packer.util').float,
   }
-})
+}})
 ```
 
 By default, this floating window will show doubled borders. If you want to customize the window
 appearance, you can pass a configuration to `float`, which is the same configuration that would be
 passed to `nvim_open_win`:
 ```lua
-packer.startup(function()
+packer.startup({function()
   -- Your plugins here
-end, {
+end,
+config = {
   display = {
     open_fn = function()
       return require('packer.util').float({ border = 'single' })
     end
   }
-})
+}})
 ```
 
 ## Profiling

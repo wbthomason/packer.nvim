@@ -59,7 +59,7 @@ local config_defaults = {
   display = {
     non_interactive = false,
     open_fn = nil,
-    open_cmd = '65vnew [packer]',
+    open_cmd = '65vnew \\[packer\\]',
     working_sym = '⟳',
     error_sym = '✗',
     done_sym = '✓',
@@ -242,7 +242,7 @@ packer.set_handler = function(name, func) handlers[name] = func end
 packer.use = manage
 
 --- Hook to fire events after packer operations
-packer.on_complete = function() vim.cmd [[doautocmd User PackerComplete]] end
+packer.on_complete = vim.schedule_wrap(function() vim.cmd [[doautocmd User PackerComplete]] end)
 
 --- Hook to fire events after packer compilation
 packer.on_compile_done = function() vim.cmd [[doautocmd User PackerCompileDone]] end
@@ -266,22 +266,23 @@ local function args_or_all(...) return util.nonempty_or({...}, vim.tbl_keys(plug
 -- Installs missing plugins, then updates helptags and rplugins
 packer.install = function(...)
   local install_plugins
-  if ... then
-    install_plugins = {...}
-  else
-    install_plugins = plugin_utils.find_missing_plugins(plugins)
-  end
-
-  if #install_plugins == 0 then
-    log.info('All configured plugins are installed')
-    packer.on_complete()
-    return
-  end
-
+  if ... then install_plugins = {...} end
   async(function()
+    if not install_plugins then
+      install_plugins = await(plugin_utils.find_missing_plugins(plugins))
+    end
+
+    if #install_plugins == 0 then
+      log.info('All configured plugins are installed')
+      packer.on_complete()
+      return
+    end
+
+    await(a.main)
     local start_time = vim.fn.reltime()
     local results = {}
     await(clean(plugins, results))
+    await(a.main)
     local tasks, display_win = install(plugins, install_plugins, results)
     if next(tasks) then
       local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
@@ -320,15 +321,17 @@ packer.update = function(...)
     local start_time = vim.fn.reltime()
     local results = {}
     await(clean(plugins, results))
-    local missing_plugins, installed_plugins = util.partition(
-                                                 plugin_utils.find_missing_plugins(plugins),
-                                                 update_plugins)
+    local missing = await(plugin_utils.find_missing_plugins(plugins))
+    local missing_plugins, installed_plugins = util.partition(missing, update_plugins)
 
+    await(a.main)
     update.fix_plugin_types(plugins, missing_plugins, results)
     local _
     _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)
+    await(a.main)
     local tasks, display_win = install(plugins, missing_plugins, results)
     local update_tasks
+    await(a.main)
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
     local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
@@ -369,10 +372,10 @@ packer.sync = function(...)
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
-    local missing_plugins, installed_plugins = util.partition(
-                                                 plugin_utils.find_missing_plugins(plugins),
-                                                 sync_plugins)
+    local r = await(plugin_utils.find_missing_plugins(plugins))
+    local missing_plugins, installed_plugins = util.partition(r or {}, sync_plugins)
 
+    await(a.main)
     update.fix_plugin_types(plugins, missing_plugins, results)
     local _
     _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)
@@ -381,8 +384,10 @@ packer.sync = function(...)
       _, installed_plugins = util.partition(vim.tbl_keys(results.removals), installed_plugins)
     end
 
+    await(a.main)
     local tasks, display_win = install(plugins, missing_plugins, results)
     local update_tasks
+    await(a.main)
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
     local luarocks_clean_task = luarocks.clean(rocks, results, display_win)

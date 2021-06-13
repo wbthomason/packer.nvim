@@ -98,26 +98,51 @@ plugin_utils.ensure_dirs = function()
 end
 
 plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins)
-  if opt_plugins == nil or start_plugins == nil then
-    opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
-  end
-
-  -- NOTE/TODO: In the case of a plugin gaining/losing an alias, this will force a clean and
-  -- reinstall
-  local missing_plugins = {}
-  for _, plugin_name in ipairs(vim.tbl_keys(plugins)) do
-    local plugin = plugins[plugin_name]
-
-    local plugin_path = util.join_paths(config[plugin.opt and 'opt_dir' or 'start_dir'],
-                                        plugin.short_name)
-    local plugin_installed = (plugin.opt and opt_plugins or start_plugins)[plugin_path]
-
-    if not plugin_installed or plugin.type ~= plugin_utils.guess_dir_type(plugin_path) then
-      table.insert(missing_plugins, plugin_name)
+  return a.sync(function()
+    if opt_plugins == nil or start_plugins == nil then
+      await(a.main)
+      opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
     end
-  end
 
-  return missing_plugins
+    -- NOTE/TODO: In the case of a plugin gaining/losing an alias, this will force a clean and
+    -- reinstall
+    local missing_plugins = {}
+    for _, plugin_name in ipairs(vim.tbl_keys(plugins)) do
+      local plugin = plugins[plugin_name]
+      if not plugin.disable then
+        local plugin_path = util.join_paths(config[plugin.opt and 'opt_dir' or 'start_dir'],
+                                            plugin.short_name)
+        local plugin_installed = (plugin.opt and opt_plugins or start_plugins)[plugin_path]
+
+        await(a.main)
+        local guessed_type = plugin_utils.guess_dir_type(plugin_path)
+        if not plugin_installed or plugin.type ~= guessed_type then
+          table.insert(missing_plugins, plugin_name)
+        elseif guessed_type == plugin_utils.git_plugin_type then
+          local r = await(plugin.remote_url())
+          local remote = r.ok and r.ok.remote or nil
+          if remote then
+            -- Form a Github-style user/repo string
+            local parts = vim.split(remote, '[:/]')
+            local repo_name = parts[#parts - 1] .. '/' .. parts[#parts]
+            repo_name = repo_name:gsub("%.git", "")
+
+            -- Also need to test for "full URL" plugin names, but normalized to get rid of the
+            -- protocol
+            local normalized_remote = remote:gsub("https://", ""):gsub("ssh://git@", "")
+            local normalized_plugin_name = plugin.name:gsub("https://", ""):gsub("ssh://git@", "")
+                                             :gsub("\\", "/")
+            if (normalized_remote ~= normalized_plugin_name)
+              and (repo_name ~= normalized_plugin_name) then
+              table.insert(missing_plugins, plugin_name)
+            end
+          end
+        end
+      end
+    end
+
+    return missing_plugins
+  end)
 end
 
 plugin_utils.load_plugin = function(plugin)
@@ -126,8 +151,8 @@ plugin_utils.load_plugin = function(plugin)
   else
     vim.o.runtimepath = vim.o.runtimepath .. ',' .. plugin.install_path
     for _, pat in ipairs({
-      table.concat({'plugin', '**', '*.vim'}, util.get_separator()),
-      table.concat({'after', 'plugin', '**', '*.vim'}, util.get_separator())
+      table.concat({'plugin', '**/*.vim'}, util.get_separator()),
+      table.concat({'after', 'plugin', '**/*.vim'}, util.get_separator())
     }) do
       local path = util.join_paths(plugin.install_path, pat)
       local glob_ok, files = pcall(vim.fn.glob, path, false, true)
@@ -151,15 +176,17 @@ plugin_utils.post_update_hook = function(plugin, disp)
       await(a.main)
       plugin_utils.load_plugin(plugin)
     end
+
     if plugin.run then
       if type(plugin.run) ~= 'table' then plugin.run = {plugin.run} end
       disp:task_update(plugin_name, 'running post update hooks...')
       for _, task in ipairs(plugin.run) do
         if type(task) == 'function' then
-          if pcall(task, plugin) then
+          local success, err = pcall(task, plugin)
+          if success then
             return result.ok()
           else
-            return result.err({msg = 'Error running post update hook'})
+            return result.err({msg = 'Error running post update hook: ' .. vim.inspect(err)})
           end
         elseif type(task) == 'string' then
           if string.sub(task, 1, 1) == ':' then
@@ -188,7 +215,13 @@ plugin_utils.post_update_hook = function(plugin, disp)
         else
           -- TODO/NOTE: This case should also capture output in case of error. The minor difficulty is
           -- what to do if the plugin's run table (i.e. this case) already specifies output handling.
-          return await(jobs.run(task))
+
+          return await(jobs.run(task)):map_err(function(err)
+            return {
+              msg = string.format('Error running post update hook: %s', vim.inspect(err)),
+              data = err
+            }
+          end)
         end
       end
     else

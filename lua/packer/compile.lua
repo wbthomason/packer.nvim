@@ -89,8 +89,9 @@ local try_loadstring = [[
 local function try_loadstring(s, component, name)
   local success, result = pcall(loadstring(s))
   if not success then
-    print('Error running ' .. component .. ' for ' .. name)
-    error(result)
+    vim.schedule(function()
+      vim.api.nvim_notify('packer.nvim: Error running ' .. component .. ' for ' .. name .. ': ' .. result, vim.log.levels.ERROR, {})
+    end)
   end
   return result
 end
@@ -119,14 +120,14 @@ end
 
 local function timed_chunk(chunk, name, output_table)
   output_table = output_table or {}
-  output_table[#output_table + 1] = 'time("' .. name .. '", true)'
+  output_table[#output_table + 1] = 'time([[' .. name .. ']], true)'
   if type(chunk) == 'string' then
     output_table[#output_table + 1] = chunk
   else
     vim.list_extend(output_table, chunk)
   end
 
-  output_table[#output_table + 1] = 'time("' .. name .. '", false)'
+  output_table[#output_table + 1] = 'time([[' .. name .. ']], false)'
   return output_table
 end
 
@@ -163,7 +164,7 @@ local function make_try_loadstring(item, chunk, name)
   return executable_string, bytecode
 end
 
-local after_plugin_pattern = table.concat({'after', 'plugin', '**', '*.vim'}, util.get_separator())
+local after_plugin_pattern = table.concat({'after', 'plugin', '**/*.vim'}, util.get_separator())
 local function detect_after_plugin(name, plugin_path)
   local path = plugin_path .. util.get_separator() .. after_plugin_pattern
   local glob_ok, files = pcall(vim.fn.glob, path, false, true)
@@ -182,8 +183,8 @@ local function detect_after_plugin(name, plugin_path)
 end
 
 local ftdetect_patterns = {
-  table.concat({'ftdetect', '**', '*.vim'}, util.get_separator()),
-  table.concat({'after', 'ftdetect', '**', '*.vim'}, util.get_separator())
+  table.concat({'ftdetect', '**/*.vim'}, util.get_separator()),
+  table.concat({'after', 'ftdetect', '**/*.vim'}, util.get_separator())
 }
 local function detect_ftdetect(name, plugin_path)
   local paths = {
@@ -638,7 +639,7 @@ local function make_loaders(_, plugins, should_profile)
     for _, path in ipairs(ftdetect_paths) do
       local escaped_path = vim.fn.escape(path, ' ')
       timed_chunk('vim.cmd [[source ' .. escaped_path .. ']]',
-                  'Sourcing ftdetect script at: ' .. path, result)
+                  'Sourcing ftdetect script at: ' .. escaped_path, result)
     end
 
     table.insert(result, 'vim.cmd("augroup END")')

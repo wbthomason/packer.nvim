@@ -145,7 +145,8 @@ local function prompt_user(headline, body, callback)
     row = y,
     focusable = false,
     style = 'minimal',
-    border = config.prompt_border
+    border = config.prompt_border,
+    noautocmd = true,
   }
 
   local win = api.nvim_open_win(buf, false, opts)
