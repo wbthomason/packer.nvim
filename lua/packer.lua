@@ -682,6 +682,12 @@ packer.compile = function(raw_args, move_plugins)
   local a = require 'packer.async'
   local async = a.sync
   local await = a.wait
+  -- TODO: check if the user wants any compilation at all via a new config variable
+  -- TODO: remove a bunch of complexity from the compile module/maybe here once we don't need to
+  -- compile functions or sequencing
+  -- TODO: implement, for the compiled file, logic to check its values against the current config.
+  -- We can do this by computing an efficient hash of the lazy-loader strings and storing this in
+  -- the compiled file
 
   manage_all_plugins()
   async(function()
@@ -992,6 +998,13 @@ packer.startup = function(spec)
   end
 
   return packer
+end
+
+packer.load = function()
+  -- TODO: This will be responsible for (1) sourcing the new, lighter, compiled file and (2)
+  -- handling things like running setup and config functions, sequencing, etc. 90% of this logic
+  -- already exists in the load module; the main thing to add is loading the new compiled file. This
+  -- function needs to be called at the end of startup()
 end
 
 return packer
