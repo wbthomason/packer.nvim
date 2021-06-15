@@ -562,7 +562,9 @@ packer.compile = function(raw_args)
   local output_file = io.open(output_path, 'w')
   output_file:write(compiled_loader)
   output_file:close()
-  if config.auto_reload_compiled then vim.cmd("source " .. output_path) end
+  if config.auto_reload_compiled then
+    vim.cmd((output_lua and 'luaf' or 'source') .. ' ' .. output_path)
+  end
   log.info('Finished compiling lazy-loaders!')
   packer.on_compile_done()
 end
