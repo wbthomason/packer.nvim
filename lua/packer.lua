@@ -11,6 +11,7 @@ local config_defaults = {
   ensure_dependencies = true,
   package_root = join_paths(stdpath('data'), 'site', 'pack'),
   compile_path = join_paths(stdpath('config'), 'plugin', 'packer_compiled.vim'),
+  compile_to_lua = false,
   plugin_package = 'packer',
   max_jobs = nil,
   auto_clean = true,
