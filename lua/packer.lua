@@ -11,7 +11,6 @@ local config_defaults = {
   ensure_dependencies = true,
   package_root = join_paths(stdpath('data'), 'site', 'pack'),
   compile_path = join_paths(stdpath('config'), 'plugin', 'packer_compiled.vim'),
-  compile_to_lua = false,
   plugin_package = 'packer',
   max_jobs = nil,
   auto_clean = true,
@@ -550,7 +549,7 @@ packer.compile = function(raw_args)
   manage_all_plugins()
   local args = parse_args(raw_args)
   local output_path = args.output_path or config.compile_path
-  local output_lua = args.output_lua or config.compile_to_lua
+  local output_lua = vim.fn.fnamemodify(output_path, ':e') ~= 'vim'
   local should_profile = args.profile
   -- the user might explicitly choose for this value to be false in which case
   -- an or operator will not work
