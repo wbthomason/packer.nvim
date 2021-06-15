@@ -586,9 +586,13 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   -- Output everything:
 
   -- First, the Lua code
-  local result = {'" Automatically generated packer.nvim plugin loader code\n'}
-  table.insert(result, feature_guard)
-  table.insert(result, 'lua << END')
+  local result = {(output_lua and '--' or '"')..' Automatically generated packer.nvim plugin loader code\n'}
+  if output_lua then
+	  table.insert(result, feature_guard_lua)
+  else
+	  table.insert(result, feature_guard)
+	  table.insert(result, 'lua << END')
+  end
   table.insert(result, profile_time(should_profile))
   table.insert(result, profile_output)
   timed_chunk(luarocks.generate_path_setup(), 'Luarocks path setup', result)
@@ -670,8 +674,12 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   end
 
   table.insert(result, conditionally_output_profile(config.threshold))
-  table.insert(result, 'END\n')
-  table.insert(result, catch_errors)
+  if output_lua then
+	  table.insert(result, catch_errors_lua)
+  else
+	  table.insert(result, 'END\n')
+	  table.insert(result, catch_errors)
+  end
   return table.concat(result, '\n')
 end
 
