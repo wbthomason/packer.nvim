@@ -20,6 +20,18 @@ packadd packer.nvim
 try
 ]]
 
+local feature_guard_lua = [[
+if not vim.api.nvim_call_function('has', {'nvim-0.5'}) == 1 then
+  vim.api.nvim_command('echohl WarningMsg | echom "Invalid Neovim version for packer.nvim! | echohl None"')
+  return
+end
+
+vim.api.nvim_command('packadd packer.nvim')
+
+local no_errors = pcall(function()
+]]
+
+
 local catch_errors = [[
 catch
   echohl ErrorMsg
@@ -27,6 +39,14 @@ catch
   echom "Please check your config for correctness"
   echohl None
 endtry
+]]
+
+local catch_errors_lua = [[
+end)
+
+if not no_errors then
+  vim.api.nvim_command('echohl ErrorMsg | echom "Error in packer_compiled: ".v:exception | echom "Please check your config for correctness" | echohl None')
+end
 ]]
 
 ---@param should_profile boolean
