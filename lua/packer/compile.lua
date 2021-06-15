@@ -217,7 +217,7 @@ local function detect_bufread(plugin_path)
   return false
 end
 
-local function make_loaders(_, plugins, should_profile)
+local function make_loaders(_, plugins, output_to_lua, should_profile)
   local loaders = {}
   local configs = {}
   local rtps = {}
