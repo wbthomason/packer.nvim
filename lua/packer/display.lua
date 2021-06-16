@@ -704,7 +704,7 @@ local display_mt = {
       return
     end
     log.open()
-    vim.cmd [[wincmd P]]
+    vim.wo.wrap = false
     vim.bo.buflisted = false
     vim.api.nvim_buf_set_keymap(0, 'n', 'q', '<cmd>close!<CR>', { silent = true, noremap = true, nowait = true })
     vim.bo.filetype = 'log'
