@@ -63,9 +63,18 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 
 ## Quickstart
 To get started, first clone this repository to somewhere on your `packpath`, e.g.:
+
+> Unix, Linux Installation
+
 ```shell
 git clone https://github.com/wbthomason/packer.nvim\
  ~/.local/share/nvim/site/pack/packer/start/packer.nvim
+```
+
+> Windows Powershell Installation
+
+```shell
+git clone https://github.com/wbthomason/packer.nvim "$env:LOCALAPPDATA\nvim-data\site\pack\packer\start\packer.nvim"
 ```
 
 Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lua/plugins.lua`):
