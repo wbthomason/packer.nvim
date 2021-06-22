@@ -231,6 +231,7 @@ default values: >
         toggle_info = '<CR>',
         diff = 'd',
         prompt_revert = 'r',
+        open_log = 'l',
       }
     }
   }
@@ -459,6 +460,8 @@ Once an operation completes, the results are shown in the display window.
 q                    close the display window
 <CR>                 toggle information about a particular plugin
 r                    revert an update
+d                    show the diff for a particular commit
+l                    open the log file in a new tab
 
 They can be configured by changing the value of `config.display.keybindings`
 (see |packer-configuration|). Setting it to `false` will disable all keybindings.
