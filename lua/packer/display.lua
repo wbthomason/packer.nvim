@@ -126,7 +126,7 @@ local keymaps = {
   },
   open_log = {
     rhs = '<cmd>lua require"packer.display".open_log()<cr>',
-    action = 'open packer logs',
+    action = 'open log file',
   },
 }
 
