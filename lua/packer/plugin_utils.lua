@@ -145,6 +145,16 @@ plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins
   end)
 end
 
+plugin_utils.get_fs_state = function(plugins)
+  log.debug('Updating FS state')
+  local opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
+  return a.sync(function()
+    local missing_plugins = await(plugin_utils.find_missing_plugins(plugins, opt_plugins,
+                                                                    start_plugins))
+    return {opt = opt_plugins, start = start_plugins, missing = missing_plugins}
+  end)
+end
+
 plugin_utils.load_plugin = function(plugin)
   if plugin.opt then
     vim.cmd('packadd ' .. plugin.short_name)
