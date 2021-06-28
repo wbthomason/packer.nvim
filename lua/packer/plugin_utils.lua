@@ -132,7 +132,7 @@ plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins
         await(a.main)
         local guessed_type = plugin_utils.guess_dir_type(plugin_path)
         if not plugin_installed or plugin.type ~= guessed_type then
-          table.insert(missing_plugins, plugin_name)
+          missing_plugins[plugin_name] = true
         elseif guessed_type == plugin_utils.git_plugin_type then
           local r = await(plugin.remote_url())
           local remote = r.ok and r.ok.remote or nil
@@ -149,7 +149,7 @@ plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins
                                              :gsub("\\", "/")
             if (normalized_remote ~= normalized_plugin_name)
               and (repo_name ~= normalized_plugin_name) then
-              table.insert(missing_plugins, plugin_name)
+              missing_plugins[plugin_name] = true
             end
           end
         end

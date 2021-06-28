@@ -273,6 +273,7 @@ packer.on_compile_done = function() vim.cmd [[doautocmd User PackerCompileDone]]
 --- Clean operation:
 -- Finds plugins present in the `packer` package but not in the managed set
 packer.clean = function(results)
+  local plugin_utils = require_and_configure('plugin_utils')
   local a = require('packer.async')
   local async = a.sync
   local await = a.wait
@@ -284,7 +285,8 @@ packer.clean = function(results)
   async(function()
     local luarocks_clean_task = luarocks.clean(rocks, results, nil)
     if luarocks_clean_task ~= nil then await(luarocks_clean_task) end
-    await(clean(plugins, results))
+    local fs_state = await(plugin_utils.get_fs_state(plugins))
+    await(clean(plugins, fs_state, results))
     packer.on_complete()
   end)()
 end
@@ -296,9 +298,9 @@ local function args_or_all(...) return util.nonempty_or({...}, vim.tbl_keys(plug
 -- managed plugins.
 -- Installs missing plugins, then updates helptags and rplugins
 packer.install = function(...)
-  local plugin_utils = require_and_configure('plugin_utils')
   local log = require_and_configure('log')
   log.debug('packer.install: requiring modules')
+  local plugin_utils = require_and_configure('plugin_utils')
   local a = require('packer.async')
   local async = a.sync
   local await = a.wait
@@ -311,10 +313,8 @@ packer.install = function(...)
   local install_plugins
   if ... then install_plugins = {...} end
   async(function()
-    if not install_plugins then
-      install_plugins = await(plugin_utils.find_missing_plugins(plugins))
-    end
-
+    local fs_state = await(plugin_utils.get_fs_state(plugins))
+    if not install_plugins then install_plugins = vim.tbl_keys(fs_state.missing) end
     if #install_plugins == 0 then
       log.info('All configured plugins are installed')
       packer.on_complete()
@@ -324,7 +324,7 @@ packer.install = function(...)
     await(a.main)
     local start_time = vim.fn.reltime()
     local results = {}
-    await(clean(plugins, results))
+    await(clean(plugins, fs_state, results))
     await(a.main)
     log.debug('Gathering install tasks')
     local tasks, display_win = install(plugins, install_plugins, results)
@@ -380,12 +380,11 @@ packer.update = function(...)
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
-    await(clean(plugins, results))
-    local missing = await(plugin_utils.find_missing_plugins(plugins))
-    local missing_plugins, installed_plugins = util.partition(missing, update_plugins)
-
-    await(a.main)
-    update.fix_plugin_types(plugins, missing_plugins, results)
+    local fs_state = await(plugin_utils.get_fs_state(plugins))
+    local missing_plugins, installed_plugins = util.partition(vim.tbl_keys(fs_state.missing),
+                                                              update_plugins)
+    update.fix_plugin_types(plugins, missing_plugins, results, fs_state)
+    await(clean(plugins, fs_state, results))
     local _
     _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)
     log.debug('Gathering install tasks')
@@ -443,21 +442,23 @@ packer.sync = function(...)
   local install = require_and_configure('install')
   local display = require_and_configure('display')
   local update = require_and_configure('update')
+
   manage_all_plugins()
 
   local sync_plugins = args_or_all(...)
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
-    local r = await(plugin_utils.find_missing_plugins(plugins))
-    local missing_plugins, installed_plugins = util.partition(r or {}, sync_plugins)
+    local fs_state = await(plugin_utils.get_fs_state(plugins))
+    local missing_plugins, installed_plugins = util.partition(vim.tbl_keys(fs_state.missing),
+                                                              sync_plugins)
 
     await(a.main)
-    update.fix_plugin_types(plugins, missing_plugins, results)
+    update.fix_plugin_types(plugins, missing_plugins, results, fs_state)
     local _
     _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)
     if config.auto_clean then
-      await(clean(plugins, results))
+      await(clean(plugins, fs_state, results))
       _, installed_plugins = util.partition(vim.tbl_keys(results.removals), installed_plugins)
     end
 
