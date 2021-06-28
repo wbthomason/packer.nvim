@@ -567,6 +567,14 @@ packer.compile = function(raw_args)
   end
   log.info('Finished compiling lazy-loaders!')
   packer.on_compile_done()
+
+  -- TODO: remove this after migration period (written 2021/06/28)
+  if output_lua then
+    local old_output_path = vim.fn.fnamemodify(output_path, ':r')..'.vim'
+    if vim.loop.fs_stat(old_output_path) then
+      os.remove(old_output_path)
+    end
+  end
 end
 
 packer.profile_output = function()
