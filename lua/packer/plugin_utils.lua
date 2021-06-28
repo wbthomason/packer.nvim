@@ -48,20 +48,6 @@ plugin_utils.guess_dir_type = function(dir)
   end
 end
 
-plugin_utils.list_installed_plugins = function()
-  local opt_plugins = {}
-  local start_plugins = {}
-  for _, path in ipairs(vim.fn.globpath(config.opt_dir, '*', true, true)) do
-    opt_plugins[path] = true
-  end
-
-  for _, path in ipairs(vim.fn.globpath(config.start_dir, '*', true, true)) do
-    start_plugins[path] = true
-  end
-
-  return opt_plugins, start_plugins
-end
-
 plugin_utils.helptags_stale = function(dir)
   -- Adapted directly from minpac.vim
   local txts = vim.fn.glob(util.join_paths(dir, '*.txt'), true, true)
@@ -97,10 +83,39 @@ plugin_utils.ensure_dirs = function()
   if vim.fn.isdirectory(config.start_dir) == 0 then vim.fn.mkdir(config.start_dir, 'p') end
 end
 
+plugin_utils.list_installed_plugins = function()
+  local opt_plugins = {}
+  local start_plugins = {}
+  local opt_dir_handle = vim.loop.fs_opendir(config.opt_dir, nil, 50)
+  if opt_dir_handle then
+    local opt_dir_items = vim.loop.fs_readdir(opt_dir_handle)
+    while opt_dir_items do
+      for _, item in ipairs(opt_dir_items) do
+        opt_plugins[util.join_paths(config.opt_dir, item.name)] = true
+      end
+
+      opt_dir_items = vim.loop.fs_readdir(opt_dir_handle)
+    end
+  end
+
+  local start_dir_handle = vim.loop.fs_opendir(config.start_dir, nil, 50)
+  if start_dir_handle then
+    local start_dir_items = vim.loop.fs_readdir(start_dir_handle)
+    while start_dir_items do
+      for _, item in ipairs(start_dir_items) do
+        start_plugins[util.join_paths(config.start_dir, item.name)] = true
+      end
+
+      start_dir_items = vim.loop.fs_readdir(start_dir_handle)
+    end
+  end
+
+  return opt_plugins, start_plugins
+end
+
 plugin_utils.find_missing_plugins = function(plugins, opt_plugins, start_plugins)
   return a.sync(function()
     if opt_plugins == nil or start_plugins == nil then
-      await(a.main)
       opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
     end
 
