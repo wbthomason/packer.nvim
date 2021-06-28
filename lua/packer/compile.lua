@@ -150,6 +150,7 @@ end
 local function dump_loaders(loaders)
   local result = vim.deepcopy(loaders)
   for k, _ in pairs(result) do
+    if result[k].only_setup or result[k].only_sequence then result[k].loaded = true end
     result[k].only_setup = nil
     result[k].only_sequence = nil
   end
