@@ -47,6 +47,7 @@ local function fix_plugin_type(plugin, results)
 end
 
 local function fix_plugin_types(plugins, plugin_names, results)
+  log.debug('Fixing plugin types')
   results = results or {}
   results.moves = results.moves or {}
   -- NOTE: This function can only be run on plugins already installed
@@ -57,6 +58,7 @@ local function fix_plugin_types(plugins, plugin_names, results)
                                         plugin.short_name)
     if vim.fn.isdirectory(install_dir) == 1 then fix_plugin_type(plugin, results) end
   end
+  log.debug('Done fixing plugin types')
 end
 
 local function update_plugin(plugin, display_win, results)

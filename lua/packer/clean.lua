@@ -20,6 +20,7 @@ end
 -- Find and remove any plugins not currently configured for use
 local clean_plugins = function(_, plugins, results)
   return async(function()
+    log.debug('Starting clean')
     local dirty_plugins = {}
     results = results or {}
     results.removals = results.removals or {}
