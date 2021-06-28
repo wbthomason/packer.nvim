@@ -133,7 +133,7 @@ end
 --- Add a Luarocks package to be managed
 packer.use_rocks = function(rock)
   if type(rock) == 'string' then rock = {rock} end
-  if not vim.tbl_islist(rock) and type(rock[1]) == "string" then
+  if not vim.tbl_islist(rock) and type(rock[1]) == 'string' then
     rocks[rock[1]] = rock
   else
     for _, r in ipairs(rock) do
