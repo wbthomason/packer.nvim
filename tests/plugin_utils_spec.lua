@@ -35,7 +35,7 @@ a.describe('Plugin utils -', function()
       }
       local result = await(plugin_utils.find_missing_plugins(plugins, {}, {[path] = true}))
       assert.truthy(result)
-      assert.equal(1, #result)
+      assert.equal(1, #vim.tbl_keys(result))
     end)
 
     a.it('should not pick up plugins with the same remote URL', function()
@@ -75,7 +75,7 @@ a.describe('Plugin utils -', function()
       }
       local result = await(plugin_utils.find_missing_plugins(plugins, {}, {[path] = true}))
       assert.truthy(result)
-      assert.equal(1, #result)
+      assert.equal(1, #vim.tbl_keys(result))
     end)
   end)
 end)
