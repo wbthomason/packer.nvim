@@ -163,7 +163,10 @@ plugin_utils.load_plugin = function(plugin)
           error(files)
         end
       elseif #files > 0 then
-        for _, file in ipairs(files) do vim.cmd('silent exe "source ' .. file .. '"') end
+        for _, file in ipairs(files) do
+          file = file:gsub('\\', '/')
+          vim.cmd('silent exe "source ' .. file .. '"')
+        end
       end
     end
   end
