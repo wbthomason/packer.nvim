@@ -146,32 +146,37 @@ end
 --- The main logic for adding a plugin (and any dependencies) to the managed set
 -- Can be invoked with (1) a single plugin spec as a string, (2) a single plugin spec table, or (3)
 -- a list of plugin specs
+-- TODO: This should be refactored into its own module and the various keys should be implemented
+-- (as much as possible) as ordinary handlers
 local manage = nil
-manage = function(plugin)
-  if type(plugin) == 'string' then
-    plugin = {plugin}
-  elseif type(plugin) == 'table' and #plugin > 1 then
-    for _, spec in ipairs(plugin) do manage(spec) end
+manage = function(plugin_data)
+  local plugin_spec = plugin_data.spec
+  local spec_line = plugin_data.line
+  local spec_type = type(plugin_spec)
+  if spec_type == 'string' then
+    plugin_spec = {plugin_spec}
+  elseif spec_type == 'table' and #plugin_spec > 1 then
+    for _, spec in ipairs(plugin_spec) do manage({spec = spec, line = spec_line}) end
     return
   end
 
   local log = require_and_configure('log')
-  if plugin[1] == vim.NIL or plugin[1] == nil then
-    log.warn('Nil plugin name provided!')
+  if plugin_spec[1] == vim.NIL or plugin_spec[1] == nil then
+    log.warn('No plugin name provided at line ' .. spec_line .. '!')
     return
   end
 
-  local path = vim.fn.expand(plugin[1])
+  local path = vim.fn.expand(plugin_spec[1])
   local name_segments = vim.split(path, util.get_separator())
   local segment_idx = #name_segments
-  local name = plugin.as or name_segments[segment_idx]
+  local name = plugin_spec.as or name_segments[segment_idx]
   while name == '' and segment_idx > 0 do
     name = name_segments[segment_idx]
     segment_idx = segment_idx - 1
   end
 
   if name == '' then
-    log.warn('"' .. plugin[1] .. '" is an invalid plugin name!')
+    log.warn('"' .. plugin_spec[1] .. '" is an invalid plugin name!')
     return
   end
 
@@ -180,69 +185,71 @@ manage = function(plugin)
     return
   end
 
-  if plugin.as and plugins[plugin.as] then
-    log.error('The alias ' .. plugin.as .. ', specified for ' .. path
-                .. ', is already used as another plugin name!')
+  if plugin_spec.as and plugins[plugin_spec.as] then
+    log.error('The alias ' .. plugin_spec.as .. ', specified for ' .. path .. ' at ' .. spec_line
+                .. ' is already used as another plugin name!')
     return
   end
 
   -- Handle aliases
-  plugin.short_name = name
-  plugin.name = path
-  plugin.path = path
+  plugin_spec.short_name = name
+  plugin_spec.name = path
+  plugin_spec.path = path
 
   -- Some config keys modify a plugin type
-  if plugin.opt then
-    plugin.manual_opt = true
-  elseif plugin.opt == nil and config.opt_default then
-    plugin.manual_opt = true
-    plugin.opt = true
+  if plugin_spec.opt then
+    plugin_spec.manual_opt = true
+  elseif plugin_spec.opt == nil and config.opt_default then
+    plugin_spec.manual_opt = true
+    plugin_spec.opt = true
   end
 
   local compile = require_and_configure('compile')
   for _, key in ipairs(compile.opt_keys) do
-    if plugin[key] then
-      plugin.opt = true
+    if plugin_spec[key] then
+      plugin_spec.opt = true
       break
     end
   end
 
-  plugin.install_path = join_paths(plugin.opt and config.opt_dir or config.start_dir,
-                                   plugin.short_name)
+  plugin_spec.install_path = join_paths(plugin_spec.opt and config.opt_dir or config.start_dir,
+                                        plugin_spec.short_name)
 
   local plugin_utils = require_and_configure('plugin_utils')
   local plugin_types = require_and_configure('plugin_types')
   local handlers = require_and_configure('handlers')
-  if not plugin.type then plugin_utils.guess_type(plugin) end
-  if plugin.type ~= plugin_utils.custom_plugin_type then plugin_types[plugin.type].setup(plugin) end
-  for k, v in pairs(plugin) do if handlers[k] then handlers[k](plugins, plugin, v) end end
-  plugins[plugin.short_name] = plugin
-  if plugin.rocks then packer.use_rocks(plugin.rocks) end
+  if not plugin_spec.type then plugin_utils.guess_type(plugin_spec) end
+  if plugin_spec.type ~= plugin_utils.custom_plugin_type then
+    plugin_types[plugin_spec.type].setup(plugin_spec)
+  end
+  for k, v in pairs(plugin_spec) do if handlers[k] then handlers[k](plugins, plugin_spec, v) end end
+  plugins[plugin_spec.short_name] = plugin_spec
+  if plugin_spec.rocks then packer.use_rocks(plugin_spec.rocks) end
 
-  if plugin.requires and config.ensure_dependencies then
-    if type(plugin.requires) == 'string' then plugin.requires = {plugin.requires} end
-    for _, req in ipairs(plugin.requires) do
+  if plugin_spec.requires and config.ensure_dependencies then
+    if type(plugin_spec.requires) == 'string' then plugin_spec.requires = {plugin_spec.requires} end
+    for _, req in ipairs(plugin_spec.requires) do
       if type(req) == 'string' then req = {req} end
       local req_name_segments = vim.split(req[1], '/')
       local req_name = req_name_segments[#req_name_segments]
       if not plugins[req_name] then
-        if config.transitive_opt and plugin.manual_opt then
+        if config.transitive_opt and plugin_spec.manual_opt then
           req.opt = true
           if type(req.after) == 'string' then
-            req.after = {req.after, plugin.short_name}
+            req.after = {req.after, plugin_spec.short_name}
           elseif type(req.after) == 'table' then
             local already_after = false
             for _, name in ipairs(req.after) do
-              already_after = already_after or (name == plugin.short_name)
+              already_after = already_after or (name == plugin_spec.short_name)
             end
-            if not already_after then table.insert(req.after, plugin.short_name) end
+            if not already_after then table.insert(req.after, plugin_spec.short_name) end
           elseif req.after == nil then
-            req.after = plugin.short_name
+            req.after = plugin_spec.short_name
           end
         end
 
-        if config.transitive_disable and plugin.disable then req.disable = true end
-        manage(req)
+        if config.transitive_disable and plugin_spec.disable then req.disable = true end
+        manage({spec = req, line = spec_line})
       end
     end
   end
@@ -252,7 +259,12 @@ end
 packer.set_handler = function(name, func) require_and_configure('handlers')[name] = func end
 
 --- Add a plugin to the managed set
-packer.use = function(plugin) plugin_specifications[#plugin_specifications + 1] = plugin end
+packer.use = function(plugin_spec)
+  plugin_specifications[#plugin_specifications + 1] = {
+    spec = plugin_spec,
+    line = debug.getinfo(2, 'l').currentline
+  }
+end
 
 local function manage_all_plugins()
   if plugins == nil or next(plugins) == nil then
