@@ -573,6 +573,8 @@ packer.compile = function(raw_args)
     local old_output_path = vim.fn.fnamemodify(output_path, ':r')..'.vim'
     if vim.loop.fs_stat(old_output_path) then
       os.remove(old_output_path)
+      log.warn('"'..vim.fn.fnamemodify(old_output_path, ':~:.')..'" was replaced by "'..vim.fn.fnamemodify(output_path, ':~:.')..'"')
+      log.warn('If you have not updated Neovim since 2021/06/11 you must do so now')
     end
   end
 end
