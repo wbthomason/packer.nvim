@@ -39,7 +39,7 @@ local config_defaults = {
     },
     depth = 1,
     clone_timeout = 60,
-    default_url_format = 'https://github.com/%s'
+    default_url_format = 'https://github.com/%s.git'
   },
   display = {
     non_interactive = false,
