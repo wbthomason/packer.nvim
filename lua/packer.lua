@@ -549,7 +549,7 @@ packer.compile = function(raw_args)
   manage_all_plugins()
   local args = parse_args(raw_args)
   local output_path = args.output_path or config.compile_path
-  local output_lua = vim.fn.fnamemodify(output_path, ':e') ~= 'vim'
+  local output_lua = vim.fn.fnamemodify(output_path, ':e') == 'lua'
   local should_profile = args.profile
   -- the user might explicitly choose for this value to be false in which case
   -- an or operator will not work
@@ -562,18 +562,17 @@ packer.compile = function(raw_args)
   local output_file = io.open(output_path, 'w')
   output_file:write(compiled_loader)
   output_file:close()
-  if config.auto_reload_compiled then
-    vim.cmd('source ' .. output_path)
-  end
+  if config.auto_reload_compiled then vim.cmd('source ' .. output_path) end
   log.info('Finished compiling lazy-loaders!')
   packer.on_compile_done()
 
   -- TODO: remove this after migration period (written 2021/06/28)
   if output_lua then
-    local old_output_path = vim.fn.fnamemodify(output_path, ':r')..'.vim'
+    local old_output_path = vim.fn.fnamemodify(output_path, ':r') .. '.vim'
     if vim.loop.fs_stat(old_output_path) then
       os.remove(old_output_path)
-      log.warn('"'..vim.fn.fnamemodify(old_output_path, ':~:.')..'" was replaced by "'..vim.fn.fnamemodify(output_path, ':~:.')..'"')
+      log.warn('"' .. vim.fn.fnamemodify(old_output_path, ':~:.') .. '" was replaced by "'
+                 .. vim.fn.fnamemodify(output_path, ':~:.') .. '"')
       log.warn('If you have not updated Neovim since 2021/06/11 you must do so now')
     end
   end
