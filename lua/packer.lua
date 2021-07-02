@@ -567,15 +567,20 @@ packer.compile = function(raw_args)
   packer.on_compile_done()
 
   -- TODO: remove this after migration period (written 2021/06/28)
+  local old_output_path
   if output_lua then
-    local old_output_path = vim.fn.fnamemodify(output_path, ':r') .. '.vim'
-    if vim.loop.fs_stat(old_output_path) then
-      os.remove(old_output_path)
-      log.warn('"' .. vim.fn.fnamemodify(old_output_path, ':~:.') .. '" was replaced by "'
-                 .. vim.fn.fnamemodify(output_path, ':~:.') .. '"')
-      log.warn('If you have not updated Neovim since 2021/06/11 you must do so now')
-    end
+    old_output_path = vim.fn.fnamemodify(output_path, ':r') .. '.vim'
+  else
+    old_output_path = vim.fn.fnamemodify(output_path, ':r') .. '.lua'
   end
+
+  if vim.loop.fs_stat(old_output_path) then
+    os.remove(old_output_path)
+    log.warn('"' .. vim.fn.fnamemodify(old_output_path, ':~:.') .. '" was replaced by "'
+               .. vim.fn.fnamemodify(output_path, ':~:.') .. '"')
+    log.warn('If you have not updated Neovim since 2021/06/11 you must do so now')
+  end
+  -- TODO: end migration chunk (2021/07/02)
 end
 
 packer.profile_output = function()
