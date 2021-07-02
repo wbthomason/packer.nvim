@@ -186,7 +186,7 @@ default values: >
   {
     ensure_dependencies   = true, -- Should packer install plugin dependencies?
     package_root   = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
-    compile_path = util.join_paths(vim.fn.stdpath('config'), 'plugin', 'packer_compiled.vim'),
+    compile_path = util.join_paths(vim.fn.stdpath('config'), 'plugin', 'packer_compiled.lua'),
     plugin_package = 'packer', -- The default package for plugins
     max_jobs = nil, -- Limit the number of simultaneous jobs. nil means no limit
     auto_clean = true, -- During sync(), remove unused plugins
@@ -280,7 +280,7 @@ installs/updates the given plugin.
 Providing the `installer`/`updater` keys overrides plugin type detection, but
 you still need to provide a location string for the name of the plugin.
 
-POST-UPDATE HOOKS                              *packer-plugin-hooks* 
+POST-UPDATE HOOKS                              *packer-plugin-hooks*
 You may specify operations to be run after successful installs/updates of a
 plugin with the `run` key. This key may either be a Lua function, which will be
 called with the `plugin` table for this plugin (containing the information
@@ -291,7 +291,7 @@ strings.
 If an element of `run` is a string, then either:
 
 1. If the first character of `run` is ":", it is treated as a Neovim command and
-executed. 
+executed.
 2. Otherwise, `run` is treated as a shell command and run in the installation
 directory of the plugin via `$SHELL -c '<run>'`.
 
@@ -313,7 +313,7 @@ installed.
 Plugins specified in `requires` are removed when no active plugins require
 them.
 
-LUAROCKS                                       *packer-plugin-luarocks* 
+LUAROCKS                                       *packer-plugin-luarocks*
 
 You may specify that a plugin requires one or more Luarocks packages using the
 `rocks` key. This key takes either a string specifying the name of a package
@@ -382,7 +382,7 @@ to `path`. Then, when you start vim, the file at `path` is loaded (because
 If `path` is not provided to |packer.compile()|, the output file will default
 to the value of `config.compile_path`.
 
-The option `compile_on_sync`, which defaults to `true`, will run 
+The option `compile_on_sync`, which defaults to `true`, will run
 `packer.compile()` during `packer.sync()`, if set to `true`.
 Note that otherwise, you **must** run `packer.compile` yourself to generate
 the lazy-loader file!

@@ -10,7 +10,7 @@ local packer = {}
 local config_defaults = {
   ensure_dependencies = true,
   package_root = join_paths(stdpath('data'), 'site', 'pack'),
-  compile_path = join_paths(stdpath('config'), 'plugin', 'packer_compiled.vim'),
+  compile_path = join_paths(stdpath('config'), 'plugin', 'packer_compiled.lua'),
   plugin_package = 'packer',
   max_jobs = nil,
   auto_clean = true,
@@ -561,21 +561,38 @@ packer.compile = function(raw_args)
   manage_all_plugins()
   local args = parse_args(raw_args)
   local output_path = args.output_path or config.compile_path
+  local output_lua = vim.fn.fnamemodify(output_path, ':e') == 'lua'
   local should_profile = args.profile
   -- the user might explicitly choose for this value to be false in which case
   -- an or operator will not work
   if should_profile == nil then should_profile = config.profile.enable end
   refresh_configs(plugins)
   -- NOTE: we copy the plugins table so the in memory value is not mutated during compilation
-  local compiled_loader = compile(vim.deepcopy(plugins), should_profile)
+  local compiled_loader = compile(vim.deepcopy(plugins), output_lua, should_profile)
   output_path = vim.fn.expand(output_path)
   vim.fn.mkdir(vim.fn.fnamemodify(output_path, ":h"), 'p')
   local output_file = io.open(output_path, 'w')
   output_file:write(compiled_loader)
   output_file:close()
-  if config.auto_reload_compiled then vim.cmd("source " .. output_path) end
+  if config.auto_reload_compiled then vim.cmd('source ' .. output_path) end
   log.info('Finished compiling lazy-loaders!')
   packer.on_compile_done()
+
+  -- TODO: remove this after migration period (written 2021/06/28)
+  local old_output_path
+  if output_lua then
+    old_output_path = vim.fn.fnamemodify(output_path, ':r') .. '.vim'
+  else
+    old_output_path = vim.fn.fnamemodify(output_path, ':r') .. '.lua'
+  end
+
+  if vim.loop.fs_stat(old_output_path) then
+    os.remove(old_output_path)
+    log.warn('"' .. vim.fn.fnamemodify(old_output_path, ':~:.') .. '" was replaced by "'
+               .. vim.fn.fnamemodify(output_path, ':~:.') .. '"')
+    log.warn('If you have not updated Neovim since 2021/06/11 you must do so now')
+  end
+  -- TODO: end migration chunk (2021/07/02)
 end
 
 packer.profile_output = function()

@@ -20,6 +20,18 @@ packadd packer.nvim
 try
 ]]
 
+local feature_guard_lua = [[
+if vim.api.nvim_call_function('has', {'nvim-0.5'}) ~= 1 then
+  vim.api.nvim_command('echohl WarningMsg | echom "Invalid Neovim version for packer.nvim! | echohl None"')
+  return
+end
+
+vim.api.nvim_command('packadd packer.nvim')
+
+local no_errors = pcall(function()
+]]
+
+
 local catch_errors = [[
 catch
   echohl ErrorMsg
@@ -27,6 +39,14 @@ catch
   echom "Please check your config for correctness"
   echohl None
 endtry
+]]
+
+local catch_errors_lua = [[
+end)
+
+if not no_errors then
+  vim.api.nvim_command('echohl ErrorMsg | echom "Error in packer_compiled: ".v:exception | echom "Please check your config for correctness" | echohl None')
+end
 ]]
 
 ---@param should_profile boolean
@@ -218,7 +238,7 @@ local function detect_bufread(plugin_path)
   return false
 end
 
-local function make_loaders(_, plugins, should_profile)
+local function make_loaders(_, plugins, output_lua, should_profile)
   local loaders = {}
   local configs = {}
   local rtps = {}
@@ -567,9 +587,13 @@ local function make_loaders(_, plugins, should_profile)
   -- Output everything:
 
   -- First, the Lua code
-  local result = {'" Automatically generated packer.nvim plugin loader code\n'}
-  table.insert(result, feature_guard)
-  table.insert(result, 'lua << END')
+  local result = {(output_lua and '--' or '"')..' Automatically generated packer.nvim plugin loader code\n'}
+  if output_lua then
+	  table.insert(result, feature_guard_lua)
+  else
+	  table.insert(result, feature_guard)
+	  table.insert(result, 'lua << END')
+  end
   table.insert(result, profile_time(should_profile))
   table.insert(result, profile_output)
   timed_chunk(luarocks.generate_path_setup(), 'Luarocks path setup', result)
@@ -651,8 +675,12 @@ local function make_loaders(_, plugins, should_profile)
   end
 
   table.insert(result, conditionally_output_profile(config.threshold))
-  table.insert(result, 'END\n')
-  table.insert(result, catch_errors)
+  if output_lua then
+	  table.insert(result, catch_errors_lua)
+  else
+	  table.insert(result, 'END\n')
+	  table.insert(result, catch_errors)
+  end
   return table.concat(result, '\n')
 end
 
