@@ -38,7 +38,8 @@ local config_defaults = {
       revert = '-C %s reset --hard HEAD@{1}'
     },
     depth = 1,
-    clone_timeout = 60
+    clone_timeout = 60,
+    default_url_format = 'https://github.com/%s.git'
   },
   display = {
     non_interactive = false,

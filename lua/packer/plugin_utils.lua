@@ -26,7 +26,7 @@ plugin_utils.guess_type = function(plugin)
     plugin.type = plugin_utils.git_plugin_type
   else
     local path = table.concat(vim.split(plugin.path, "\\", true), "/")
-    plugin.url = 'https://github.com/' .. path
+    plugin.url = string.format(config.git.default_url_format, path)
     plugin.type = plugin_utils.git_plugin_type
   end
 end
