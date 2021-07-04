@@ -109,12 +109,12 @@ git.setup = function(plugin)
   end
 
   if plugin.branch or plugin.tag then
-    table.insert(install_cmd, '--branch')
-    table.insert(install_cmd, plugin.branch and plugin.branch or plugin.tag)
+    install_cmd[#install_cmd + 1] = '--branch'
+    install_cmd[#install_cmd + 1] = plugin.branch and plugin.branch or plugin.tag
   end
 
-  table.insert(install_cmd, plugin.url)
-  table.insert(install_cmd, install_to)
+  install_cmd[#install_cmd + 1] = plugin.url
+  install_cmd[#install_cmd + 1] = install_to
 
   local needs_checkout = plugin.tag ~= nil or plugin.commit ~= nil or plugin.branch ~= nil
 
