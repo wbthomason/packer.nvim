@@ -34,7 +34,7 @@ end
 if jit ~= nil then
   util.is_windows = jit.os == 'Windows'
 else
-  util.is_windows = package.config:sub(1,1) == '\\'
+  util.is_windows = package.config:sub(1, 1) == '\\'
 end
 
 util.get_separator = function()
@@ -103,9 +103,7 @@ util.float = function(opts)
   --- https://github.com/wbthomason/packer.nvim/pull/325#issuecomment-832874005
   --- ideally we should decide if the string argument passed to display openers is
   --- required or not
-  if type(opts) ~= "table" then
-    opts = {}
-  end
+  if type(opts) ~= "table" then opts = {} end
 
   opts = vim.tbl_deep_extend('force', {
     relative = 'editor',

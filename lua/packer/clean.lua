@@ -18,20 +18,15 @@ local function is_dirty(plugin, typ)
 end
 
 -- Find and remove any plugins not currently configured for use
-local clean_plugins = function(_, plugins, results)
+local clean_plugins = function(_, plugins, fs_state, results)
   return async(function()
+    log.debug('Starting clean')
     local dirty_plugins = {}
     results = results or {}
     results.removals = results.removals or {}
-    await(a.main)
-    local opt_plugins, start_plugins = plugin_utils.list_installed_plugins()
-    local missing_plugins = await(plugin_utils.find_missing_plugins(plugins))
-    -- turn the list into a hashset-like structure
-    for idx, plugin_name in ipairs(missing_plugins) do
-      missing_plugins[plugin_name] = true
-      missing_plugins[idx] = nil
-    end
-
+    local opt_plugins = vim.deepcopy(fs_state.opt)
+    local start_plugins = vim.deepcopy(fs_state.start)
+    local missing_plugins = fs_state.missing
     -- test for dirty / 'missing' plugins
     for _, plugin_config in pairs(plugins) do
       local path = plugin_config.install_path
@@ -45,17 +40,21 @@ local clean_plugins = function(_, plugins, results)
       end
 
       -- We don't want to report paths which don't exist for removal; that will confuse people
-      local is_installed = vim.loop.fs_stat(path) ~= nil
-      local plugin_missing = missing_plugins[plugin_config.short_name] and is_installed
-      local disabled_but_installed = is_installed and plugin_config.disable
+      local path_exists = false
+      if missing_plugins[plugin_config.short_name] or plugin_config.disable then
+        path_exists = vim.loop.fs_stat(path) ~= nil
+      end
+
+      local plugin_missing = path_exists and missing_plugins[plugin_config.short_name]
+      local disabled_but_installed = path_exists and plugin_config.disable
       if plugin_missing or is_dirty(plugin_config, plugin_source) or disabled_but_installed then
-        table.insert(dirty_plugins, path)
+        dirty_plugins[#dirty_plugins + 1] = path
       end
     end
 
     -- Any path which was not set to `nil` above will be set to dirty here
     local function mark_remaining_as_dirty(plugin_list)
-      for path, _ in pairs(plugin_list) do table.insert(dirty_plugins, path) end
+      for path, _ in pairs(plugin_list) do dirty_plugins[#dirty_plugins + 1] = path end
     end
 
     mark_remaining_as_dirty(opt_plugins)
@@ -67,6 +66,7 @@ local clean_plugins = function(_, plugins, results)
       if await(display.ask_user('Removing the following directories. OK? (y/N)', lines)) then
         results.removals = dirty_plugins
         log.debug('Removed ' .. vim.inspect(dirty_plugins))
+        -- TODO: Maybe use LUV functions directly rather than os.execute
         if util.is_windows then
           for _, path in ipairs(dirty_plugins) do os.execute('cmd /C rmdir /S /Q ' .. path) end
         else
