@@ -38,7 +38,8 @@ local config_defaults = {
       revert = '-C %s reset --hard HEAD@{1}'
     },
     depth = 1,
-    clone_timeout = 60
+    clone_timeout = 60,
+    default_url_format = 'https://github.com/%s.git'
   },
   display = {
     non_interactive = false,
@@ -133,7 +134,7 @@ end
 --- Add a Luarocks package to be managed
 packer.use_rocks = function(rock)
   if type(rock) == 'string' then rock = {rock} end
-  if not vim.tbl_islist(rock) and type(rock[1]) == "string" then
+  if not vim.tbl_islist(rock) and type(rock[1]) == 'string' then
     rocks[rock[1]] = rock
   else
     for _, r in ipairs(rock) do
@@ -267,6 +268,8 @@ packer.use = function(plugin_spec)
 end
 
 local function manage_all_plugins()
+  local log = require_and_configure('log')
+  log.debug('Processing plugin specs')
   if plugins == nil or next(plugins) == nil then
     for _, spec in ipairs(plugin_specifications) do manage(spec) end
   end
@@ -283,6 +286,7 @@ packer.on_compile_done = function() vim.cmd [[doautocmd User PackerCompileDone]]
 --- Clean operation:
 -- Finds plugins present in the `packer` package but not in the managed set
 packer.clean = function(results)
+  local plugin_utils = require_and_configure('plugin_utils')
   local a = require('packer.async')
   local async = a.sync
   local await = a.wait
@@ -294,7 +298,8 @@ packer.clean = function(results)
   async(function()
     local luarocks_clean_task = luarocks.clean(rocks, results, nil)
     if luarocks_clean_task ~= nil then await(luarocks_clean_task) end
-    await(clean(plugins, results))
+    local fs_state = await(plugin_utils.get_fs_state(plugins))
+    await(clean(plugins, fs_state, results))
     packer.on_complete()
   end)()
 end
@@ -306,8 +311,9 @@ local function args_or_all(...) return util.nonempty_or({...}, vim.tbl_keys(plug
 -- managed plugins.
 -- Installs missing plugins, then updates helptags and rplugins
 packer.install = function(...)
-  local plugin_utils = require_and_configure('plugin_utils')
   local log = require_and_configure('log')
+  log.debug('packer.install: requiring modules')
+  local plugin_utils = require_and_configure('plugin_utils')
   local a = require('packer.async')
   local async = a.sync
   local await = a.wait
@@ -320,10 +326,8 @@ packer.install = function(...)
   local install_plugins
   if ... then install_plugins = {...} end
   async(function()
-    if not install_plugins then
-      install_plugins = await(plugin_utils.find_missing_plugins(plugins))
-    end
-
+    local fs_state = await(plugin_utils.get_fs_state(plugins))
+    if not install_plugins then install_plugins = vim.tbl_keys(fs_state.missing) end
     if #install_plugins == 0 then
       log.info('All configured plugins are installed')
       packer.on_complete()
@@ -333,14 +337,17 @@ packer.install = function(...)
     await(a.main)
     local start_time = vim.fn.reltime()
     local results = {}
-    await(clean(plugins, results))
+    await(clean(plugins, fs_state, results))
     await(a.main)
+    log.debug('Gathering install tasks')
     local tasks, display_win = install(plugins, install_plugins, results)
     if next(tasks) then
+      log.debug('Gathering Luarocks tasks')
       local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
       if luarocks_ensure_task ~= nil then table.insert(tasks, luarocks_ensure_task) end
       table.insert(tasks, 1, function() return not display.status.running end)
       table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
+      log.debug('Running tasks')
       display_win:update_headline_message('installing ' .. #tasks - 2 .. ' / ' .. #tasks - 2
                                             .. ' plugins')
       a.interruptible_wait_pool(unpack(tasks))
@@ -368,8 +375,9 @@ end
 -- Fixes plugin types, installs missing plugins, then updates installed plugins and updates helptags
 -- and rplugins
 packer.update = function(...)
+  local log = require_and_configure('log')
+  log.debug('packer.update: requiring modules')
   local plugin_utils = require_and_configure('plugin_utils')
-  require_and_configure('log')
   local a = require('packer.async')
   local async = a.sync
   local await = a.wait
@@ -385,26 +393,29 @@ packer.update = function(...)
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
-    await(clean(plugins, results))
-    local missing = await(plugin_utils.find_missing_plugins(plugins))
-    local missing_plugins, installed_plugins = util.partition(missing, update_plugins)
-
-    await(a.main)
-    update.fix_plugin_types(plugins, missing_plugins, results)
+    local fs_state = await(plugin_utils.get_fs_state(plugins))
+    local missing_plugins, installed_plugins = util.partition(vim.tbl_keys(fs_state.missing),
+                                                              update_plugins)
+    update.fix_plugin_types(plugins, missing_plugins, results, fs_state)
+    await(clean(plugins, fs_state, results))
     local _
     _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)
+    log.debug('Gathering install tasks')
     await(a.main)
     local tasks, display_win = install(plugins, missing_plugins, results)
     local update_tasks
+    log.debug('Gathering update tasks')
     await(a.main)
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
+    log.debug('Gathering luarocks tasks')
     local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
     if luarocks_ensure_task ~= nil then table.insert(tasks, luarocks_ensure_task) end
     table.insert(tasks, 1, function() return not display.status.running end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     display_win:update_headline_message('updating ' .. #tasks - 2 .. ' / ' .. #tasks - 2
                                           .. ' plugins')
+    log.debug('Running tasks')
     a.interruptible_wait_pool(unpack(tasks))
     local install_paths = {}
     for plugin_name, r in pairs(results.installs) do
@@ -433,8 +444,9 @@ end
 --  - Install missing plugins and update installed plugins
 --  - Update helptags and rplugins
 packer.sync = function(...)
+  local log = require_and_configure('log')
+  log.debug('packer.sync: requiring modules')
   local plugin_utils = require_and_configure('plugin_utils')
-  require_and_configure('log')
   local a = require('packer.async')
   local async = a.sync
   local await = a.wait
@@ -443,36 +455,42 @@ packer.sync = function(...)
   local install = require_and_configure('install')
   local display = require_and_configure('display')
   local update = require_and_configure('update')
+
   manage_all_plugins()
 
   local sync_plugins = args_or_all(...)
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
-    local r = await(plugin_utils.find_missing_plugins(plugins))
-    local missing_plugins, installed_plugins = util.partition(r or {}, sync_plugins)
+    local fs_state = await(plugin_utils.get_fs_state(plugins))
+    local missing_plugins, installed_plugins = util.partition(vim.tbl_keys(fs_state.missing),
+                                                              sync_plugins)
 
     await(a.main)
-    update.fix_plugin_types(plugins, missing_plugins, results)
+    update.fix_plugin_types(plugins, missing_plugins, results, fs_state)
     local _
     _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)
     if config.auto_clean then
-      await(clean(plugins, results))
+      await(clean(plugins, fs_state, results))
       _, installed_plugins = util.partition(vim.tbl_keys(results.removals), installed_plugins)
     end
 
     await(a.main)
+    log.debug('Gathering install tasks')
     local tasks, display_win = install(plugins, missing_plugins, results)
     local update_tasks
+    log.debug('Gathering update tasks')
     await(a.main)
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
+    log.debug('Gathering luarocks tasks')
     local luarocks_clean_task = luarocks.clean(rocks, results, display_win)
     if luarocks_clean_task ~= nil then table.insert(tasks, luarocks_clean_task) end
     local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
     if luarocks_ensure_task ~= nil then table.insert(tasks, luarocks_ensure_task) end
     table.insert(tasks, 1, function() return not display.status.running end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
+    log.debug('Running tasks')
     display_win:update_headline_message(
       'syncing ' .. #tasks - 2 .. ' / ' .. #tasks - 2 .. ' plugins')
     a.interruptible_wait_pool(unpack(tasks))
@@ -486,7 +504,6 @@ packer.sync = function(...)
     end
 
     await(a.main)
-
     if config.compile_on_sync then packer.compile() end
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()

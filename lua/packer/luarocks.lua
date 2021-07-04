@@ -70,17 +70,15 @@ local function hererocks_installer(disp)
     }
 
     local opts = {capture_output = callbacks}
-    local r = await(jobs.run(hererocks_cmd, opts)):map_err(
-                function(err)
-        return {msg = 'Error installing hererocks', data = err, output = output}
-      end)
+    local r = await(jobs.run(hererocks_cmd, opts)):map_err(function(err)
+      return {msg = 'Error installing hererocks', data = err, output = output}
+    end)
 
     local luarocks_cmd = config.python_cmd .. ' ' .. hererocks_file .. ' --verbose -j '
                            .. lua_version.jit .. ' -r latest ' .. hererocks_install_dir
-    r:and_then(await, jobs.run(luarocks_cmd, opts)):map_ok(
-      function()
-        if disp then disp:task_succeeded('luarocks-hererocks', 'installed hererocks!') end
-      end):map_err(function(err)
+    r:and_then(await, jobs.run(luarocks_cmd, opts)):map_ok(function()
+      if disp then disp:task_succeeded('luarocks-hererocks', 'installed hererocks!') end
+    end):map_err(function(err)
       if disp then disp:task_failed('luarocks-hererocks', 'failed to install hererocks!') end
       log.error('Failed to install hererocks: ' .. vim.inspect(err))
       return {msg = 'Error installing luarocks', data = err, output = output}
@@ -254,8 +252,8 @@ local function luarocks_list(disp)
       local results = {}
       local output = chunk_output(data.output.data.stdout)
       for _, line in ipairs(output) do
-        for l_package, version, status, install_path in
-          string.gmatch(line, "([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)") do
+        for l_package, version, status, install_path in string.gmatch(line,
+                                                                      "([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)") do
           table.insert(results, {
             name = l_package,
             version = version,
@@ -326,7 +324,7 @@ local function uninstall_sync(packages)
   return async(function() return await(uninstall_packages(packages)) end)()
 end
 
-local function clean_packages(rocks, results, disp)
+local function clean_rocks(rocks, results, disp)
   return async(function()
     local r = result.ok()
     if not hererocks_is_setup() then return r end
@@ -403,7 +401,7 @@ local function clean_packages(rocks, results, disp)
   end)
 end
 
-local function ensure_packages(rocks, results, disp)
+local function ensure_rocks(rocks, results, disp)
   return async(function()
     local to_install = {}
     for _, rock in pairs(rocks) do
@@ -490,9 +488,9 @@ return {
   install_hererocks = hererocks_installer,
   setup_paths = setup_nvim_paths,
   uninstall = uninstall_sync,
-  clean = clean_packages,
+  clean = clean_rocks,
   install = install_sync,
-  ensure = ensure_packages,
+  ensure = ensure_rocks,
   generate_path_setup = generate_path_setup_code,
   cfg = cfg
 }

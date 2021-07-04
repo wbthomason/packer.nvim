@@ -126,7 +126,8 @@ log.new = function(config, standalone)
         return
       end
 
-      local str = string.format("[%-6s%s] %s: %s\n", nameupper, os.date(), lineinfo, msg)
+      local str = string.format("[%-6s%s %s] %s: %s\n", nameupper, os.date(), vim.loop.hrtime(),
+                                lineinfo, msg)
       fp:write(str)
       fp:close()
     end
