@@ -31,7 +31,6 @@ vim.api.nvim_command('packadd packer.nvim')
 local no_errors = pcall(function()
 ]]
 
-
 local catch_errors = [[
 catch
   echohl ErrorMsg
@@ -236,6 +235,13 @@ local function detect_bufread(plugin_path)
   local path = plugin_path
   for i = 1, 4 do if #vim.fn.finddir(source_dirs[i], path) > 0 then return true end end
   return false
+end
+
+local function generate_checked_command(command_name, plugin_names)
+  local command_creation = fmt(
+                             'vim.cmd [[command! -nargs=* -range -bang -complete=file %s lua require("packer.load")({%s}, { cmd = "%s", l1 = <line1>, l2 = <line2>, bang = <q-bang>, args = <q-args> }, _G.packer_plugins)]]',
+                             command_name, table.concat(plugin_names, ', '), command_name)
+  return {fmt('if vim.fn.exists(":%s") == 0 then', command_name), command_creation, 'end'}
 end
 
 local function make_loaders(_, plugins, output_lua, should_profile)
@@ -480,10 +486,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
 
   local command_defs = {}
   for command, names in pairs(commands) do
-    local command_line = fmt(
-                           'vim.cmd [[command! -nargs=* -range -bang -complete=file %s lua require("packer.load")({%s}, { cmd = "%s", l1 = <line1>, l2 = <line2>, bang = <q-bang>, args = <q-args> }, _G.packer_plugins)]]',
-                           command, table.concat(names, ', '), command)
-    table.insert(command_defs, command_line)
+    vim.list_extend(command_defs, generate_checked_command(command, names))
   end
 
   local keymap_defs = {}
@@ -587,12 +590,14 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   -- Output everything:
 
   -- First, the Lua code
-  local result = {(output_lua and '--' or '"')..' Automatically generated packer.nvim plugin loader code\n'}
+  local result = {
+    (output_lua and '--' or '"') .. ' Automatically generated packer.nvim plugin loader code\n'
+  }
   if output_lua then
-	  table.insert(result, feature_guard_lua)
+    table.insert(result, feature_guard_lua)
   else
-	  table.insert(result, feature_guard)
-	  table.insert(result, 'lua << END')
+    table.insert(result, feature_guard)
+    table.insert(result, 'lua << END')
   end
   table.insert(result, profile_time(should_profile))
   table.insert(result, profile_output)
@@ -676,10 +681,10 @@ local function make_loaders(_, plugins, output_lua, should_profile)
 
   table.insert(result, conditionally_output_profile(config.threshold))
   if output_lua then
-	  table.insert(result, catch_errors_lua)
+    table.insert(result, catch_errors_lua)
   else
-	  table.insert(result, 'END\n')
-	  table.insert(result, catch_errors)
+    table.insert(result, 'END\n')
+    table.insert(result, catch_errors)
   end
   return table.concat(result, '\n')
 end
