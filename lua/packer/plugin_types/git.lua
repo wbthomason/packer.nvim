@@ -28,7 +28,7 @@ local handle_checkouts = function(plugin, dest, disp)
       stderr = jobs.logging_callback(output.err.stderr, output.data.stderr)
     }
 
-    local opts = {capture_output = callbacks}
+    local opts = {capture_output = callbacks, cwd = dest}
 
     local r = result.ok()
 
@@ -39,7 +39,7 @@ local handle_checkouts = function(plugin, dest, disp)
                                           plugin.branch and 'branch' or 'tag', branch_or_tag))
       end
       r:and_then(await, jobs.run(
-                   config.exec_cmd .. fmt(config.subcommands.checkout, dest, branch_or_tag), opts))
+                   config.exec_cmd .. fmt(config.subcommands.checkout, branch_or_tag), opts))
         :map_err(function(err)
           return {
             msg = fmt('Error checking out %s %s for %s', plugin.branch and 'branch' or 'tag',
@@ -55,7 +55,7 @@ local handle_checkouts = function(plugin, dest, disp)
         disp:task_update(plugin_name, fmt('checking out %s...', plugin.commit))
       end
       r:and_then(await, jobs.run(
-                   config.exec_cmd .. fmt(config.subcommands.checkout, dest, plugin.commit), opts))
+                   config.exec_cmd .. fmt(config.subcommands.checkout, plugin.commit), opts))
         :map_err(function(err)
           return {
             msg = fmt('Error checking out commit %s for %s', plugin.commit, plugin_name),
@@ -87,23 +87,23 @@ git.setup = function(plugin)
                         .. fmt(config.subcommands.install,
                                plugin.commit and 999999 or config.depth), '%s+')
 
-  local submodule_cmd = config.exec_cmd .. fmt(config.subcommands.submodules, install_to)
-  local rev_cmd = config.exec_cmd .. fmt(config.subcommands.get_rev, install_to)
+  local submodule_cmd = config.exec_cmd .. config.subcommands.submodules
+  local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
   local update_cmd = config.exec_cmd
   if plugin.commit or plugin.tag then
-    update_cmd = update_cmd .. fmt(config.subcommands.fetch, install_to)
+    update_cmd = update_cmd .. config.subcommands.fetch
   else
-    update_cmd = update_cmd .. fmt(config.subcommands.update, install_to)
+    update_cmd = update_cmd .. config.subcommands.update
   end
 
-  local branch_cmd = config.exec_cmd .. fmt(config.subcommands.current_branch, install_to)
+  local branch_cmd = config.exec_cmd .. config.subcommands.current_branch
   local commit_cmd =
-    vim.split(config.exec_cmd .. fmt(config.subcommands.get_msg, install_to), '%s+')
+    vim.split(config.exec_cmd .. config.subcommands.get_msg, '%s+')
   for i, arg in ipairs(commit_cmd) do
     commit_cmd[i] = string.gsub(arg, 'FMT', config.subcommands.diff_fmt)
   end
 
-  local messages_cmd = vim.split(config.exec_cmd .. fmt(config.subcommands.diff, install_to), '%s+')
+  local messages_cmd = vim.split(config.exec_cmd .. config.subcommands.diff, '%s+')
   for i, arg in ipairs(messages_cmd) do
     messages_cmd[i] = string.gsub(arg, 'FMT', config.subcommands.diff_fmt)
   end
@@ -143,14 +143,16 @@ git.setup = function(plugin)
 
     return async(function()
       disp:task_update(plugin_name, 'cloning...')
-      local r = await(jobs.run(install_cmd, installer_opts)):and_then(await, jobs.run(submodule_cmd,
-                                                                                      installer_opts))
+      local r = await(jobs.run(install_cmd, installer_opts))
+
+      installer_opts.options.cwd = install_to
+      r:and_then(await, jobs.run(submodule_cmd, installer_opts))
 
       if plugin.commit then
         disp:task_update(plugin_name, fmt('checking out %s...', plugin.commit))
         r:and_then(await,
                    jobs.run(
-                     config.exec_cmd .. fmt(config.subcommands.checkout, install_to, plugin.commit),
+                     config.exec_cmd .. fmt(config.subcommands.checkout, plugin.commit),
                      installer_opts)):map_err(function(err)
           return {
             msg = fmt('Error checking out commit %s for %s', plugin.commit, plugin_name),
@@ -195,7 +197,7 @@ git.setup = function(plugin)
       local rev_callbacks = {stdout = rev_onread, stderr = rev_onread}
       disp:task_update(plugin_name, 'checking current commit...')
       local r =
-        await(jobs.run(rev_cmd, {success_test = exit_ok, capture_output = rev_callbacks})):map_err(
+        await(jobs.run(rev_cmd, {success_test = exit_ok, capture_output = rev_callbacks, cwd = install_to})):map_err(
           function(err)
             plugin.output = {err = vim.list_extend(update_info.err, update_info.revs), data = {}}
 
@@ -208,7 +210,7 @@ git.setup = function(plugin)
 
       local current_branch
       disp:task_update(plugin_name, 'checking current branch...')
-      r:and_then(await, jobs.run(branch_cmd, {success_test = exit_ok, capture_output = true}))
+      r:and_then(await, jobs.run(branch_cmd, {success_test = exit_ok, capture_output = true, cwd = install_to}))
         :map_ok(function(ok) current_branch = ok.output.data.stdout[1] end):map_err(function(err)
           plugin.output = {err = vim.list_extend(update_info.err, update_info.revs), data = {}}
 
@@ -268,9 +270,9 @@ git.setup = function(plugin)
 
       disp:task_update(plugin_name, 'pulling updates...')
       r:and_then(await,
-                 jobs.run(update_cmd, {success_test = exit_ok, capture_output = update_callbacks}))
+                 jobs.run(update_cmd, {success_test = exit_ok, capture_output = update_callbacks, cwd = install_to}))
         :and_then(await, jobs.run(submodule_cmd,
-                                  {success_test = exit_ok, capture_output = update_callbacks}))
+                                  {success_test = exit_ok, capture_output = update_callbacks, cwd = install_to}))
         :map_err(function(err)
           plugin.output = {err = vim.list_extend(update_info.err, update_info.output), data = {}}
 
@@ -282,7 +284,7 @@ git.setup = function(plugin)
         end)
 
       disp:task_update(plugin_name, 'checking updated commit...')
-      r:and_then(await, jobs.run(rev_cmd, {success_test = exit_ok, capture_output = rev_callbacks}))
+      r:and_then(await, jobs.run(rev_cmd, {success_test = exit_ok, capture_output = rev_callbacks, cwd = install_to}))
         :map_err(function(err)
           plugin.output = {err = vim.list_extend(update_info.err, update_info.revs), data = {}}
           return {
@@ -298,7 +300,7 @@ git.setup = function(plugin)
           local messages_callbacks = {stdout = messages_onread, stderr = messages_onread}
           disp:task_update(plugin_name, 'getting commit messages...')
           r:and_then(await, jobs.run(messages_cmd,
-                                     {success_test = exit_ok, capture_output = messages_callbacks}))
+                                     {success_test = exit_ok, capture_output = messages_callbacks, cwd = install_to}))
 
           plugin.output = {err = update_info.err, data = update_info.output}
           if r.ok then
@@ -320,11 +322,11 @@ git.setup = function(plugin)
 
   plugin.diff = function(commit, callback)
     async(function()
-      local diff_cmd = config.exec_cmd .. fmt(config.subcommands.git_diff_fmt, install_to, commit)
+      local diff_cmd = config.exec_cmd .. fmt(config.subcommands.git_diff_fmt, commit)
       local diff_info = {err = {}, output = {}, messages = {}}
       local diff_onread = jobs.logging_callback(diff_info.err, diff_info.messages)
       local diff_callbacks = {stdout = diff_onread, stderr = diff_onread}
-      return await(jobs.run(diff_cmd, {capture_output = diff_callbacks})):map_ok(function(_)
+      return await(jobs.run(diff_cmd, {capture_output = diff_callbacks, cwd = install_to})):map_ok(function(_)
         return callback(diff_info.messages)
       end):map_err(function(err) return callback(nil, err) end)
     end)()
@@ -333,8 +335,8 @@ git.setup = function(plugin)
   plugin.revert_last = function()
     local r = result.ok()
     async(function()
-      local revert_cmd = config.exec_cmd .. fmt(config.subcommands.revert, install_to)
-      r:and_then(await, jobs.run(revert_cmd, {capture_output = true}))
+      local revert_cmd = config.exec_cmd .. config.subcommands.revert
+      r:and_then(await, jobs.run(revert_cmd, {capture_output = true, cwd = install_to}))
       if needs_checkout then r:and_then(await, handle_checkouts(plugin, install_to, nil)) end
       return r
     end)()
