@@ -83,9 +83,10 @@ end
 git.setup = function(plugin)
   local plugin_name = util.get_plugin_full_name(plugin)
   local install_to = plugin.install_path
-  local install_cmd = config.exec_cmd
-                        .. fmt(config.subcommands.install, plugin.url, install_to,
-                               plugin.commit and 999999 or config.depth)
+  local install_cmd = vim.split(config.exec_cmd
+                        .. fmt(config.subcommands.install,
+                               plugin.commit and 999999 or config.depth), '%s+')
+
   local submodule_cmd = config.exec_cmd .. fmt(config.subcommands.submodules, install_to)
   local rev_cmd = config.exec_cmd .. fmt(config.subcommands.get_rev, install_to)
   local update_cmd = config.exec_cmd
@@ -108,8 +109,12 @@ git.setup = function(plugin)
   end
 
   if plugin.branch or plugin.tag then
-    install_cmd = fmt('%s --branch %s', install_cmd, plugin.branch and plugin.branch or plugin.tag)
+    install_cmd[#install_cmd + 1] = '--branch'
+    install_cmd[#install_cmd + 1] = plugin.branch and plugin.branch or plugin.tag
   end
+
+  install_cmd[#install_cmd + 1] = plugin.url
+  install_cmd[#install_cmd + 1] = install_to
 
   local needs_checkout = plugin.tag ~= nil or plugin.commit ~= nil or plugin.branch ~= nil
 
