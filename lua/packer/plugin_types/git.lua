@@ -145,7 +145,7 @@ git.setup = function(plugin)
       disp:task_update(plugin_name, 'cloning...')
       local r = await(jobs.run(install_cmd, installer_opts))
 
-      installer_opts.options.cwd = install_to
+      installer_opts.cwd = install_to
       r:and_then(await, jobs.run(submodule_cmd, installer_opts))
 
       if plugin.commit then
