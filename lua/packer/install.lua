@@ -1,8 +1,8 @@
-local a = require('packer.async')
-local log = require('packer.log')
-local util = require('packer.util')
-local display = require('packer.display')
-local plugin_utils = require('packer.plugin_utils')
+local a = require 'packer.async'
+local log = require 'packer.log'
+local util = require 'packer.util'
+local display = require 'packer.display'
+local plugin_utils = require 'packer.plugin_utils'
 
 local fmt = string.format
 local async = a.sync
@@ -49,8 +49,10 @@ local function do_install(_, plugins, missing_plugins, results)
   return tasks, display_win
 end
 
-local function cfg(_config) config = _config end
+local function cfg(_config)
+  config = _config
+end
 
-local install = setmetatable({cfg = cfg}, {__call = do_install})
+local install = setmetatable({ cfg = cfg }, { __call = do_install })
 
 return install

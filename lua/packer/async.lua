@@ -1,5 +1,5 @@
 -- Adapted from https://ms-jpq.github.io/neovim-async-tutorial/
-local log = require('packer.log')
+local log = require 'packer.log'
 local yield = coroutine.yield
 local resume = coroutine.resume
 local thread_create = coroutine.create
@@ -27,7 +27,7 @@ end
 
 local function wrap(func)
   return function(...)
-    local params = {...}
+    local params = { ... }
     return function(tick)
       params[#params + 1] = tick
       return func(unpack(params))
@@ -36,14 +36,16 @@ local function wrap(func)
 end
 
 local function join(...)
-  local thunks = {...}
+  local thunks = { ... }
   local thunk_all = function(s)
-    if #thunks == 0 then return s() end
+    if #thunks == 0 then
+      return s()
+    end
     local to_go = #thunks
     local results = {}
     for i, thunk in ipairs(thunks) do
       local callback = function(...)
-        results[i] = {...}
+        results[i] = { ... }
         if to_go == 1 then
           s(unpack(results))
         else
@@ -58,20 +60,24 @@ local function join(...)
   return thunk_all
 end
 
-local function wait_all(...) return yield(join(...)) end
+local function wait_all(...)
+  return yield(join(...))
+end
 
 local function pool(n, interrupt_check, ...)
-  local thunks = {...}
+  local thunks = { ... }
   return function(s)
-    if #thunks == 0 then return s() end
-    local remaining = {select(n + 1, unpack(thunks))}
+    if #thunks == 0 then
+      return s()
+    end
+    local remaining = { select(n + 1, unpack(thunks)) }
     local results = {}
     local to_go = #thunks
     local make_callback = nil
     make_callback = function(idx, left)
       local i = (left == nil) and idx or (idx + left)
       return function(...)
-        results[i] = {...}
+        results[i] = { ... }
         to_go = to_go - 1
         if to_go == 0 then
           s(unpack(results))
@@ -91,13 +97,17 @@ local function pool(n, interrupt_check, ...)
   end
 end
 
-local function wait_pool(limit, ...) return yield(pool(limit, false, ...)) end
+local function wait_pool(limit, ...)
+  return yield(pool(limit, false, ...))
+end
 
 local function interruptible_wait_pool(limit, interrupt_check, ...)
   return yield(pool(limit, interrupt_check, ...))
 end
 
-local function main(f) vim.schedule(f) end
+local function main(f)
+  vim.schedule(f)
+end
 
 local M = {
   --- Wrapper for functions that do not take a callback to make async functions
@@ -116,7 +126,7 @@ local M = {
   wrap = wrap,
   --- Convenience function to ensure a function runs on the main "thread" (i.e. for functions which
   --  use Neovim functions, etc.)
-  main = main
+  main = main,
 }
 
 return M

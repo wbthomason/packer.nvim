@@ -8,8 +8,7 @@ packer_load = function(names, cause, plugins)
   for i = 1, num_names do
     local plugin = plugins[names[i]]
     if not plugin then
-      local err_message = 'Error: attempted to load ' .. names[i]
-                            .. ' which is not present in plugins table!'
+      local err_message = 'Error: attempted to load ' .. names[i] .. ' which is not present in plugins table!'
       print(err_message)
       error(err_message)
     end
@@ -21,15 +20,21 @@ packer_load = function(names, cause, plugins)
       some_unloaded = true
       needs_bufread = needs_bufread or plugin.needs_bufread
       if plugin.wants then
-        for _, wanted_name in ipairs(plugin.wants) do packer_load({wanted_name}, {}, plugins) end
+        for _, wanted_name in ipairs(plugin.wants) do
+          packer_load({ wanted_name }, {}, plugins)
+        end
       end
 
       if plugin.commands then
-        for _, del_cmd in ipairs(plugin.commands) do cmd('silent! delcommand ' .. del_cmd) end
+        for _, del_cmd in ipairs(plugin.commands) do
+          cmd('silent! delcommand ' .. del_cmd)
+        end
       end
 
       if plugin.keys then
-        for _, key in ipairs(plugin.keys) do cmd(fmt('silent! %sunmap %s', key[1], key[2])) end
+        for _, key in ipairs(plugin.keys) do
+          cmd(fmt('silent! %sunmap %s', key[1], key[2]))
+        end
       end
 
       cmd('packadd ' .. names[i])
@@ -54,15 +59,19 @@ packer_load = function(names, cause, plugins)
           local after_plugin = plugins[after_name]
           after_plugin.load_after[names[i]] = nil
           if next(after_plugin.load_after) == nil then
-            packer_load({after_name}, {}, plugins)
+            packer_load({ after_name }, {}, plugins)
           end
         end
       end
     end
   end
 
-  if not some_unloaded then return end
-  if needs_bufread then cmd('doautocmd BufRead') end
+  if not some_unloaded then
+    return
+  end
+  if needs_bufread then
+    cmd 'doautocmd BufRead'
+  end
   if cause.cmd then
     local lines = cause.l1 == cause.l2 and '' or (cause.l1 .. ',' .. cause.l2)
     vim.cmd(fmt('%s%s%s %s', lines, cause.cmd, cause.bang, cause.args))
@@ -70,15 +79,19 @@ packer_load = function(names, cause, plugins)
     local extra = ''
     while true do
       local c = vim.fn.getchar(0)
-      if c == 0 then break end
+      if c == 0 then
+        break
+      end
       extra = extra .. vim.fn.nr2char(c)
     end
 
     if cause.prefix then
       local prefix = vim.v.count ~= 0 and vim.v.count or ''
       prefix = prefix .. '"' .. vim.v.register .. cause.prefix
-      if vim.fn.mode('full') == 'no' then
-        if vim.v.operator == 'c' then prefix = '' .. prefix end
+      if vim.fn.mode 'full' == 'no' then
+        if vim.v.operator == 'c' then
+          prefix = '' .. prefix
+        end
         prefix = prefix .. vim.v.operator
       end
 
@@ -98,10 +111,10 @@ end
 local function load_wrapper(names, cause, plugins)
   local success, err_msg = pcall(packer_load, names, cause, plugins)
   if not success then
-    vim.cmd('echohl ErrorMsg')
+    vim.cmd 'echohl ErrorMsg'
     vim.cmd('echomsg "Error in packer_compiled: ' .. vim.fn.escape(err_msg, '"') .. '"')
-    vim.cmd('echomsg "Please check your config for correctness"')
-    vim.cmd('echohl None')
+    vim.cmd 'echomsg "Please check your config for correctness"'
+    vim.cmd 'echohl None'
   end
 end
 

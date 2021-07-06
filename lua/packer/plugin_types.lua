@@ -9,7 +9,8 @@ local plugin_types = setmetatable({ cfg = cfg }, {
     local v = require('packer.plugin_types.' .. k)
     v.cfg(config)
     self[k] = v
-    return v end,
+    return v
+  end,
 })
 
 return plugin_types

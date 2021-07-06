@@ -56,7 +56,7 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 - Support for local plugins
 
 ## Requirements
-- You need to be running Neovim v0.5.0+; `packer` makes use of extmarks and other newly-added Neovim
+- **You need to be running Neovim v0.5.0+**; `packer` makes use of extmarks and other newly-added Neovim
   features.
 - If you are on Windows 10, you need developer mode enabled in order to use local plugins (creating
   symbolic links requires admin privileges on Windows - credit to @TimUntersberger for this note)
