@@ -2,16 +2,20 @@ local util = {}
 
 util.map = function(func, seq)
   local result = {}
-  for _, v in ipairs(seq) do table.insert(result, func(v)) end
+  for _, v in ipairs(seq) do
+    table.insert(result, func(v))
+  end
 
   return result
 end
 
 util.partition = function(sub, seq)
   local sub_vals = {}
-  for _, val in ipairs(sub) do sub_vals[val] = true end
+  for _, val in ipairs(sub) do
+    sub_vals[val] = true
+  end
 
-  local result = {{}, {}}
+  local result = { {}, {} }
   for _, val in ipairs(seq) do
     if sub_vals[val] then
       table.insert(result[1], val)
@@ -38,13 +42,15 @@ else
 end
 
 util.get_separator = function()
-  if util.is_windows then return '\\' end
+  if util.is_windows then
+    return '\\'
+  end
   return '/'
 end
 
 util.join_paths = function(...)
   local separator = util.get_separator()
-  return table.concat({...}, separator)
+  return table.concat({ ... }, separator)
 end
 
 util.get_plugin_full_name = function(plugin)
@@ -54,7 +60,9 @@ util.get_plugin_full_name = function(plugin)
     plugin_name = plugin_name .. '/' .. plugin.branch
   end
 
-  if plugin.rev then plugin_name = plugin_name .. '@' .. plugin.rev end
+  if plugin.rev then
+    plugin_name = plugin_name .. '@' .. plugin.rev
+  end
 
   return plugin_name
 end
@@ -75,7 +83,7 @@ util.deep_extend = function(policy, ...)
     end
   end
 
-  for _, t in ipairs({...}) do
+  for _, t in ipairs { ... } do
     for k, v in pairs(t) do
       if result[k] ~= nil then
         result[k] = helper(policy, k, result[k], v)
@@ -103,7 +111,9 @@ util.float = function(opts)
   --- https://github.com/wbthomason/packer.nvim/pull/325#issuecomment-832874005
   --- ideally we should decide if the string argument passed to display openers is
   --- required or not
-  if type(opts) ~= "table" then opts = {} end
+  if type(opts) ~= 'table' then
+    opts = {}
+  end
 
   opts = vim.tbl_deep_extend('force', {
     relative = 'editor',
@@ -112,7 +122,7 @@ util.float = function(opts)
     width = width,
     height = height,
     col = left,
-    row = top
+    row = top,
   }, opts or {})
 
   local buf = vim.api.nvim_create_buf(false, true)
@@ -123,7 +133,7 @@ util.float = function(opts)
     vim.api.nvim_win_set_cursor(last_win, last_pos)
   end
 
-  vim.cmd('autocmd! BufWipeout <buffer> lua __packer_restore_cursor()')
+  vim.cmd 'autocmd! BufWipeout <buffer> lua __packer_restore_cursor()'
 
   return true, win, buf
 end

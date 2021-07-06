@@ -20,20 +20,23 @@ local default_config = {
   use_file = true,
 
   -- Any messages above this level will be logged.
-  level = "debug",
+  level = 'debug',
 
   -- Level configuration
   modes = {
-    {name = "trace", hl = "Comment"}, {name = "debug", hl = "Comment"},
-    {name = "info", hl = "None"}, {name = "warn", hl = "WarningMsg"},
-    {name = "error", hl = "ErrorMsg"}, {name = "fatal", hl = "ErrorMsg"}
+    { name = 'trace', hl = 'Comment' },
+    { name = 'debug', hl = 'Comment' },
+    { name = 'info', hl = 'None' },
+    { name = 'warn', hl = 'WarningMsg' },
+    { name = 'error', hl = 'ErrorMsg' },
+    { name = 'fatal', hl = 'ErrorMsg' },
   },
 
   -- Which levels should be printed?
-  console_levels = {[3] = true, [4] = true, [5] = true, [6] = true},
+  console_levels = { [3] = true, [4] = true, [5] = true, [6] = true },
 
   -- Can limit the number of decimals displayed for floats
-  float_precision = 0.01
+  float_precision = 0.01,
 }
 
 -- {{{ NO NEED TO CHANGE
@@ -41,18 +44,22 @@ local log = {}
 
 local unpack = unpack or table.unpack
 
-local level_ids = {trace = 1, debug = 2, info = 3, warn = 4, error = 5, fatal = 6}
+local level_ids = { trace = 1, debug = 2, info = 3, warn = 4, error = 5, fatal = 6 }
 log.cfg = function(_config)
   local print_level = level_ids[_config.log.level]
-  local config = {console_levels = {}}
-  if print_level then for i = print_level, 6 do config.console_levels[i] = true end end
+  local config = { console_levels = {} }
+  if print_level then
+    for i = print_level, 6 do
+      config.console_levels[i] = true
+    end
+  end
   log.new(config, true)
 end
 
 log.new = function(config, standalone)
-  config = vim.tbl_deep_extend("force", default_config, config)
-  local outfile = string.format('%s/%s.log', vim.fn.stdpath('cache'), config.plugin)
-  vim.fn.mkdir(vim.fn.stdpath('cache'), 'p')
+  config = vim.tbl_deep_extend('force', default_config, config)
+  local outfile = string.format('%s/%s.log', vim.fn.stdpath 'cache', config.plugin)
+  vim.fn.mkdir(vim.fn.stdpath 'cache', 'p')
   local obj
   if standalone then
     obj = log
@@ -61,12 +68,14 @@ log.new = function(config, standalone)
   end
 
   local levels = {}
-  for i, v in ipairs(config.modes) do levels[v.name] = i end
+  for i, v in ipairs(config.modes) do
+    levels[v.name] = i
+  end
 
   local round = function(x, increment)
     increment = increment or 1
     x = x / increment
-    return (x > 0 and math.floor(x + .5) or math.ceil(x - .5)) * increment
+    return (x > 0 and math.floor(x + 0.5) or math.ceil(x - 0.5)) * increment
   end
 
   local make_string = function(...)
@@ -74,9 +83,9 @@ log.new = function(config, standalone)
     for i = 1, select('#', ...) do
       local x = select(i, ...)
 
-      if type(x) == "number" and config.float_precision then
+      if type(x) == 'number' and config.float_precision then
         x = tostring(round(x, config.float_precision))
-      elseif type(x) == "table" then
+      elseif type(x) == 'table' then
         x = vim.inspect(x)
       else
         x = tostring(x)
@@ -84,34 +93,37 @@ log.new = function(config, standalone)
 
       t[#t + 1] = x
     end
-    return table.concat(t, " ")
+    return table.concat(t, ' ')
   end
 
   local console_output = vim.schedule_wrap(function(level_config, info, nameupper, msg)
     local console_lineinfo = vim.fn.fnamemodify(info.short_src, ':t') .. ':' .. info.currentline
-    local console_string = string.format("[%-6s%s] %s: %s", nameupper, os.date("%H:%M:%S"),
-                                         console_lineinfo, msg)
+    local console_string = string.format('[%-6s%s] %s: %s', nameupper, os.date '%H:%M:%S', console_lineinfo, msg)
 
     if config.highlights and level_config.hl then
-      vim.cmd(string.format("echohl %s", level_config.hl))
+      vim.cmd(string.format('echohl %s', level_config.hl))
     end
 
-    local split_console = vim.split(console_string, "\n")
+    local split_console = vim.split(console_string, '\n')
     for _, v in ipairs(split_console) do
       vim.cmd(string.format([[echom "[%s] %s"]], config.plugin, vim.fn.escape(v, '"')))
     end
 
-    if config.highlights and level_config.hl then vim.cmd("echohl NONE") end
+    if config.highlights and level_config.hl then
+      vim.cmd 'echohl NONE'
+    end
   end)
 
   local log_at_level = function(level, level_config, message_maker, ...)
     -- Return early if we're below the config.level
-    if level < levels[config.level] then return end
+    if level < levels[config.level] then
+      return
+    end
     local nameupper = level_config.name:upper()
 
     local msg = message_maker(...)
-    local info = debug.getinfo(2, "Sl")
-    local lineinfo = info.short_src .. ":" .. info.currentline
+    local info = debug.getinfo(2, 'Sl')
+    local lineinfo = info.short_src .. ':' .. info.currentline
 
     -- Output to console
     if config.use_console and config.console_levels[level] then
@@ -120,28 +132,31 @@ log.new = function(config, standalone)
 
     -- Output to log file
     if config.use_file then
-      local fp, err = io.open(outfile, "a")
+      local fp, err = io.open(outfile, 'a')
       if not fp then
         print(err)
         return
       end
 
-      local str = string.format("[%-6s%s %s] %s: %s\n", nameupper, os.date(), vim.loop.hrtime(),
-                                lineinfo, msg)
+      local str = string.format('[%-6s%s %s] %s: %s\n', nameupper, os.date(), vim.loop.hrtime(), lineinfo, msg)
       fp:write(str)
       fp:close()
     end
   end
 
   for i, x in ipairs(config.modes) do
-    obj[x.name] = function(...) return log_at_level(i, x, make_string, ...) end
+    obj[x.name] = function(...)
+      return log_at_level(i, x, make_string, ...)
+    end
 
-    obj[("fmt_%s"):format(x.name)] = function()
+    obj[('fmt_%s'):format(x.name)] = function()
       return log_at_level(i, x, function(...)
-        local passed = {...}
+        local passed = { ... }
         local fmt = table.remove(passed, 1)
         local inspected = {}
-        for _, v in ipairs(passed) do table.insert(inspected, vim.inspect(v)) end
+        for _, v in ipairs(passed) do
+          table.insert(inspected, vim.inspect(v))
+        end
         return string.format(fmt, unpack(inspected))
       end)
     end
