@@ -671,7 +671,22 @@ packer.compile = function(raw_args)
   output_file:write(compiled_loader)
   output_file:close()
   if config.auto_reload_compiled then
+    local configs_to_run = {}
+    for plugin_name, plugin_info in pairs(_G.packer_plugins) do
+      if plugin_info.loaded and plugin_info.config and plugins[plugin_name].cmd then
+        configs_to_run[plugin_name] = plugin_info.config
+      end
+    end
+
     vim.cmd('source ' .. output_path)
+    for plugin_name, plugin_config in pairs(configs_to_run) do
+      for _, config_line in ipairs(plugin_config) do
+        local success, err = pcall(loadstring(config_line))
+        if not success then
+          vim.notify('Error running config for ' .. plugin_name .. ': ' .. vim.inspect(err), vim.log.levels.ERROR, {})
+        end
+      end
+    end
   end
   log.info 'Finished compiling lazy-loaders!'
   packer.on_compile_done()
