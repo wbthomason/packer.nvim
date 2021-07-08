@@ -192,10 +192,17 @@ end)
 ```
 
 You can configure Neovim to automatically run `:PackerCompile` whenever `plugins.lua` is updated with an autocommand:
+
 ```
-autocmd BufWritePost plugins.lua PackerCompile
+autocmd BufWritePost plugins.lua source <afile> | PackerCompile
 ```
+
 This autocommand can be placed in your `init.vim`, or any other startup file as per your setup.
+Placing this in `plugins.lua` could look like this:
+
+```lua
+vim.cmd([[autocmd BufWritePost plugins.lua source <afile> | PackerCompile]])
+```
 
 ## Bootstrapping
 
