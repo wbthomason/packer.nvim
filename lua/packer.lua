@@ -188,7 +188,7 @@ manage = function(plugin_data)
   end
 
   if plugins[name] then
-    log.warn('Plugin "' .. name .. '" is used twice!')
+    log.warn('Plugin "' .. name .. '" is used twice! (line ' .. spec_line .. ')')
     return
   end
 
@@ -278,6 +278,7 @@ manage = function(plugin_data)
         if config.transitive_disable and plugin_spec.disable then
           req.disable = true
         end
+
         manage { spec = req, line = spec_line }
       end
     end
