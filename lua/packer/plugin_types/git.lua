@@ -18,6 +18,8 @@ git.cfg = function(_config)
   config.exec_cmd = config.cmd .. ' '
 end
 
+local blocked_env_vars = { GIT_TERMINAL_PROMPT = true, GIT_DIR = true }
+
 local handle_checkouts = function(plugin, dest, disp)
   local plugin_name = util.get_plugin_full_name(plugin)
   return async(function()
@@ -137,7 +139,7 @@ git.setup = function(plugin)
     if git.job_env == nil then
       local job_env = {}
       for k, v in pairs(vim.fn.environ()) do
-        if k ~= 'GIT_TERMINAL_PROMPT' then
+        if not blocked_env_vars[k] then
           table.insert(job_env, k .. '=' .. v)
         end
       end
