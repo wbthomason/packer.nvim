@@ -10,7 +10,15 @@ local vim = vim
 
 local git = {}
 
-local blocked_env_vars = { GIT_TERMINAL_PROMPT = true, GIT_DIR = true, GIT_WORK_TREE = true }
+local blocked_env_vars = {
+  GIT_DIR = true,
+  GIT_INDEX_FILE = true,
+  GIT_OBJECT_DIRECTORY = true,
+  GIT_TERMINAL_PROMPT = true,
+  GIT_WORK_TREE = true,
+  GIT_COMMON_DIR = true,
+}
+
 local function ensure_git_env()
   if git.job_env == nil then
     local job_env = {}
