@@ -46,7 +46,7 @@ local handle_checkouts = function(plugin, dest, disp)
       stderr = jobs.logging_callback(output.err.stderr, output.data.stderr),
     }
 
-    local opts = { capture_output = callbacks, cwd = dest }
+    local opts = { capture_output = callbacks, cwd = dest, options = { env = git.job_env } }
 
     local r = result.ok()
 
