@@ -370,7 +370,7 @@ use {
   -- The setup key implies opt = true
   setup = string or function,  -- Specifies code to run before this plugin is loaded.
   -- The following keys all imply lazy-loading and imply opt = true
-  cmd = string or list,        -- Specifies commands which load this plugin.
+  cmd = string or list,        -- Specifies commands which load this plugin. Can have patterns.
   ft = string or list,         -- Specifies filetypes which load this plugin.
   keys = string or list,       -- Specifies maps which load this plugin. See "Keybindings".
   event = string or list,      -- Specifies autocommand events which load this plugin.
@@ -382,6 +382,10 @@ use {
   requiring a string which matches one of these patterns, the plugin will be loaded.
 }
 ```
+
+For the `cmd` option, the command may be a full command, or an autocommand pattern. If the command contains any
+non-alphanumeric characters, it is assumed to be a pattern, and instead of creating a stub command, it creates
+a CmdUndefined autocmd to load the plugin when a command that matches the pattern is invoked.
 
 #### Checking plugin statuses
 You can check whether or not a particular plugin is installed with `packer` as well as if that plugin is loaded.

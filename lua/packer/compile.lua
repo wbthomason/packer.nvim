@@ -550,12 +550,21 @@ local function make_loaders(_, plugins, output_lua, should_profile)
 
   local command_defs = {}
   for command, names in pairs(commands) do
-    local command_line = fmt(
-      'pcall(vim.cmd, [[command -nargs=* -range -bang -complete=file %s lua require("packer.load")({%s}, { cmd = "%s", l1 = <line1>, l2 = <line2>, bang = <q-bang>, args = <q-args> }, _G.packer_plugins)]])',
-      command,
-      table.concat(names, ', '),
-      command
-    )
+    local command_line
+    if string.match(command, "^%w+$") then
+      command_line = fmt(
+        'pcall(vim.cmd, [[command! -nargs=* -range -bang -complete=file %s lua require("packer.load")({%s}, { cmd = "%s", l1 = <line1>, l2 = <line2>, bang = <q-bang>, args = <q-args> }, _G.packer_plugins)]])',
+        command,
+        table.concat(names, ', '),
+        command
+      )
+    else
+      command_line = fmt(
+        'pcall(vim.cmd, [[au CmdUndefined %s ++once lua require"packer.load"({%s}, {}, _G.packer_plugins)]])',
+        command,
+        table.concat(names, ', ')
+      )
+    end
     command_defs[#command_defs + 1] = command_line
   end
 
