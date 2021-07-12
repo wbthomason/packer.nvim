@@ -103,7 +103,8 @@ packer.init = function(user_config)
   user_config = user_config or {}
   config = util.deep_extend('force', config, user_config)
   packer.reset()
-  config.package_root = vim.fn.fnamemodify(config.package_root, ':p')
+  config.package_root = vim.fn.fnameescape(vim.fn.fnamemodify(config.package_root, ':p'))
+  config.compile_path = vim.fn.fnameescape(config.compile_path)
   local _
   config.package_root, _ = string.gsub(config.package_root, util.get_separator() .. '$', '', 1)
   config.pack_dir = join_paths(config.package_root, config.plugin_package)
