@@ -124,6 +124,10 @@ local keymaps = {
     rhs = '<cmd>lua require"packer.display".prompt_revert()<cr>',
     action = 'revert an update',
   },
+  open_log = {
+    rhs = '<cmd>lua require"packer.display".open_log()<cr>',
+    action = 'open log file',
+  },
 }
 
 --- The order of the keys in a dict-like table isn't guaranteed, meaning the display window can
@@ -133,6 +137,7 @@ local keymap_display_order = {
   [2] = 'toggle_info',
   [3] = 'diff',
   [4] = 'prompt_revert',
+  [5] = 'open_log',
 }
 
 --- Utility function to prompt a user with a question in a floating window
@@ -690,6 +695,21 @@ local display_mt = {
     end
   end,
 
+  open_log = function(self)
+    if not self:valid_display() then
+      return
+    end
+    if next(self.items) == nil then
+      log.info 'Operations are still running; plugin info is not ready yet'
+      return
+    end
+    log.open()
+    vim.wo.wrap = false
+    vim.bo.buflisted = false
+    vim.api.nvim_buf_set_keymap(0, 'n', 'q', '<cmd>close!<CR>', { silent = true, noremap = true, nowait = true })
+    vim.bo.filetype = 'log'
+  end,
+
   --- Heuristically find the plugin nearest to the cursor for displaying detailed information
   find_nearest_plugin = function(self)
     if not self:valid_display() then
@@ -854,5 +874,11 @@ end
 
 --- Async prompt_user
 display.ask_user = a.wrap(prompt_user)
+
+display.open_log = function()
+  if display.status.disp then
+    display.status.disp:open_log()
+  end
+end
 
 return display

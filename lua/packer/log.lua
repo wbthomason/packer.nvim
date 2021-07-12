@@ -166,4 +166,10 @@ end
 log.new(default_config, true)
 -- }}}
 
+function log.open()
+  -- This should be consistent with the format mentioned in log.new above.
+  local logfile = string.format('%s/%s.log', vim.fn.stdpath('cache'), default_config.plugin)
+  vim.cmd(string.format("tabedit + %s", logfile))
+end
+
 return log

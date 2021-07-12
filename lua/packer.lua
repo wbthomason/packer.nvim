@@ -55,7 +55,7 @@ local config_defaults = {
     title = 'packer.nvim',
     show_all_info = true,
     prompt_border = 'double',
-    keybindings = { quit = 'q', toggle_info = '<CR>', diff = 'd', prompt_revert = 'r' },
+    keybindings = { quit = 'q', toggle_info = '<CR>', diff = 'd', prompt_revert = 'r', open_log = 'l' },
   },
   luarocks = { python_cmd = 'python' },
   log = { level = 'warn' },
