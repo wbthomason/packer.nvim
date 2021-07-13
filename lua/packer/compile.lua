@@ -138,8 +138,9 @@ local function lazy_load_module(module_name)
 
   if #to_load > 0 then
     require('packer.load')(to_load, {module = module_name}, _G.packer_plugins)
-    if package.loaded[module_name] then
-      return function(modname) return package.loaded[modname] end
+    local loaded_mod = package.loaded[module_name]
+    if loaded_mod then
+      return function(modname) return loaded_mod end
     end
   end
 end
