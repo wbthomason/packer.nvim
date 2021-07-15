@@ -250,6 +250,13 @@ local function detect_bufread(plugin_path)
   return false
 end
 
+local function generate_checked_command(command_name, plugin_names)
+  local command_creation = fmt(
+                             'vim.cmd [[command! -nargs=* -range -bang -complete=file %s lua require("packer.load")({%s}, { cmd = "%s", l1 = <line1>, l2 = <line2>, bang = <q-bang>, args = <q-args> }, _G.packer_plugins)]]',
+                             command_name, table.concat(plugin_names, ', '), command_name)
+  return {fmt('if vim.fn.exists(":%s") == 0 then', command_name), command_creation, 'end'}
+end
+
 local function make_loaders(_, plugins, output_lua, should_profile)
   local loaders = {}
   local configs = {}
@@ -532,13 +539,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
 
   local command_defs = {}
   for command, names in pairs(commands) do
-    local command_line = fmt(
-      'vim.cmd [[command! -nargs=* -range -bang -complete=file %s lua require("packer.load")({%s}, { cmd = "%s", l1 = <line1>, l2 = <line2>, bang = <q-bang>, args = <q-args> }, _G.packer_plugins)]]',
-      command,
-      table.concat(names, ', '),
-      command
-    )
-    table.insert(command_defs, command_line)
+    vim.list_extend(command_defs, generate_checked_command(command, names))
   end
 
   local keymap_defs = {}
