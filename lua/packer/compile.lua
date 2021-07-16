@@ -546,9 +546,20 @@ local function make_loaders(_, plugins, output_lua, should_profile)
     )
   end
 
-  local command_defs = {}
+  local tagged_command_defs = {}
   for command, names in pairs(commands) do
-    vim.list_extend(command_defs, generate_checked_command(command, names))
+    tagged_command_defs[#tagged_command_defs + 1] = { command, generate_checked_command(command, names) }
+  end
+
+  -- Sort commands to prevent short commands from being blocked by longer commands with common
+  -- prefixes
+  table.sort(tagged_command_defs, function(command_def_1, command_def_2)
+    return command_def_1[1] < command_def_2[1]
+  end)
+
+  local command_defs = {}
+  for _, command_def in ipairs(tagged_command_defs) do
+    vim.list_extend(command_defs, command_def[2])
   end
 
   local keymap_defs = {}
