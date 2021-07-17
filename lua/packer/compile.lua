@@ -263,7 +263,7 @@ local function generate_checked_command(command_name, plugin_names)
     table.concat(plugin_names, ', '),
     command_name
   )
-  return { fmt('if vim.fn.exists(":%s") == 0 then', command_name), command_creation, 'end' }
+  return { fmt('if vim.fn.exists(":%s") ~= 2 then', command_name), command_creation, 'end' }
 end
 
 local function make_loaders(_, plugins, output_lua, should_profile)
