@@ -227,8 +227,8 @@ The above snippets give some examples of `packer` features and use. Examples inc
 
 - My dotfiles:
   - [Specification file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/lua/plugins.lua)
-  - [Loading file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/plugin/plugins.vim)
-  - [Generated lazy-loader file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/plugin/packer_load.vim)
+  - [Loading file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/lua/plugins.lua)
+  - [Generated lazy-loader file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/plugin/packer_compiled.lua)
 - An example using the `startup` method: [tjdevries](https://github.com/tjdevries/config_manager/blob/master/xdg_config/nvim/lua/tj/plugins.lua)
     - Using this method, you do not require a "loading" file. You can simply `lua require('plugins')` from your `init.vim`
 
