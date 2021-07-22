@@ -309,6 +309,7 @@ default configuration values (and structure of the configuration table) are:
   luarocks = {
     python_cmd = 'python' -- Set the python command to use for running hererocks
   },
+  log = { level = 'warn' }, -- The default print log level. One of: "trace", "debug", "info", "warn", "error", "fatal".
   profile = {
     enable = false,
     threshold = 1, -- integer in milliseconds, plugins which load faster than this won't be shown in profile output
