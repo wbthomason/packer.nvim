@@ -45,12 +45,20 @@ packer_load = function(names, cause, plugins)
       end
 
       if plugin.config then
-        for _, config_line in ipairs(plugin.config) do
-          local success, err = pcall(loadstring(config_line))
-          if not success then
-            print('Error running config for ' .. names[i])
-            error(err)
+        if vim.loop.fs_lstat(plugin.path) ~= nil then
+          for _, config_line in ipairs(plugin.config) do
+            local success, err = pcall(loadstring(config_line))
+            if not success then
+              print('Error running config for ' .. names[i])
+              error(err)
+            end
           end
+        else
+          vim.api.nvim_notify(
+            'packer.nvim: Skipping config for ' .. names[i] .. ' because plugin is not installed!',
+            vim.log.levels.WARN,
+            {}
+          )
         end
       end
 
