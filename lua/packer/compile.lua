@@ -186,18 +186,21 @@ local function timed_install_check_chunk(chunk, name, path, output_table)
 end
 
 -- We special-case timing for conditionals because we can't directly wrap the condition test
+local timed_condition_fmt = [=[
+time([[%s]], true)
+if 
+  %s 
+then
+  time([[%s]], false)
+  %s
+else
+  time([[%s]], false)
+end
+]=]
 local function timed_condition(condition, body, name, output_table)
   output_table = output_table or {}
-  local condition_time_call = 'time("' .. name .. '", '
-  output_table[#output_table + 1] = condition_time_call .. 'true)'
-  output_table[#output_table + 1] = 'if'
-  output_table[#output_table + 1] = condition
-  output_table[#output_table + 1] = 'then'
-  output_table[#output_table + 1] = condition_time_call .. 'false)'
-  output_table[#output_table + 1] = body
-  output_table[#output_table + 1] = 'else'
-  output_table[#output_table + 1] = condition_time_call .. 'false)'
-  output_table[#output_table + 1] = 'end'
+  local condition_check = fmt(timed_condition_fmt, name, condition, name, body, name)
+  vim.list_extend(output_table, vim.split(condition_check, '\n'))
   return output_table
 end
 
