@@ -173,18 +173,19 @@ end)
 
 ```
 -- You must run this or `PackerSync` whenever you make changes to your plugin configuration
+-- Regenerate compiled loader file
 :PackerCompile
-
--- Only install missing plugins
-:PackerInstall
-
--- Update and install plugins
-:PackerUpdate
 
 -- Remove any disabled or unused plugins
 :PackerClean
 
--- Performs `PackerClean` and then `PackerUpdate`
+-- Clean, then install missing plugins
+:PackerInstall
+
+-- Clean, then update and install plugins
+:PackerUpdate
+
+-- Perform `PackerUpdate` and then `PackerCompile`
 :PackerSync
 
 -- Loads opt plugin immediately

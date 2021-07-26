@@ -107,20 +107,21 @@ Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lu
 
 `packer` provides the following commands after you've run and configured `packer` with `require('packer').startup(...)`: *packer-default-commands* *packer-commands*
 
-`PackerCompile`                                 *packer-commands-compile*
-You must run this whenever you make changes to your plugin configuration.
-
-`PackerInstall`                                 *packer-commands-install*
-Install any missing plugins.
-
-`PackerUpdate`                                  *packer-commands-update*
-Update and install plugins.
-
 `PackerClean`                                   *packer-commands-clean*
 Remove any disabled or unused plugins.
 
+`PackerCompile`                                 *packer-commands-compile*
+You must run this or `PackerSync` whenever you make changes to your plugin
+configuration. Regenerate compiled loader file.
+
+`PackerInstall`                                 *packer-commands-install*
+Clean, then install missing plugins.
+
+`PackerUpdate`                                  *packer-commands-update*
+Clean, then update and install plugins.
+
 `PackerSync`                                    *packer-commands-sync*
-Perform `PackerClean` and then `PackerUpdate`.
+Perform `PackerUpdate` and then `PackerCompile`.
 
 `PackerLoad`                                    *packer-commands-load*
 Loads opt plugin immediately
