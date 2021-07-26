@@ -544,7 +544,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       table.concat(names, ', '),
       command
     )
-    table.insert(command_defs, command_line)
+    command_defs[#command_defs + 1] = command_line
   end
 
   local keymap_defs = {}
