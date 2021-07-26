@@ -164,26 +164,24 @@ local function timed_chunk(chunk, name, output_table)
   return output_table
 end
 
-local function timed_install_check_chunk(chunk, name, path, output_table)
-  output_table = output_table or {}
-  output_table[#output_table + 1] = 'time([[' .. name .. ']], true)'
-  output_table[#output_table + 1] = 'vim.loop.fs_lstat([[' .. path .. ']], function(err, stat)'
-  output_table[#output_table + 1] = '\tif err == nil and stat ~= nil then'
-  output_table[#output_table + 1] = '\t\tvim.schedule(function()'
-  if type(chunk) == 'string' then
-    output_table[#output_table + 1] = '\t\t\t' .. chunk
+local timed_install_check_fmt = [=[time([[%s]], true)
+vim.loop.fs_lstat([[%s]], function(err, stat)
+  if err == nil and stat ~= nil then
+    vim.schedule(function()
+      %s
+    end)
   else
-    vim.list_extend(output_table, chunk)
+    vim.schedule(function() vim.api.nvim_notify('packer.nvim: Skipping %s because plugin is not installed!', vim.log.levels.WARN, {}) end)
   end
 
-  output_table[#output_table + 1] = '\t\t\tend)'
-  output_table[#output_table + 1] = '\telse'
-  output_table[#output_table + 1] = '\t\tvim.schedule(function()vim.api.nvim_notify("packer.nvim: Skipping '
-    .. name
-    .. ' because plugin is not installed!", vim.log.levels.WARN, {}) end)'
-  output_table[#output_table + 1] = '\tend'
-  output_table[#output_table + 1] = '\ttime([[' .. name .. ']], false)'
-  output_table[#output_table + 1] = 'end)'
+  time([[%s]], false)
+end)]=]
+
+local function timed_install_check_chunk(chunk, name, path, output_table)
+  output_table = output_table or {}
+  local chunk_string = type(chunk) == 'string' and chunk or table.concat(chunk, '\n')
+  local timed_install_check = fmt(timed_install_check_fmt, name, path, chunk_string, name, name)
+  vim.list_extend(output_table, vim.split(timed_install_check, '\n'))
   return output_table
 end
 
