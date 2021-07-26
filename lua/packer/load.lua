@@ -17,59 +17,67 @@ packer_load = function(names, cause, plugins)
       -- Set the plugin as loaded before config is run in case something in the config tries to load
       -- this same plugin again
       plugin.loaded = true
-      some_unloaded = true
-      needs_bufread = needs_bufread or plugin.needs_bufread
-      if plugin.wants then
-        for _, wanted_name in ipairs(plugin.wants) do
-          packer_load({ wanted_name }, {}, plugins)
+      if vim.loop.fs_lstat(plugin.path) ~= nil then
+        some_unloaded = true
+        needs_bufread = needs_bufread or plugin.needs_bufread
+        if plugin.wants then
+          for _, wanted_name in ipairs(plugin.wants) do
+            packer_load({ wanted_name }, {}, plugins)
+          end
         end
-      end
 
-      if plugin.commands then
-        for _, del_cmd in ipairs(plugin.commands) do
-          cmd('silent! delcommand ' .. del_cmd)
+        if plugin.commands then
+          for _, del_cmd in ipairs(plugin.commands) do
+            cmd('silent! delcommand ' .. del_cmd)
+          end
         end
-      end
 
-      if plugin.keys then
-        for _, key in ipairs(plugin.keys) do
-          cmd(fmt('silent! %sunmap %s', key[1], key[2]))
+        if plugin.keys then
+          for _, key in ipairs(plugin.keys) do
+            cmd(fmt('silent! %sunmap %s', key[1], key[2]))
+          end
         end
-      end
 
-      cmd('packadd ' .. names[i])
-      if plugin.after_files then
-        for _, file in ipairs(plugin.after_files) do
-          cmd('silent source ' .. file)
+        cmd('packadd ' .. names[i])
+        if plugin.after_files then
+          for _, file in ipairs(plugin.after_files) do
+            cmd('silent source ' .. file)
+          end
         end
-      end
 
-      if plugin.config then
-        if vim.loop.fs_lstat(plugin.path) ~= nil then
-          for _, config_line in ipairs(plugin.config) do
-            local success, err = pcall(loadstring(config_line))
-            if not success then
-              print('Error running config for ' .. names[i])
-              error(err)
+        if plugin.config then
+          if vim.loop.fs_lstat(plugin.path) ~= nil then
+            for _, config_line in ipairs(plugin.config) do
+              local success, err = pcall(loadstring(config_line))
+              if not success then
+                print('Error running config for ' .. names[i])
+                error(err)
+              end
+            end
+          else
+            vim.api.nvim_notify(
+              'packer.nvim: Skipping config for ' .. names[i] .. ' because plugin is not installed!',
+              vim.log.levels.WARN,
+              {}
+            )
+          end
+        end
+
+        if plugin.after then
+          for _, after_name in ipairs(plugin.after) do
+            local after_plugin = plugins[after_name]
+            after_plugin.load_after[names[i]] = nil
+            if next(after_plugin.load_after) == nil then
+              packer_load({ after_name }, {}, plugins)
             end
           end
-        else
-          vim.api.nvim_notify(
-            'packer.nvim: Skipping config for ' .. names[i] .. ' because plugin is not installed!',
-            vim.log.levels.WARN,
-            {}
-          )
         end
-      end
-
-      if plugin.after then
-        for _, after_name in ipairs(plugin.after) do
-          local after_plugin = plugins[after_name]
-          after_plugin.load_after[names[i]] = nil
-          if next(after_plugin.load_after) == nil then
-            packer_load({ after_name }, {}, plugins)
-          end
-        end
+      else
+        vim.api.nvim_notify(
+          'packer.nvim: ' .. names[i] .. ' was requested to be loaded but is not installed!',
+          vim.log.levels.WARN,
+          {}
+        )
       end
     end
   end
