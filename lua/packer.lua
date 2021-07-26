@@ -187,7 +187,7 @@ manage = function(plugin_data)
     return
   end
 
-  if plugins[name] then
+  if plugins[name] and not plugins[name].from_requires then
     log.warn('Plugin "' .. name .. '" is used twice! (line ' .. spec_line .. ')')
     return
   end
@@ -257,6 +257,11 @@ manage = function(plugin_data)
       end
       local req_name_segments = vim.split(req[1], '/')
       local req_name = req_name_segments[#req_name_segments]
+      -- this flag marks a plugin as being from a require which we use to allow
+      -- multiple requires for a plugin without triggering a duplicate warning *IF*
+      -- the plugin is from a `requires` field and the full specificaiton has not been called yet.
+      -- @see: https://github.com/wbthomason/packer.nvim/issues/258#issuecomment-876568439
+      req.from_requires = true
       if not plugins[req_name] then
         if config.transitive_opt and plugin_spec.manual_opt then
           req.opt = true
@@ -672,7 +677,24 @@ packer.compile = function(raw_args)
   output_file:write(compiled_loader)
   output_file:close()
   if config.auto_reload_compiled then
+    local configs_to_run = {}
+    if _G.packer_plugins ~= nil then
+      for plugin_name, plugin_info in pairs(_G.packer_plugins) do
+        if plugin_info.loaded and plugin_info.config and plugins[plugin_name].cmd then
+          configs_to_run[plugin_name] = plugin_info.config
+        end
+      end
+    end
+
     vim.cmd('source ' .. output_path)
+    for plugin_name, plugin_config in pairs(configs_to_run) do
+      for _, config_line in ipairs(plugin_config) do
+        local success, err = pcall(loadstring(config_line))
+        if not success then
+          vim.notify('Error running config for ' .. plugin_name .. ': ' .. vim.inspect(err), vim.log.levels.ERROR, {})
+        end
+      end
+    end
   end
   log.info 'Finished compiling lazy-loaders!'
   packer.on_compile_done()

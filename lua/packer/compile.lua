@@ -131,12 +131,18 @@ local function lazy_load_module(module_name)
   if lazy_load_called[module_name] then return nil end
   lazy_load_called[module_name] = true
   for module_pat, plugin_name in pairs(module_lazy_loads) do
-    if not _G.packer_plugins[plugin_name].loaded and string.match(module_name, module_pat)then
+    if not _G.packer_plugins[plugin_name].loaded and string.match(module_name, module_pat) then
       to_load[#to_load + 1] = plugin_name
     end
   end
 
-  require('packer.load')(to_load, {module = module_name}, _G.packer_plugins)
+  if #to_load > 0 then
+    require('packer.load')(to_load, {module = module_name}, _G.packer_plugins)
+    local loaded_mod = package.loaded[module_name]
+    if loaded_mod then
+      return function(modname) return loaded_mod end
+    end
+  end
 end
 
 if not vim.g.packer_custom_loader_enabled then
@@ -248,6 +254,16 @@ local function detect_bufread(plugin_path)
     end
   end
   return false
+end
+
+local function generate_checked_command(command_name, plugin_names)
+  local command_creation = fmt(
+    'vim.cmd [[command! -nargs=* -range -bang -complete=file %s lua require("packer.load")({%s}, { cmd = "%s", l1 = <line1>, l2 = <line2>, bang = <q-bang>, args = <q-args> }, _G.packer_plugins)]]',
+    command_name,
+    table.concat(plugin_names, ', '),
+    command_name
+  )
+  return { fmt('if vim.fn.exists(":%s") ~= 2 then', command_name), command_creation, 'end' }
 end
 
 local function make_loaders(_, plugins, output_lua, should_profile)
@@ -532,13 +548,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
 
   local command_defs = {}
   for command, names in pairs(commands) do
-    local command_line = fmt(
-      'vim.cmd [[command! -nargs=* -range -bang -complete=file %s lua require("packer.load")({%s}, { cmd = "%s", l1 = <line1>, l2 = <line2>, bang = <q-bang>, args = <q-args> }, _G.packer_plugins)]]',
-      command,
-      table.concat(names, ', '),
-      command
-    )
-    table.insert(command_defs, command_line)
+    vim.list_extend(command_defs, generate_checked_command(command, names))
   end
 
   local keymap_defs = {}

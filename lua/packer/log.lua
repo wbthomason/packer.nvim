@@ -32,8 +32,8 @@ local default_config = {
     { name = 'fatal', hl = 'ErrorMsg' },
   },
 
-  -- Which levels should be printed?
-  console_levels = { [3] = true, [4] = true, [5] = true, [6] = true },
+  -- Which levels should be logged?
+  active_levels = { [1] = true, [2] = true, [3] = true, [4] = true, [5] = true, [6] = true },
 
   -- Can limit the number of decimals displayed for floats
   float_precision = 0.01,
@@ -46,11 +46,11 @@ local unpack = unpack or table.unpack
 
 local level_ids = { trace = 1, debug = 2, info = 3, warn = 4, error = 5, fatal = 6 }
 log.cfg = function(_config)
-  local print_level = level_ids[_config.log.level]
-  local config = { console_levels = {} }
-  if print_level then
-    for i = print_level, 6 do
-      config.console_levels[i] = true
+  local min_active_level = level_ids[_config.log.level]
+  local config = { active_levels = {} }
+  if min_active_level then
+    for i = min_active_level, 6 do
+      config.active_levels[i] = true
     end
   end
   log.new(config, true)
@@ -126,12 +126,12 @@ log.new = function(config, standalone)
     local lineinfo = info.short_src .. ':' .. info.currentline
 
     -- Output to console
-    if config.use_console and config.console_levels[level] then
+    if config.use_console and config.active_levels[level] then
       console_output(level_config, info, nameupper, msg)
     end
 
     -- Output to log file
-    if config.use_file then
+    if config.use_file and config.active_levels[level] then
       local fp, err = io.open(outfile, 'a')
       if not fp then
         print(err)
