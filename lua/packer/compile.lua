@@ -439,14 +439,26 @@ local function make_loaders(_, plugins, output_lua, should_profile)
         end
       end
 
-      if plugin.module then
+      if plugin.module or plugin.module_pattern then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        if type(plugin.module) == 'string' then
-          plugin.module = { plugin.module }
-        end
-        for _, module_name in ipairs(plugin.module) do
-          module_lazy_loads['^' .. vim.pesc(module_name)] = name
+
+        if plugin.module then
+          if type(plugin.module) == 'string' then
+            plugin.module = { plugin.module }
+          end
+
+          for _, module_name in ipairs(plugin.module) do
+            module_lazy_loads['^' .. vim.pesc(module_name)] = name
+          end
+        else
+          if type(plugin.module_pattern) == 'string' then
+            plugin.module_pattern = { plugin.module_pattern }
+          end
+
+          for _, module_pattern in ipairs(plugin.module_pattern) do
+            module_lazy_loads[module_pattern] = name
+          end
         end
       end
 
