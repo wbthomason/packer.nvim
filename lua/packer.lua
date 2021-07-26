@@ -109,6 +109,10 @@ packer.init = function(user_config)
   config.pack_dir = join_paths(config.package_root, config.plugin_package)
   config.opt_dir = join_paths(config.pack_dir, 'opt')
   config.start_dir = join_paths(config.pack_dir, 'start')
+  if #vim.api.nvim_list_uis() == 0 then
+    config.display.non_interactive = true
+  end
+
   local plugin_utils = require_and_configure 'plugin_utils'
   plugin_utils.ensure_dirs()
   if not config.disable_commands then
