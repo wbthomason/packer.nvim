@@ -123,6 +123,28 @@ return require('packer').startup(function()
     rocks = {'lpeg', {'lua-cjson', version = '2.1.0'}}
   }
 
+  -- Plugint can get path to rocks binaries
+  use {
+    'mhartington/formatter.nvim',
+    rocks = {'luaformatter', server = 'https://luarocks.org/dev'},
+    config = function()
+      local rockbin = require('packer.luarocks').get_bin_path()
+      local util = require('packer.util')
+      local luaformat = util.join_paths(rockbin, 'lua-format')
+
+      require("formatter").setup({
+        logging = false,
+        filetype = {
+          lua = {
+            function()
+              return {exe = luaformat, args = {}, stdin = true}
+            end
+          }
+        }
+      })
+    end,
+  }
+
   -- You can specify rocks in isolation
   use_rocks 'penlight'
   use_rocks {'lua-resty-http', 'lpeg'}
@@ -391,6 +413,8 @@ Entries in the list may either be strings, a list of strings or a table --- the 
 particular version of a package.
 all supported luarocks keys are allowed except: `tree` and `local`. Environment variables for the luarocks command can also be
 specified using the `env` key which takes a table as the value as shown below.
+Luarocks binaries path can be accessed by `packer.luarocks.get_bin_path`
+
 ```lua
 rocks = {'lpeg', {'lua-cjson', version = '2.1.0'}}
 use_rocks {'lua-cjson', 'lua-resty-http'}

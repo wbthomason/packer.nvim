@@ -33,6 +33,7 @@ else
     clean = warn_need_luajit,
     install = warn_need_luajit,
     ensure = warn_need_luajit,
+	get_bin_path = warn_need_luajit,
     generate_path_setup = function()
       return ''
     end,
@@ -566,6 +567,14 @@ local function make_commands()
   vim.cmd [[ command! -nargs=+ PackerRocks lua require('packer.luarocks').handle_command(<f-args>) ]]
 end
 
+--[[
+-- Returns the path to bin of the hererocks installation
+-- @returns { string } absolute directory path to hererocks bin
+--]]
+local function get_bin_path()
+  return util.join_paths(hererocks_install_dir, 'bin')
+end
+
 return {
   handle_command = handle_command,
   install_commands = make_commands,
@@ -577,5 +586,6 @@ return {
   install = install_sync,
   ensure = ensure_rocks,
   generate_path_setup = generate_path_setup_code,
+  get_bin_path = get_bin_path,
   cfg = cfg,
 }
