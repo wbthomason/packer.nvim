@@ -35,8 +35,8 @@ end
 
 local breaking_change_pattern = [=[[bB][rR][eE][aA][kK][iI][nN][gG][ _][cC][hH][aA][nN][gG][eE]]=]
 local function mark_breaking_commits(plugin, commit_bodies)
-  local commits = vim.split(table.concat(commit_bodies, '\n'), '===COMMIT_START===')
-  for _, commit in ipairs(commits) do
+  local commits = vim.gsplit(table.concat(commit_bodies, '\n'), '===COMMIT_START===', true)
+  for commit in commits do
     local commit_parts = vim.split(commit, '===BODY_START===')
     local body = commit_parts[2]
     local lines = vim.split(commit_parts[1], '\n')
