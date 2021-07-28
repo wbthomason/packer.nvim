@@ -777,6 +777,6 @@ end
 
 local compile = setmetatable({ cfg = cfg }, { __call = make_loaders })
 
-compile.opt_keys = { 'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup', 'fn', 'module' }
+compile.opt_keys = { 'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup', 'fn', 'module', 'module_pattern' }
 
 return compile
