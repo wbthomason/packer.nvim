@@ -222,6 +222,12 @@ if fn.empty(fn.glob(install_path)) > 0 then
 end
 ```
 
+You can also use the following command (with `packer` bootstrapped) to have `packer` setup your
+configuration (or simply run updates) and close once all operations are completed:
+```sh
+$ nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
+```
+
 ## Usage
 
 The above snippets give some examples of `packer` features and use. Examples include:
