@@ -33,6 +33,21 @@ local function ensure_git_env()
   end
 end
 
+local breaking_change_pattern = [=[[bB][rR][eE][aA][kK][iI][nN][gG][ _][cC][hH][aA][nN][gG][eE]]=]
+local function mark_breaking_commits(plugin, commit_bodies)
+  local commits = vim.gsplit(table.concat(commit_bodies, '\n'), '===COMMIT_START===', true)
+  for commit in commits do
+    local commit_parts = vim.split(commit, '===BODY_START===')
+    local body = commit_parts[2]
+    local lines = vim.split(commit_parts[1], '\n')
+    local is_breaking = (body ~= nil and string.match(body, breaking_change_pattern) ~= nil)
+      or (lines[2] ~= nil and string.match(lines[2], breaking_change_pattern) ~= nil)
+    if is_breaking then
+      plugin.breaking_commits[#plugin.breaking_commits + 1] = lines[1]
+    end
+  end
+end
+
 local config = nil
 git.cfg = function(_config)
   config = _config.git
@@ -131,15 +146,17 @@ git.setup = function(plugin)
   end
 
   local branch_cmd = config.exec_cmd .. config.subcommands.current_branch
-  local commit_cmd = vim.split(config.exec_cmd .. config.subcommands.get_msg, '%s+')
-  for i, arg in ipairs(commit_cmd) do
-    commit_cmd[i] = string.gsub(arg, 'FMT', config.subcommands.diff_fmt)
+  local current_commit_cmd = vim.split(config.exec_cmd .. config.subcommands.get_header, '%s+')
+  for i, arg in ipairs(current_commit_cmd) do
+    current_commit_cmd[i] = string.gsub(arg, 'FMT', config.subcommands.diff_fmt)
   end
 
-  local messages_cmd = vim.split(config.exec_cmd .. config.subcommands.diff, '%s+')
-  for i, arg in ipairs(messages_cmd) do
-    messages_cmd[i] = string.gsub(arg, 'FMT', config.subcommands.diff_fmt)
+  local commit_headers_cmd = vim.split(config.exec_cmd .. config.subcommands.diff, '%s+')
+  for i, arg in ipairs(commit_headers_cmd) do
+    commit_headers_cmd[i] = string.gsub(arg, 'FMT', config.subcommands.diff_fmt)
   end
+
+  local commit_bodies_cmd = config.exec_cmd .. config.subcommands.get_bodies
 
   if plugin.branch or plugin.tag then
     install_cmd[#install_cmd + 1] = '--branch'
@@ -184,7 +201,7 @@ git.setup = function(plugin)
       end
 
       r
-        :and_then(await, jobs.run(commit_cmd, installer_opts))
+        :and_then(await, jobs.run(current_commit_cmd, installer_opts))
         :map_ok(function(_)
           plugin.messages = output.data.stdout
         end)
@@ -348,14 +365,14 @@ git.setup = function(plugin)
 
       if r.ok then
         if update_info.revs[1] ~= update_info.revs[2] then
-          local messages_onread = jobs.logging_callback(update_info.err, update_info.messages)
-          local messages_callbacks = { stdout = messages_onread, stderr = messages_onread }
+          local commit_headers_onread = jobs.logging_callback(update_info.err, update_info.messages)
+          local commit_headers_callbacks = { stdout = commit_headers_onread, stderr = commit_headers_onread }
           disp:task_update(plugin_name, 'getting commit messages...')
           r:and_then(
             await,
-            jobs.run(messages_cmd, {
+            jobs.run(commit_headers_cmd, {
               success_test = exit_ok,
-              capture_output = messages_callbacks,
+              capture_output = commit_headers_callbacks,
               cwd = install_to,
               options = { env = git.job_env },
             })
@@ -365,6 +382,28 @@ git.setup = function(plugin)
           if r.ok then
             plugin.messages = update_info.messages
             plugin.revs = update_info.revs
+          end
+
+          if config.mark_breaking_changes then
+            local commit_bodies = { err = {}, output = {} }
+            local commit_bodies_onread = jobs.logging_callback(commit_bodies.err, commit_bodies.output)
+            local commit_bodies_callbacks = { stdout = commit_bodies_onread, stderr = commit_bodies_onread }
+            disp:task_update(plugin_name, 'checking for breaking changes...')
+            r
+              :and_then(
+                await,
+                jobs.run(commit_bodies_cmd, {
+                  success_test = exit_ok,
+                  capture_output = commit_bodies_callbacks,
+                  cwd = install_to,
+                  options = { env = git.job_env },
+                })
+              )
+              :map_ok(function(ok)
+                plugin.breaking_commits = {}
+                mark_breaking_commits(plugin, commit_bodies.output)
+                return ok
+              end)
           end
         else
           plugin.revs = update_info.revs

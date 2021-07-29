@@ -32,6 +32,9 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 10. [Contributors](#contributors)
 
 ## Notices
+- **2021-07-28:** `packer` will now highlight commits/plugin names with potentially breaking changes
+  (determined by looking for `breaking change` or `breaking_change`, case insensitive, in the update
+  commit bodies and headers) as `WarningMsg` in the status window.
 - **2021-06-06**: Your Neovim must include https://github.com/neovim/neovim/pull/14659; `packer` uses the `noautocmd` key.
 - **2021-04-19**: `packer` now provides built-in profiling for your config via the `packer_compiled`
   file. Take a look at [the docs](#profiling) for more information!

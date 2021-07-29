@@ -320,6 +320,7 @@ local display_mt = {
       'hi def link packerPackageNotLoaded    Comment',
       'hi def link packerString         String',
       'hi def link packerBool Boolean',
+      'hi def link packerBreakingChange WarningMsg',
     }
     for _, c in ipairs(highlights) do
       vim.cmd(c)
@@ -539,6 +540,14 @@ local display_mt = {
         end
 
         table.insert(plugin_data.lines, '')
+      end
+
+      if plugin.breaking_commits and #plugin.breaking_commits > 0 then
+        vim.cmd('syntax match packerBreakingChange "' .. plugin_name .. '" containedin=packerStatusSuccess')
+        for _, commit_hash in ipairs(plugin.breaking_commits) do
+          log.warn('Potential breaking change in commit ' .. commit_hash .. ' of ' .. plugin_name)
+          vim.cmd('syntax match packerBreakingChange "' .. commit_hash .. '" containedin=packerHash')
+        end
       end
 
       plugins[plugin_name] = plugin_data
