@@ -394,27 +394,29 @@ USING A FLOATING WINDOW                        *packer-floating-window*
 You can configure Packer to use a floating window for command outputs by
 passing a utility function to `packer`'s config: >
 
-  packer.startup(function()
+  packer.startup({function()
     -- Your plugins here
-  end, {
+  end,
+  config = {
     display = {
       open_fn = require('packer.util').float,
     }
-  })
+  }})
 <
 By default, this floating window will show doubled borders. If you want to
 customize the window appearance, you can pass a configuration to `float`,
 which is the same configuration that would be passed to |nvim_open_win|: >
 
-  packer.startup(function()
+  packer.startup({function()
     -- Your plugins here
-  end, {
+  end,
+  config = {
     display = {
       open_fn = function()
         return require('packer.util').float({ border = 'single' })
       end
     }
-  })
+  }})
 <
 PROFILING PLUGINS                              *packer-profiling*
 You can measure how long it takes your plugins to load using packer's builtin
