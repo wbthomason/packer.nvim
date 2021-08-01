@@ -315,7 +315,7 @@ local display_mt = {
       'hi def link packerStatus         Type',
       'hi def link packerStatusCommit   Constant',
       'hi def link packerStatusSuccess  Constant',
-      'hi def link packerStatusFail     WarningMsg',
+      'hi def link packerStatusFail     ErrorMsg',
       'hi def link packerPackageName    Label',
       'hi def link packerPackageNotLoaded    Comment',
       'hi def link packerString         String',
@@ -329,8 +329,8 @@ local display_mt = {
 
   setup_profile_syntax = function(_)
     local highlights = {
-      'hi def link packerTimeHigh WarningMsg',
-      'hi def link packerTimeMedium Float',
+      'hi def link packerTimeHigh ErrorMsg',
+      'hi def link packerTimeMedium WarningMsg',
       'hi def link packerTimeLow String',
       'hi def link packerTimeTrivial Comment',
     }
