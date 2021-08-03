@@ -208,22 +208,10 @@ plugin_utils.load_plugin = function(plugin)
   end
 end
 
-plugin_utils.is_remote_plugin = function(plugin)
-  local paths = vim.fn.glob(util.join_paths(config.opt_dir, '**/rplugin'), false, true)
-  local names = vim.tbl_map(function(path)
-    return path:gsub(config.opt_dir, ''):gsub('/rplugin', '')
-  end, paths)
-  local match = util.find(names, function(name)
-    return name:match(plugin.short_name)
-  end)
-  return match ~= nil
-end
-
 plugin_utils.post_update_hook = function(plugin, disp)
   local plugin_name = util.get_plugin_full_name(plugin)
   return a.sync(function()
-    await(a.main)
-    if plugin.run or (not plugin.opt or plugin_utils.is_remote_plugin(plugin)) then
+    if plugin.run or not plugin.opt then
       await(a.main)
       plugin_utils.load_plugin(plugin)
     end
