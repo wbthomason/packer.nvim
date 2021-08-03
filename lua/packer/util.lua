@@ -9,6 +9,19 @@ util.map = function(func, seq)
   return result
 end
 
+---Find an item in a list based on a compare function
+---@generic T
+---@param compare fun(item: T): boolean
+---@param list `T`
+---@return `T`
+util.find = function(list, compare)
+  for _, item in ipairs(list) do
+    if compare(item) then
+      return item
+    end
+  end
+end
+
 util.partition = function(sub, seq)
   local sub_vals = {}
   for _, val in ipairs(sub) do
