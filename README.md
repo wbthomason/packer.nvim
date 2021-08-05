@@ -32,7 +32,7 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 10. [Contributors](#contributors)
 
 ## Notices
-- **2021-07-31:** If you're on macOS, note that building Neovim with the version of `luv` from `homebrew` [will cause any `packer` command to crash](https://github.com/wbthomason/packer.nvim/issues/496#issuecomment-890371022). More about this issue at https://github.com/neovim/neovim/issues/15054.
+- **2021-07-31:** If you're on macOS, note that building Neovim with the version of `luv` from `homebrew` [will cause any `packer` command to crash](https://github.com/wbthomason/packer.nvim/issues/496#issuecomment-890371022). More about this issue at [neovim/neovim#15054](https://github.com/neovim/neovim/issues/15054).
 - **2021-07-28:** `packer` will now highlight commits/plugin names with potentially breaking changes
   (determined by looking for `breaking change` or `breaking_change`, case insensitive, in the update
   commit bodies and headers) as `WarningMsg` in the status window.
