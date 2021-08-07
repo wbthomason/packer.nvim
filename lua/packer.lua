@@ -593,12 +593,15 @@ end
 packer.status = function()
   local async = require('packer.async').sync
   local display = require_and_configure 'display'
-  require_and_configure 'log'
-
+  local log = require_and_configure 'log'
   manage_all_plugins()
   async(function()
     local display_win = display.open(config.display.open_fn or config.display.open_cmd)
-    display_win:status(_G.packer_plugins)
+    if _G.packer_plugins ~= nil then
+      display_win:status(_G.packer_plugins)
+    else
+      log.warn 'packer_plugins table is nil! Cannot run packer.status()!'
+    end
   end)()
 end
 
