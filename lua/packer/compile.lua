@@ -164,19 +164,43 @@ local function timed_chunk(chunk, name, output_table)
   return output_table
 end
 
+local timed_install_check_fmt = [=[time([[%s]], true)
+vim.loop.fs_lstat([[%s]], function(err, stat)
+  if err == nil and stat ~= nil then
+    vim.schedule(function()
+      %s
+    end)
+  else
+    vim.schedule(function() vim.api.nvim_notify('packer.nvim: Skipping %s because plugin is not installed!', vim.log.levels.WARN, {}) end)
+  end
+
+  time([[%s]], false)
+end)]=]
+
+local function timed_install_check_chunk(chunk, name, path, output_table)
+  output_table = output_table or {}
+  local chunk_string = type(chunk) == 'string' and chunk or table.concat(chunk, '\n')
+  local timed_install_check = fmt(timed_install_check_fmt, name, path, chunk_string, name, name)
+  vim.list_extend(output_table, vim.split(timed_install_check, '\n'))
+  return output_table
+end
+
 -- We special-case timing for conditionals because we can't directly wrap the condition test
+local timed_condition_fmt = [=[
+time([[%s]], true)
+if 
+  %s 
+then
+  time([[%s]], false)
+  %s
+else
+  time([[%s]], false)
+end
+]=]
 local function timed_condition(condition, body, name, output_table)
   output_table = output_table or {}
-  local condition_time_call = 'time("' .. name .. '", '
-  output_table[#output_table + 1] = condition_time_call .. 'true)'
-  output_table[#output_table + 1] = 'if'
-  output_table[#output_table + 1] = condition
-  output_table[#output_table + 1] = 'then'
-  output_table[#output_table + 1] = condition_time_call .. 'false)'
-  output_table[#output_table + 1] = body
-  output_table[#output_table + 1] = 'else'
-  output_table[#output_table + 1] = condition_time_call .. 'false)'
-  output_table[#output_table + 1] = 'end'
+  local condition_check = fmt(timed_condition_fmt, name, condition, name, body, name)
+  vim.list_extend(output_table, vim.split(condition_check, '\n'))
   return output_table
 end
 
@@ -498,7 +522,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   local config_lines = {}
   for name, plugin_config in pairs(configs) do
     local lines = { '-- Config for: ' .. name }
-    timed_chunk(plugin_config, 'Config for ' .. name, lines)
+    timed_install_check_chunk(plugin_config, 'Config for ' .. name, loaders[name].path, lines)
     vim.list_extend(config_lines, lines)
   end
 
@@ -529,7 +553,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       timed_chunk('\tvim.cmd [[packadd ' .. name .. ']]', 'packadd for ' .. name, conditional_loads)
       if plugins[name].config then
         local lines = { '-- Config for: ' .. name }
-        timed_chunk(plugins[name].executable_config, 'Config for ' .. name, lines)
+        timed_install_check_chunk(plugins[name].executable_config, 'Config for ' .. name, loaders[name].path, lines)
         vim.list_extend(conditional_loads, lines)
       end
     end
