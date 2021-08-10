@@ -1,6 +1,7 @@
 -- TODO: Performance analysis/tuning
 -- TODO: Merge start plugins?
 local util = require 'packer.util'
+local keys = require 'packer.keys'
 
 local join_paths = util.join_paths
 local stdpath = vim.fn.stdpath
@@ -822,5 +823,7 @@ packer.startup = function(spec)
 
   return packer
 end
+
+packer.get_keys = keys.get_keys
 
 return packer
