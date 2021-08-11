@@ -555,7 +555,7 @@ invoked as follows:
     config = string or function, -- Specifies code to run after this plugin is loaded.
     rocks = string or list,      -- Specifies Luarocks dependencies for the plugin
     -- The following keys all imply lazy-loading
-    cmd = string or list,        -- Specifies commands which load this plugin.  Can be autocmd pattern.
+    cmd = string or list,        -- Specifies commands which load this plugin.  Can be an autocmd pattern.
     ft = string or list,         -- Specifies filetypes which load this plugin.
     keys = string or list,       -- Specifies maps which load this plugin. See |packer-plugin-keybindings|
     event = string or list,      -- Specifies autocommand events which load this plugin.
