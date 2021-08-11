@@ -370,7 +370,7 @@ use {
   -- The setup key implies opt = true
   setup = string or function,  -- Specifies code to run before this plugin is loaded.
   -- The following keys all imply lazy-loading and imply opt = true
-  cmd = string or list,        -- Specifies commands which load this plugin. Can have patterns.
+  cmd = string or list,        -- Specifies commands which load this plugin. Can be an autocmd pattern.
   ft = string or list,         -- Specifies filetypes which load this plugin.
   keys = string or list,       -- Specifies maps which load this plugin. See "Keybindings".
   event = string or list,      -- Specifies autocommand events which load this plugin.
