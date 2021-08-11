@@ -110,6 +110,7 @@ packer_load = function(names, cause, plugins)
   elseif cause.ft then
     cmd(fmt('doautocmd <nomodeline> %s FileType %s', 'filetypeplugin', cause.ft))
     cmd(fmt('doautocmd <nomodeline> %s FileType %s', 'filetypeindent', cause.ft))
+    cmd(fmt('doautocmd <nomodeline> %s FileType %s', 'syntaxset', cause.ft))
   end
 end
 
