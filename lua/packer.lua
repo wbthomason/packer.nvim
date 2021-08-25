@@ -689,7 +689,7 @@ packer.compile = function(raw_args)
     local configs_to_run = {}
     if _G.packer_plugins ~= nil then
       for plugin_name, plugin_info in pairs(_G.packer_plugins) do
-        if plugin_info.loaded and plugin_info.config and plugins[plugin_name].cmd then
+        if plugin_info.loaded and plugin_info.config and plugins[plugin_name] and plugins[plugin_name].cmd then
           configs_to_run[plugin_name] = plugin_info.config
         end
       end
