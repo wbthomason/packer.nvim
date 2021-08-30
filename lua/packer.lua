@@ -390,7 +390,7 @@ packer.install = function(...)
     local results = {}
     await(clean(plugins, fs_state, results))
 
-    if #install_plugins == 0 and #rocks == 0 then
+    if #install_plugins == 0 and next(rocks) == nil then
       log.info 'All configured plugins and rocks are installed'
       packer.on_complete()
       return
