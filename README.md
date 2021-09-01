@@ -203,7 +203,7 @@ You can configure Neovim to automatically run `:PackerCompile` whenever `plugins
 [an autocommand](https://neovim.io/doc/user/autocmd.html#:autocmd):
 
 ```
-augroup packer
+augroup packer_user_config
   autocmd!
   autocmd BufWritePost plugins.lua source <afile> | PackerCompile
 augroup end
@@ -214,7 +214,7 @@ Placing this in `plugins.lua` could look like this:
 
 ```lua
 vim.cmd([[
-  augroup packer
+  augroup packer_user_config
     autocmd!
     autocmd BufWritePost plugins.lua source <afile> | PackerCompile
   augroup end
