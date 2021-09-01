@@ -199,17 +199,26 @@ end)
 :PackerLoad completion-nvim ale
 ```
 
-You can configure Neovim to automatically run `:PackerCompile` whenever `plugins.lua` is updated with an autocommand:
+You can configure Neovim to automatically run `:PackerCompile` whenever `plugins.lua` is updated with
+[an autocommand](https://neovim.io/doc/user/autocmd.html#:autocmd):
 
 ```
-autocmd BufWritePost plugins.lua source <afile> | PackerCompile
+augroup packer_user_config
+  autocmd!
+  autocmd BufWritePost plugins.lua source <afile> | PackerCompile
+augroup end
 ```
 
 This autocommand can be placed in your `init.vim`, or any other startup file as per your setup.
 Placing this in `plugins.lua` could look like this:
 
 ```lua
-vim.cmd([[autocmd BufWritePost plugins.lua source <afile> | PackerCompile]])
+vim.cmd([[
+  augroup packer_user_config
+    autocmd!
+    autocmd BufWritePost plugins.lua source <afile> | PackerCompile
+  augroup end
+]])
 ```
 
 ## Bootstrapping
