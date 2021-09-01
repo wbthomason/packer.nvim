@@ -242,10 +242,10 @@ plugin_utils.post_update_hook = function(plugin, disp)
             }
             local cmd
             local shell = os.getenv 'SHELL' or vim.o.shell
-            if shell:find('cmd.exe$') then
-                cmd = { shell, '/c', task }
+            if shell:find 'cmd.exe$' then
+              cmd = { shell, '/c', task }
             else
-                cmd = { shell, '-c', task }
+              cmd = { shell, '-c', task }
             end
             return await(jobs.run(cmd, { capture_output = hook_callbacks, cwd = plugin.install_path })):map_err(
               function(err)
