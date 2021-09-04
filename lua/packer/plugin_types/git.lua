@@ -302,7 +302,19 @@ git.setup = function(plugin)
         end
       end
 
+      local update_callbacks = {
+        stdout = jobs.logging_callback(update_info.err, update_info.output),
+        stderr = jobs.logging_callback(update_info.err, update_info.output, nil, disp, plugin_name),
+      }
+      local update_opts = {
+        success_test = exit_ok,
+        capture_output = update_callbacks,
+        cwd = install_to,
+        options = { env = git.job_env },
+      }
+
       if needs_checkout then
+        r:and_then(await, jobs.run(config.exec_cmd .. config.subcommands.fetch, update_opts))
         r:and_then(await, handle_checkouts(plugin, install_to, disp))
         local function merge_output(res)
           if res.output ~= nil then
@@ -321,18 +333,7 @@ git.setup = function(plugin)
         end)
       end
 
-      local update_callbacks = {
-        stdout = jobs.logging_callback(update_info.err, update_info.output),
-        stderr = jobs.logging_callback(update_info.err, update_info.output, nil, disp, plugin_name),
-      }
-
       disp:task_update(plugin_name, 'pulling updates...')
-      local update_opts = {
-        success_test = exit_ok,
-        capture_output = update_callbacks,
-        cwd = install_to,
-        options = { env = git.job_env },
-      }
 
       r
         :and_then(await, jobs.run(update_cmd, update_opts))
