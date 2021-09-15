@@ -73,6 +73,8 @@ local plugins = nil
 local plugin_specifications = nil
 local rocks = nil
 
+local operation_running = false
+
 local configurable_modules = {
   clean = false,
   compile = false,
@@ -323,6 +325,7 @@ packer.__manage_all = manage_all_plugins
 
 --- Hook to fire events after packer operations
 packer.on_complete = vim.schedule_wrap(function()
+  operation_running = false
   vim.cmd [[doautocmd User PackerComplete]]
 end)
 
@@ -334,6 +337,13 @@ end
 --- Clean operation:
 -- Finds plugins present in the `packer` package but not in the managed set
 packer.clean = function(results)
+  if operation_running then
+    local log = require_and_configure 'log'
+    log.warn 'Cannot clean - another operation is running!'
+    return
+  end
+
+  operation_running = true
   local plugin_utils = require_and_configure 'plugin_utils'
   local a = require 'packer.async'
   local async = a.sync
@@ -364,6 +374,12 @@ end
 -- Installs missing plugins, then updates helptags and rplugins
 packer.install = function(...)
   local log = require_and_configure 'log'
+  if operation_running then
+    log.warn 'Cannot install - another operation is running!'
+    return
+  end
+
+  operation_running = true
   log.debug 'packer.install: requiring modules'
   local plugin_utils = require_and_configure 'plugin_utils'
   local a = require 'packer.async'
@@ -437,6 +453,12 @@ end
 -- and rplugins
 packer.update = function(...)
   local log = require_and_configure 'log'
+  if operation_running then
+    log.warn 'Cannot update - another operation is running!'
+    return
+  end
+
+  operation_running = true
   log.debug 'packer.update: requiring modules'
   local plugin_utils = require_and_configure 'plugin_utils'
   local a = require 'packer.async'
@@ -512,6 +534,12 @@ end
 --  - Update helptags and rplugins
 packer.sync = function(...)
   local log = require_and_configure 'log'
+  if operation_running then
+    log.warn 'Cannot sync - another operation is running!'
+    return
+  end
+
+  operation_running = true
   log.debug 'packer.sync: requiring modules'
   local plugin_utils = require_and_configure 'plugin_utils'
   local a = require 'packer.async'
@@ -580,8 +608,10 @@ packer.sync = function(...)
 
     await(a.main)
     if config.compile_on_sync then
+      operation_running = false
       packer.compile()
     end
+
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
@@ -664,9 +694,15 @@ end
 --- Update the compiled lazy-loader code
 --- Takes an optional argument of a path to which to output the resulting compiled code
 packer.compile = function(raw_args)
-  local compile = require_and_configure 'compile'
   local log = require_and_configure 'log'
+  if operation_running then
+    log.warn 'Cannot compile - another operation is running!'
+    return
+  end
 
+  operation_running = true
+
+  local compile = require_and_configure 'compile'
   manage_all_plugins()
   local args = parse_args(raw_args)
   local output_path = args.output_path or config.compile_path
