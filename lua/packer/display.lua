@@ -241,12 +241,15 @@ local display_mt = {
     if not self:valid_display() then
       return
     end
-    local cursor_pos = api.nvim_win_get_cursor(self.win)
-    api.nvim_win_set_cursor(self.win, { 1, 0 })
+    local headline = api.nvim_buf_get_lines(self.buf, 0, 1, false)[1]
+    local count_start, count_end = string.find(headline, '%d+')
+    local count = tonumber(string.sub(headline, count_start, count_end))
+    local updated_headline = string.sub(headline, 1, count_start - 1)
+      .. tostring(count - 1)
+      .. string.sub(headline, count_end + 1)
     api.nvim_buf_set_option(self.buf, 'modifiable', true)
-    vim.fn.execute 'normal! '
+    api.nvim_buf_set_lines(self.buf, 0, 1, false, { updated_headline })
     api.nvim_buf_set_option(self.buf, 'modifiable', false)
-    api.nvim_win_set_cursor(self.win, cursor_pos)
   end),
 
   --- Update a task as having successfully completed
