@@ -230,7 +230,9 @@ local display_mt = {
       return
     end
     display.status.running = true
-    self:set_lines(config.header_lines, config.header_lines, { fmt(' %s %s: %s', config.working_sym, plugin, message) })
+    self:set_lines(config.header_lines, config.header_lines, {
+      fmt(' %s %s: %s', config.working_sym, plugin, message),
+    })
     self.marks[plugin] = set_extmark(self.buf, self.ns, nil, config.header_lines, 0)
   end),
 
