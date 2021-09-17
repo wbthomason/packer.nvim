@@ -526,7 +526,8 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   for condition, names in pairs(condition_ids) do
     local conditional_loads = {}
     for _, name in ipairs(names) do
-      timed_chunk('\tvim.cmd [[packadd ' .. name .. ']]', 'packadd for ' .. name, conditional_loads)
+      timed_chunk({'\tvim.cmd [[packadd ' .. name .. ']]',
+                   '\t_G.packer_plugins["'..name..'"].loaded = true'}, 'packadd for ' .. name, conditional_loads)
       if plugins[name].config then
         local lines = { '-- Config for: ' .. name }
         timed_chunk(plugins[name].executable_config, 'Config for ' .. name, lines)
