@@ -528,7 +528,9 @@ local function make_loaders(_, plugins, output_lua, should_profile)
     for _, name in ipairs(names) do
       timed_chunk(
         fmt('\trequire("packer.load")({"%s"}, {}, _G.packer_plugins)', name),
-        'packadd for ' .. name, conditional_loads)
+        'packadd for ' .. name,
+        conditional_loads
+      )
       if plugins[name].config then
         local lines = { '-- Config for: ' .. name }
         timed_chunk(plugins[name].executable_config, 'Config for ' .. name, lines)

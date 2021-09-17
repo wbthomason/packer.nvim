@@ -353,7 +353,12 @@ git.setup = function(plugin)
           await,
           jobs.run(
             rev_cmd,
-            { success_test = exit_ok, capture_output = rev_callbacks, cwd = install_to, options = { env = git.job_env } }
+            {
+              success_test = exit_ok,
+              capture_output = rev_callbacks,
+              cwd = install_to,
+              options = { env = git.job_env },
+            }
           )
         )
         :map_err(function(err)
