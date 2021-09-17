@@ -378,6 +378,7 @@ local display_mt = {
       end
       vim.list_extend(lines, header_lines)
     end
+    table.sort(lines)
     self.items = plugs
     self:set_lines(config.header_lines, -1, lines)
   end),
