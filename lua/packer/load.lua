@@ -38,9 +38,13 @@ packer_load = function(names, cause, plugins)
       end
 
       cmd('packadd ' .. names[i])
-      if vim.fn.exists ':UpdateRemotePlugins' == 2 then
-        cmd [[silent UpdateRemotePlugins]]
+      if
+        vim.fn.exists ':UpdateRemotePlugins' == 2
+        and vim.loop.fs_stat(require('packer.util').join_paths(plugin.path, 'rplugin'))
+      then
+        cmd 'silent UpdateRemotePlugins'
       end
+
       if plugin.after_files then
         for _, file in ipairs(plugin.after_files) do
           cmd('silent source ' .. file)
