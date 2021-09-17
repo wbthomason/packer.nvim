@@ -124,7 +124,7 @@ end
 
 packer.make_commands = function()
   vim.cmd [[command! PackerInstall           lua require('packer').install()]]
-  vim.cmd [[command! PackerUpdate            lua require('packer').update()]]
+  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)]]
   vim.cmd [[command! PackerSync              lua require('packer').sync()]]
   vim.cmd [[command! PackerClean             lua require('packer').clean()]]
   vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
@@ -765,6 +765,18 @@ packer.loader_complete = function(lead, _, _)
       table.insert(completion_list, name)
     end
   end
+  table.sort(completion_list)
+  return completion_list
+end
+
+-- Completion user plugins
+-- Intended to provide completion for PackerUpdate command
+packer.plugin_complete = function(lead, _, _)
+  local completion_list = vim.tbl_filter(function(name)
+    return vim.startswith(name, lead)
+  end, vim.tbl_keys(
+    _G.packer_plugins
+  ))
   table.sort(completion_list)
   return completion_list
 end
