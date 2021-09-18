@@ -130,7 +130,7 @@ packer.make_commands = function()
   vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
   vim.cmd [[command! PackerStatus            lua require('packer').status()]]
   vim.cmd [[command! PackerProfile           lua require('packer').profile_output()]]
-  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad lua require('packer').loader(<q-args>)]]
+  vim.cmd [[command! -bang -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad lua require('packer').loader(<f-args>, '<bang>')]]
 end
 
 packer.reset = function()
@@ -745,11 +745,14 @@ end
 -- Load plugins
 -- @param plugins string String of space separated plugins names
 --                      intended for PackerLoad command
-packer.loader = function(plugins_names)
-  local plugin_list = vim.tbl_filter(function(name)
-    return #name > 0
-  end, vim.split(plugins_names, ' '))
-  require 'packer.load'(plugin_list, {}, _G.packer_plugins)
+packer.loader = function(...)
+  local plugin_list = { ... }
+  local last_arg = plugin_list[#plugin_list]
+  local force = last_arg == '!'
+  if last_arg == '' or last_arg == '!' then
+    plugin_list[#plugin_list] = nil
+  end
+  require 'packer.load'(plugin_list, {}, _G.packer_plugins, force)
 end
 
 -- Completion for not yet loaded plugins
