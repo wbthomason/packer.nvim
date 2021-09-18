@@ -717,6 +717,7 @@ packer.compile = function(raw_args, donot_move_plugins)
       end
     end
     log.info 'Finished compiling lazy-loaders!'
+    print 'PackerCompile: Done'
     packer.on_compile_done()
 
     -- TODO: remove this after migration period (written 2021/06/28)
