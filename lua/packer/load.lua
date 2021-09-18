@@ -1,4 +1,23 @@
 local packer_load = nil
+
+local function verify_conditions(conds, name)
+  if conds == nil then
+    return true
+  end
+  for _, cond in ipairs(conds) do
+    local success, result = pcall(loadstring(cond))
+    if not success then
+      vim.schedule(function()
+        vim.api.nvim_notify('packer.nvim: Error running cond for ' .. name .. ': ' .. result, vim.log.levels.ERROR, {})
+      end)
+      return false
+    elseif result == false then
+      return false
+    end
+  end
+  return true
+end
+
 packer_load = function(names, cause, plugins)
   local some_unloaded = false
   local needs_bufread = false
@@ -13,7 +32,7 @@ packer_load = function(names, cause, plugins)
       error(err_message)
     end
 
-    if not plugin.loaded then
+    if not plugin.loaded and verify_conditions(plugin.cond, names[i]) then
       -- Set the plugin as loaded before config is run in case something in the config tries to load
       -- this same plugin again
       plugin.loaded = true
