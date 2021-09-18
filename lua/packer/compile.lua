@@ -315,11 +315,11 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       end
 
       -- Keep this as first opt loader to maintain only_cond ?
-      if plugin.cond then
+      if plugin.cond ~= nil then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
         only_cond[name] = true
-        if type(plugin.cond) == 'string' or type(plugin.cond) == 'function' then
+        if type(plugin.cond) ~= 'table' then
           plugin.cond = { plugin.cond }
         end
 
@@ -327,7 +327,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
           loaders[name].cond = {}
           if type(condition) == 'function' then
             _, condition = make_try_loadstring(condition, 'condition', name)
-          else
+          elseif type(condition) == 'string' then
             condition = 'return ' .. condition
           end
 

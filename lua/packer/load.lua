@@ -7,13 +7,23 @@ local function verify_conditions(conds, name)
     return true
   end
   for _, cond in ipairs(conds) do
-    local success, result = pcall(loadstring(cond))
-    if not success then
-      vim.schedule(function()
-        vim.api.nvim_notify('packer.nvim: Error running cond for ' .. name .. ': ' .. result, vim.log.levels.ERROR, {})
-      end)
-      return false
-    elseif result == false then
+    local success, result
+    if type(cond) == 'boolean' then
+      result = cond
+    elseif type(cond) == 'string' then
+      success, result = pcall(loadstring(cond))
+      if not success then
+        vim.schedule(function()
+          vim.api.nvim_notify(
+            'packer.nvim: Error running cond for ' .. name .. ': ' .. result,
+            vim.log.levels.ERROR,
+            {}
+          )
+        end)
+        return false
+      end
+    end
+    if result == false then
       return false
     end
   end

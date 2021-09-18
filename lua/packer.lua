@@ -226,7 +226,7 @@ manage = function(plugin_data)
 
   local compile = require_and_configure 'compile'
   for _, key in ipairs(compile.opt_keys) do
-    if plugin_spec[key] then
+    if plugin_spec[key] ~= nil then
       plugin_spec.opt = true
       break
     end
