@@ -37,14 +37,16 @@ packer_load = function(names, cause, plugins)
         end
       end
 
-      cmd('packadd ' .. names[i])
-      if
-        vim.fn.exists ':UpdateRemotePlugins' == 2
-        and vim.loop.fs_stat(require('packer.util').join_paths(plugin.path, 'rplugin'))
-      then
+      local is_rplugin = vim.loop.fs_stat(require('packer.util').join_paths(plugin.path, 'rplugin'))
+
+      if is_rplugin and vim.fn.exists ':UpdateRemotePlugins' == 2 then
+        -- Add the plugin to the runtime path so that it's remote plugin directory can be found
+        -- so that the remote plugin manifest is correctly generated but the plugin is not sourced yet
+        vim.opt.runtimepath:append(plugin.path)
         cmd 'silent UpdateRemotePlugins'
       end
 
+      cmd('packadd ' .. names[i])
       if plugin.after_files then
         for _, file in ipairs(plugin.after_files) do
           cmd('silent source ' .. file)
