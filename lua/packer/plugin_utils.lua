@@ -223,7 +223,7 @@ plugin_utils.post_update_hook = function(plugin, disp)
       disp:task_update(plugin_name, 'running post update hooks...')
       for _, task in ipairs(plugin.run) do
         if type(task) == 'function' then
-          local success, err = pcall(task, plugin)
+          local success, err = pcall(task, plugin, disp)
           if success then
             return result.ok()
           else
