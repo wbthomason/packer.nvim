@@ -1,6 +1,5 @@
 local packer_load = nil
 packer_load = function(names, cause, plugins)
-  local util = require 'packer.util'
   local some_unloaded = false
   local needs_bufread = false
   local num_names = #names
@@ -35,19 +34,6 @@ packer_load = function(names, cause, plugins)
       if plugin.keys then
         for _, key in ipairs(plugin.keys) do
           cmd(fmt('silent! %sunmap %s', key[1], key[2]))
-        end
-      end
-
-      -- If the plugin is a remote plugin [:h remote-plugin] add it to the runtime path
-      -- so that its remote plugin directory can be found and the remote plugin manifest
-      -- is correctly generated but the plugin is not sourced yet
-      local is_rplugin = vim.loop.fs_stat(util.join_paths(plugin.path, 'rplugin')) ~= nil
-      if is_rplugin and vim.fn.exists ':UpdateRemotePlugins' == 2 then
-        vim.opt.runtimepath:append(plugin.path)
-        cmd 'silent UpdateRemotePlugins'
-        -- this is set in $VIMRUNTIME/plugin/rplugin.vim
-        if vim.fn.exists(vim.g.loaded_remote_plugins) == 0 then
-          cmd 'runtime! plugin/rplugin.vim'
         end
       end
 

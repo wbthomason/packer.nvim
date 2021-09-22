@@ -6,7 +6,7 @@ local luarocks = require 'packer.luarocks'
 
 local config
 local function cfg(_config)
-  config = _config.profile
+  config = _config
 end
 
 local feature_guard = [[
@@ -746,6 +746,8 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   local some_ft = next(ft_aucmds) ~= nil
   local some_event = next(event_aucmds) ~= nil
   local some_fn = next(fn_aucmds) ~= nil
+  local some_rplugins = require('packer.rplugin').has_remote_plugins(config.opt_dir)
+
   if some_ft or some_event or some_fn then
     table.insert(result, 'vim.cmd [[augroup packer_load_aucmds]]\nvim.cmd [[au!]]')
   end
@@ -765,6 +767,16 @@ local function make_loaders(_, plugins, output_lua, should_profile)
     timed_chunk(fn_aucmds, 'Defining lazy-load function autocommands', result)
   end
 
+  if some_rplugins then
+    table.insert(result, '-- Remote plugin loading')
+    local rplugin_autocmds = fmt(
+      'vim.cmd[[au %s * ++once lua require("packer.rplugin").update("%s")]]',
+      config.rplugin_load_event,
+      config.opt_dir
+    )
+    timed_chunk(rplugin_autocmds, 'Defining lazy-load function autocommands', result)
+  end
+
   if some_ft or some_event or some_fn then
     table.insert(result, 'vim.cmd("augroup END")')
   end
@@ -778,7 +790,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
     table.insert(result, 'vim.cmd("augroup END")')
   end
 
-  table.insert(result, conditionally_output_profile(config.threshold))
+  table.insert(result, conditionally_output_profile(config.profile.threshold))
   if output_lua then
     table.insert(result, catch_errors_lua)
   else
