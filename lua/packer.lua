@@ -580,7 +580,7 @@ packer.sync = function(...)
 
     await(a.main)
     if config.compile_on_sync then
-      packer.compile(nil, true)
+      packer.compile(nil, false)
     end
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
@@ -663,7 +663,7 @@ end
 
 --- Update the compiled lazy-loader code
 --- Takes an optional argument of a path to which to output the resulting compiled code
-packer.compile = function(raw_args, donot_move_plugins)
+packer.compile = function(raw_args, move_plugins)
   local compile = require_and_configure 'compile'
   local log = require_and_configure 'log'
   local a = require 'packer.async'
@@ -672,7 +672,7 @@ packer.compile = function(raw_args, donot_move_plugins)
 
   manage_all_plugins()
   async(function()
-    if not donot_move_plugins then
+    if move_plugins ~= false then
       local update = require_and_configure 'update'
       local plugin_utils = require_and_configure 'plugin_utils'
       local fs_state = await(plugin_utils.get_fs_state(plugins))
@@ -717,29 +717,8 @@ packer.compile = function(raw_args, donot_move_plugins)
       end
     end
     log.info 'Finished compiling lazy-loaders!'
-    print 'PackerCompile: Done'
+    vim.notify('PackerCompile: Done', vim.log.levels.INFO, {title = 'Packer'})
     packer.on_compile_done()
-
-    -- TODO: remove this after migration period (written 2021/06/28)
-    local old_output_path
-    if output_lua then
-      old_output_path = vim.fn.fnamemodify(output_path, ':r') .. '.vim'
-    else
-      old_output_path = vim.fn.fnamemodify(output_path, ':r') .. '.lua'
-    end
-
-    if vim.loop.fs_stat(old_output_path) then
-      os.remove(old_output_path)
-      log.warn(
-        '"'
-          .. vim.fn.fnamemodify(old_output_path, ':~:.')
-          .. '" was replaced by "'
-          .. vim.fn.fnamemodify(output_path, ':~:.')
-          .. '"'
-      )
-      log.warn 'If you have not updated Neovim since 2021/06/11 you must do so now'
-    end
-    -- TODO: end migration chunk (2021/07/02)
   end)()
 end
 
