@@ -223,22 +223,27 @@ vim.cmd([[
 
 ## Bootstrapping
 
-If you want to automatically ensure that `packer.nvim` is installed on any machine you clone your
-configuration to, add the following snippet (which is due to @Iron-E) somewhere in your config **before** your first usage of
-`packer`:
+If you want to automatically install and set up `packer.nvim` on any machine you clone your configuration to,
+add the following snippet (which is due to @Iron-E and @khuedoan) somewhere in your config:
+
 ```lua
 local fn = vim.fn
 local install_path = fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
 if fn.empty(fn.glob(install_path)) > 0 then
-  fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
-  vim.cmd 'packadd packer.nvim'
+  packer_bootstrap = fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
 end
-```
 
-You can also use the following command (with `packer` bootstrapped) to have `packer` setup your
-configuration (or simply run updates) and close once all operations are completed:
-```sh
-$ nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
+return require('packer').startup(function(use)
+  -- My plugins here
+  -- use 'foo1/bar1.nvim'
+  -- use 'foo2/bar2.nvim'
+
+  -- Automatically set up your configuration after cloning packer.nvim
+  -- Put this at the end after all plugins
+  if packer_bootstrap then
+    require('packer').sync()
+  end
+end)
 ```
 
 ## Usage
