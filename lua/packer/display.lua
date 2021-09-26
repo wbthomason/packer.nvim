@@ -355,10 +355,12 @@ local display_mt = {
     local lines = {}
 
     local padding = string.rep(' ', 3)
+    local rtps = api.nvim_list_runtime_paths()
     for plug_name, plug_conf in pairs(plugins) do
-      local header_lines = {
-        fmt(' • %s', plug_name) .. (not plug_conf.loaded and ' (not loaded)' or ''),
-      }
+      local load_state = plug_conf.loaded and ''
+        or vim.tbl_contains(rtps, plug_conf.path) and ' (manually loaded)'
+        or ' (not loaded)'
+      local header_lines = { fmt(' • %s', plug_name) .. load_state }
       local config_lines = {}
       for key, value in pairs(plug_conf) do
         if vim.tbl_contains(status_keys, key) then
