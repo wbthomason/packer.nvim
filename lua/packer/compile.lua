@@ -199,7 +199,7 @@ local function make_try_loadstring(item, chunk, name)
   return executable_string, bytecode
 end
 
-local after_plugin_pattern = table.concat({ 'after', 'plugin', '**/*.vim' }, util.get_separator())
+local after_plugin_pattern = table.concat({ 'after', 'plugin', [[**/*.\(vim\|lua\)]] }, util.get_separator())
 local function detect_after_plugin(name, plugin_path)
   local path = plugin_path .. util.get_separator() .. after_plugin_pattern
   local glob_ok, files = pcall(vim.fn.glob, path, false, true)
@@ -218,8 +218,8 @@ local function detect_after_plugin(name, plugin_path)
 end
 
 local ftdetect_patterns = {
-  table.concat({ 'ftdetect', '**/*.vim' }, util.get_separator()),
-  table.concat({ 'after', 'ftdetect', '**/*.vim' }, util.get_separator()),
+  table.concat({ 'ftdetect', [[**/*.\(vim\|lua\)]] }, util.get_separator()),
+  table.concat({ 'after', 'ftdetect', [[**/*.\(vim\|lua\)]] }, util.get_separator()),
 }
 local function detect_ftdetect(name, plugin_path)
   local paths = {
@@ -439,14 +439,26 @@ local function make_loaders(_, plugins, output_lua, should_profile)
         end
       end
 
-      if plugin.module then
+      if plugin.module or plugin.module_pattern then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        if type(plugin.module) == 'string' then
-          plugin.module = { plugin.module }
-        end
-        for _, module_name in ipairs(plugin.module) do
-          module_lazy_loads['^' .. vim.pesc(module_name)] = name
+
+        if plugin.module then
+          if type(plugin.module) == 'string' then
+            plugin.module = { plugin.module }
+          end
+
+          for _, module_name in ipairs(plugin.module) do
+            module_lazy_loads['^' .. vim.pesc(module_name)] = name
+          end
+        else
+          if type(plugin.module_pattern) == 'string' then
+            plugin.module_pattern = { plugin.module_pattern }
+          end
+
+          for _, module_pattern in ipairs(plugin.module_pattern) do
+            module_lazy_loads[module_pattern] = name
+          end
         end
       end
 
@@ -514,7 +526,11 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   for condition, names in pairs(condition_ids) do
     local conditional_loads = {}
     for _, name in ipairs(names) do
-      timed_chunk('\tvim.cmd [[packadd ' .. name .. ']]', 'packadd for ' .. name, conditional_loads)
+      timed_chunk(
+        fmt('\trequire("packer.load")({"%s"}, {}, _G.packer_plugins)', name),
+        'packadd for ' .. name,
+        conditional_loads
+      )
       if plugins[name].config then
         local lines = { '-- Config for: ' .. name }
         timed_chunk(plugins[name].executable_config, 'Config for ' .. name, lines)
@@ -538,12 +554,21 @@ local function make_loaders(_, plugins, output_lua, should_profile)
 
   local command_defs = {}
   for command, names in pairs(commands) do
-    local command_line = fmt(
-      'pcall(vim.cmd, [[command -nargs=* -range -bang -complete=file %s lua require("packer.load")({%s}, { cmd = "%s", l1 = <line1>, l2 = <line2>, bang = <q-bang>, args = <q-args> }, _G.packer_plugins)]])',
-      command,
-      table.concat(names, ', '),
-      command
-    )
+    local command_line
+    if string.match(command, '^%w+$') then
+      command_line = fmt(
+        'pcall(vim.cmd, [[command -nargs=* -range -bang -complete=file %s lua require("packer.load")({%s}, { cmd = "%s", l1 = <line1>, l2 = <line2>, bang = <q-bang>, args = <q-args> }, _G.packer_plugins)]])',
+        command,
+        table.concat(names, ', '),
+        command
+      )
+    else
+      command_line = fmt(
+        'pcall(vim.cmd, [[au CmdUndefined %s ++once lua require"packer.load"({%s}, {}, _G.packer_plugins)]])',
+        command,
+        table.concat(names, ', ')
+      )
+    end
     command_defs[#command_defs + 1] = command_line
   end
 
@@ -765,6 +790,6 @@ end
 
 local compile = setmetatable({ cfg = cfg }, { __call = make_loaders })
 
-compile.opt_keys = { 'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup', 'fn', 'module' }
+compile.opt_keys = { 'after', 'cmd', 'ft', 'keys', 'event', 'cond', 'setup', 'fn', 'module', 'module_pattern' }
 
 return compile

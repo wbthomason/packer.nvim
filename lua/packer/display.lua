@@ -230,7 +230,9 @@ local display_mt = {
       return
     end
     display.status.running = true
-    self:set_lines(config.header_lines, config.header_lines, { fmt(' %s %s: %s', config.working_sym, plugin, message) })
+    self:set_lines(config.header_lines, config.header_lines, {
+      fmt(' %s %s: %s', config.working_sym, plugin, message),
+    })
     self.marks[plugin] = set_extmark(self.buf, self.ns, nil, config.header_lines, 0)
   end),
 
@@ -239,12 +241,15 @@ local display_mt = {
     if not self:valid_display() then
       return
     end
-    local cursor_pos = api.nvim_win_get_cursor(self.win)
-    api.nvim_win_set_cursor(self.win, { 1, 0 })
+    local headline = api.nvim_buf_get_lines(self.buf, 0, 1, false)[1]
+    local count_start, count_end = string.find(headline, '%d+')
+    local count = tonumber(string.sub(headline, count_start, count_end))
+    local updated_headline = string.sub(headline, 1, count_start - 1)
+      .. tostring(count - 1)
+      .. string.sub(headline, count_end + 1)
     api.nvim_buf_set_option(self.buf, 'modifiable', true)
-    vim.fn.execute 'normal! '
+    api.nvim_buf_set_lines(self.buf, 0, 1, false, { updated_headline })
     api.nvim_buf_set_option(self.buf, 'modifiable', false)
-    api.nvim_win_set_cursor(self.win, cursor_pos)
   end),
 
   --- Update a task as having successfully completed
@@ -315,11 +320,12 @@ local display_mt = {
       'hi def link packerStatus         Type',
       'hi def link packerStatusCommit   Constant',
       'hi def link packerStatusSuccess  Constant',
-      'hi def link packerStatusFail     WarningMsg',
+      'hi def link packerStatusFail     ErrorMsg',
       'hi def link packerPackageName    Label',
       'hi def link packerPackageNotLoaded    Comment',
       'hi def link packerString         String',
       'hi def link packerBool Boolean',
+      'hi def link packerBreakingChange WarningMsg',
     }
     for _, c in ipairs(highlights) do
       vim.cmd(c)
@@ -328,8 +334,8 @@ local display_mt = {
 
   setup_profile_syntax = function(_)
     local highlights = {
-      'hi def link packerTimeHigh WarningMsg',
-      'hi def link packerTimeMedium Float',
+      'hi def link packerTimeHigh ErrorMsg',
+      'hi def link packerTimeMedium WarningMsg',
       'hi def link packerTimeLow String',
       'hi def link packerTimeTrivial Comment',
     }
@@ -372,6 +378,7 @@ local display_mt = {
       end
       vim.list_extend(lines, header_lines)
     end
+    table.sort(lines)
     self.items = plugs
     self:set_lines(config.header_lines, -1, lines)
   end),
@@ -539,6 +546,14 @@ local display_mt = {
         end
 
         table.insert(plugin_data.lines, '')
+      end
+
+      if plugin.breaking_commits and #plugin.breaking_commits > 0 then
+        vim.cmd('syntax match packerBreakingChange "' .. plugin_name .. '" containedin=packerStatusSuccess')
+        for _, commit_hash in ipairs(plugin.breaking_commits) do
+          log.warn('Potential breaking change in commit ' .. commit_hash .. ' of ' .. plugin_name)
+          vim.cmd('syntax match packerBreakingChange "' .. commit_hash .. '" containedin=packerHash')
+        end
       end
 
       plugins[plugin_name] = plugin_data

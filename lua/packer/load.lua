@@ -48,8 +48,13 @@ packer_load = function(names, cause, plugins)
         for _, config_line in ipairs(plugin.config) do
           local success, err = pcall(loadstring(config_line))
           if not success then
-            print('Error running config for ' .. names[i])
-            error(err)
+            vim.schedule(function()
+              vim.api.nvim_notify(
+                'packer.nvim: Error running config for ' .. names[i] .. ': ' .. err,
+                vim.log.levels.ERROR,
+                {}
+              )
+            end)
           end
         end
       end
@@ -105,6 +110,7 @@ packer_load = function(names, cause, plugins)
   elseif cause.ft then
     cmd(fmt('doautocmd <nomodeline> %s FileType %s', 'filetypeplugin', cause.ft))
     cmd(fmt('doautocmd <nomodeline> %s FileType %s', 'filetypeindent', cause.ft))
+    cmd(fmt('doautocmd <nomodeline> %s FileType %s', 'syntaxset', cause.ft))
   end
 end
 

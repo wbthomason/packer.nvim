@@ -21,6 +21,7 @@ local config_defaults = {
   transitive_disable = true,
   auto_reload_compiled = true,
   git = {
+    mark_breaking_changes = true,
     cmd = 'git',
     subcommands = {
       update = 'pull --ff-only --progress --rebase=false',
@@ -33,7 +34,8 @@ local config_defaults = {
       diff_fmt = '%%h %%s (%%cr)',
       git_diff_fmt = 'show --no-color --pretty=medium %s',
       get_rev = 'rev-parse --short HEAD',
-      get_msg = 'log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',
+      get_header = 'log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',
+      get_bodies = 'log --color=never --pretty=format:"===COMMIT_START===%h%n%s===BODY_START===%b" --no-show-signature HEAD@{1}...HEAD',
       submodules = 'submodule update --init --recursive --progress',
       revert = 'reset --hard HEAD@{1}',
     },
@@ -109,6 +111,10 @@ packer.init = function(user_config)
   config.pack_dir = join_paths(config.package_root, config.plugin_package)
   config.opt_dir = join_paths(config.pack_dir, 'opt')
   config.start_dir = join_paths(config.pack_dir, 'start')
+  if #vim.api.nvim_list_uis() == 0 then
+    config.display.non_interactive = true
+  end
+
   local plugin_utils = require_and_configure 'plugin_utils'
   plugin_utils.ensure_dirs()
   if not config.disable_commands then
@@ -117,9 +123,9 @@ packer.init = function(user_config)
 end
 
 packer.make_commands = function()
-  vim.cmd [[command! PackerInstall           lua require('packer').install()]]
-  vim.cmd [[command! PackerUpdate            lua require('packer').update()]]
-  vim.cmd [[command! PackerSync              lua require('packer').sync()]]
+  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete  PackerInstall lua require('packer').install(<f-args>)]]
+  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)]]
+  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)]]
   vim.cmd [[command! PackerClean             lua require('packer').clean()]]
   vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
   vim.cmd [[command! PackerStatus            lua require('packer').status()]]
@@ -587,12 +593,15 @@ end
 packer.status = function()
   local async = require('packer.async').sync
   local display = require_and_configure 'display'
-  require_and_configure 'log'
-
+  local log = require_and_configure 'log'
   manage_all_plugins()
   async(function()
     local display_win = display.open(config.display.open_fn or config.display.open_cmd)
-    display_win:status(_G.packer_plugins)
+    if _G.packer_plugins ~= nil then
+      display_win:status(_G.packer_plugins)
+    else
+      log.warn 'packer_plugins table is nil! Cannot run packer.status()!'
+    end
   end)()
 end
 
@@ -680,7 +689,7 @@ packer.compile = function(raw_args)
     local configs_to_run = {}
     if _G.packer_plugins ~= nil then
       for plugin_name, plugin_info in pairs(_G.packer_plugins) do
-        if plugin_info.loaded and plugin_info.config and plugins[plugin_name].cmd then
+        if plugin_info.loaded and plugin_info.config and plugins[plugin_name] and plugins[plugin_name].cmd then
           configs_to_run[plugin_name] = plugin_info.config
         end
       end
@@ -756,6 +765,18 @@ packer.loader_complete = function(lead, _, _)
       table.insert(completion_list, name)
     end
   end
+  table.sort(completion_list)
+  return completion_list
+end
+
+-- Completion user plugins
+-- Intended to provide completion for PackerUpdate/Sync/Install command
+packer.plugin_complete = function(lead, _, _)
+  local completion_list = vim.tbl_filter(function(name)
+    return vim.startswith(name, lead)
+  end, vim.tbl_keys(
+    _G.packer_plugins
+  ))
   table.sort(completion_list)
   return completion_list
 end

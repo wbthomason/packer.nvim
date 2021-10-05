@@ -32,6 +32,10 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 10. [Contributors](#contributors)
 
 ## Notices
+- **2021-07-31:** If you're on macOS, note that building Neovim with the version of `luv` from `homebrew` [will cause any `packer` command to crash](https://github.com/wbthomason/packer.nvim/issues/496#issuecomment-890371022). More about this issue at [neovim/neovim#15054](https://github.com/neovim/neovim/issues/15054).
+- **2021-07-28:** `packer` will now highlight commits/plugin names with potentially breaking changes
+  (determined by looking for `breaking change` or `breaking_change`, case insensitive, in the update
+  commit bodies and headers) as `WarningMsg` in the status window.
 - **2021-06-06**: Your Neovim must include https://github.com/neovim/neovim/pull/14659; `packer` uses the `noautocmd` key.
 - **2021-04-19**: `packer` now provides built-in profiling for your config via the `packer_compiled`
   file. Take a look at [the docs](#profiling) for more information!
@@ -67,9 +71,12 @@ To get started, first clone this repository to somewhere on your `packpath`, e.g
 > Unix, Linux Installation
 
 ```shell
-git clone https://github.com/wbthomason/packer.nvim\
+git clone --depth 1 https://github.com/wbthomason/packer.nvim\
  ~/.local/share/nvim/site/pack/packer/start/packer.nvim
 ```
+
+If you use Arch Linux, there is also [an AUR
+package](https://aur.archlinux.org/packages/nvim-packer-git/).
 
 > Windows Powershell Installation
 
@@ -214,17 +221,26 @@ end)
 :PackerLoad completion-nvim ale
 ```
 
-You can configure Neovim to automatically run `:PackerCompile` whenever `plugins.lua` is updated with an autocommand:
+You can configure Neovim to automatically run `:PackerCompile` whenever `plugins.lua` is updated with
+[an autocommand](https://neovim.io/doc/user/autocmd.html#:autocmd):
 
 ```
-autocmd BufWritePost plugins.lua source <afile> | PackerCompile
+augroup packer_user_config
+  autocmd!
+  autocmd BufWritePost plugins.lua source <afile> | PackerCompile
+augroup end
 ```
 
 This autocommand can be placed in your `init.vim`, or any other startup file as per your setup.
 Placing this in `plugins.lua` could look like this:
 
 ```lua
-vim.cmd([[autocmd BufWritePost plugins.lua source <afile> | PackerCompile]])
+vim.cmd([[
+  augroup packer_user_config
+    autocmd!
+    autocmd BufWritePost plugins.lua source <afile> | PackerCompile
+  augroup end
+]])
 ```
 
 ## Bootstrapping
@@ -233,15 +249,18 @@ If you want to automatically ensure that `packer.nvim` is installed on any machi
 configuration to, add the following snippet (which is due to @Iron-E) somewhere in your config **before** your first usage of
 `packer`:
 ```lua
-local execute = vim.api.nvim_command
 local fn = vim.fn
-
 local install_path = fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
-
 if fn.empty(fn.glob(install_path)) > 0 then
-  fn.system({'git', 'clone', 'https://github.com/wbthomason/packer.nvim', install_path})
-  execute 'packadd packer.nvim'
+  fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
+  vim.cmd 'packadd packer.nvim'
 end
+```
+
+You can also use the following command (with `packer` bootstrapped) to have `packer` setup your
+configuration (or simply run updates) and close once all operations are completed:
+```sh
+$ nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
 ```
 
 ## Usage
@@ -379,7 +398,7 @@ use {
   -- The setup key implies opt = true
   setup = string or function,  -- Specifies code to run before this plugin is loaded.
   -- The following keys all imply lazy-loading and imply opt = true
-  cmd = string or list,        -- Specifies commands which load this plugin.
+  cmd = string or list,        -- Specifies commands which load this plugin. Can be an autocmd pattern.
   ft = string or list,         -- Specifies filetypes which load this plugin.
   keys = string or list,       -- Specifies maps which load this plugin. See "Keybindings".
   event = string or list,      -- Specifies autocommand events which load this plugin.
@@ -387,8 +406,14 @@ use {
   cond = string, function, or list of strings/functions,   -- Specifies a conditional test to load this plugin
   module = string or list      -- Specifies Lua module names for require. When requiring a string which starts
                                -- with one of these module names, the plugin will be loaded.
+  module_pattern = string/list -- Specifies Lua pattern of Lua module names for require. When
+  requiring a string which matches one of these patterns, the plugin will be loaded.
 }
 ```
+
+For the `cmd` option, the command may be a full command, or an autocommand pattern. If the command contains any
+non-alphanumeric characters, it is assumed to be a pattern, and instead of creating a stub command, it creates
+a CmdUndefined autocmd to load the plugin when a command that matches the pattern is invoked.
 
 #### Checking plugin statuses
 You can check whether or not a particular plugin is installed with `packer` as well as if that plugin is loaded.

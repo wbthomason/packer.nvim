@@ -173,9 +173,9 @@ If you use custom initialization, you'll probably want to define commands to
 load `packer` and perform common package management operations. The following
 commands work well for this purpose: >
 
-  command! PackerInstall packadd packer.nvim | lua require('plugins').install()
-  command! PackerUpdate packadd packer.nvim | lua require('plugins').update()
-  command! PackerSync packadd packer.nvim | lua require('plugins').sync()
+  command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete  PackerInstall lua require('packer').install(<f-args>)
+  command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)
+  command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)
   command! PackerClean packadd packer.nvim | lua require('plugins').clean()
   command! PackerCompile packadd packer.nvim | lua require('plugins').compile('~/.config/nvim/plugin/packer_load.vim')
   command! -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad | lua require('packer').loader(<q-args>)
@@ -394,27 +394,29 @@ USING A FLOATING WINDOW                        *packer-floating-window*
 You can configure Packer to use a floating window for command outputs by
 passing a utility function to `packer`'s config: >
 
-  packer.startup(function()
+  packer.startup({function()
     -- Your plugins here
-  end, {
+  end,
+  config = {
     display = {
       open_fn = require('packer.util').float,
     }
-  })
+  }})
 <
 By default, this floating window will show doubled borders. If you want to
 customize the window appearance, you can pass a configuration to `float`,
 which is the same configuration that would be passed to |nvim_open_win|: >
 
-  packer.startup(function()
+  packer.startup({function()
     -- Your plugins here
-  end, {
+  end,
+  config = {
     display = {
       open_fn = function()
         return require('packer.util').float({ border = 'single' })
       end
     }
-  })
+  }})
 <
 PROFILING PLUGINS                              *packer-profiling*
 You can measure how long it takes your plugins to load using packer's builtin
@@ -553,7 +555,7 @@ invoked as follows:
     config = string or function, -- Specifies code to run after this plugin is loaded.
     rocks = string or list,      -- Specifies Luarocks dependencies for the plugin
     -- The following keys all imply lazy-loading
-    cmd = string or list,        -- Specifies commands which load this plugin.
+    cmd = string or list,        -- Specifies commands which load this plugin.  Can be an autocmd pattern.
     ft = string or list,         -- Specifies filetypes which load this plugin.
     keys = string or list,       -- Specifies maps which load this plugin. See |packer-plugin-keybindings|
     event = string or list,      -- Specifies autocommand events which load this plugin.
@@ -562,7 +564,13 @@ invoked as follows:
     setup = string or function,  -- Specifies code to run before this plugin is loaded.
     module = string or list      -- Specifies Lua module names for require. When requiring a string which starts
                                  -- with one of these module names, the plugin will be loaded.
+    module_pattern = string/list -- Specifies Lua pattern of Lua module names for require. When requiring a string
+                                 -- which matches one of these patterns, the plugin will be loaded.
   }
 - With a list of plugins specified in either of the above two forms
+
+For the *cmd* option, the command may be a full command, or an autocommand pattern. If the command contains any
+non-alphanumeric characters, it is assumed to be a pattern, and instead of creating a stub command, it creates
+a CmdUndefined autocmd to load the plugin when a command that matches the pattern is invoked.
 
  vim:tw=78:ts=2:ft=help:norl:
