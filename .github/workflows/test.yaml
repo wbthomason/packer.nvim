@@ -54,7 +54,9 @@ jobs:
           key: build-${{env.NEOVIM_BRANCH}}
 
       - name: Build Neovim
-        run: make neovim NEOVIM_BRANCH=$NEOVIM_BRANCH
+        run: |
+          git clone --depth 1 https://github.com/neovim/neovim --branch ${{env.NEOVIM_BRANCH}}
+          make -C neovim
 
       - name: Prepare plenary
         run: |
