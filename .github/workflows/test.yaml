@@ -65,6 +65,6 @@ jobs:
 
       - name: Run tests
         run: |
-          curl -OL https://raw.githubusercontent.com/norcalli/bot-ci/master/scripts/github-actions-setup.sh
-          source github-actions-setup.sh nightly-x64
+          export PATH="neovim/bin:${PATH}"
+          export VIM="neovim/share/nvim/runtime"
           nvim --headless --noplugin -u tests/minimal.vim -c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal.vim'}"
