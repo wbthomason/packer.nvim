@@ -65,7 +65,6 @@ jobs:
 
       - name: Run tests
         run: |
-          ls neovim
-          export PATH="neovim/bin:${PATH}"
-          export VIM="neovim/share/nvim/runtime"
+          export PATH="neovim/build/bin:${PATH}"
+          export VIM="neovim/build/share/nvim/runtime"
           nvim --headless --noplugin -u tests/minimal.vim -c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal.vim'}"
