@@ -329,6 +329,7 @@ end)
 --- Hook to fire events after packer compilation
 packer.on_compile_done = function()
   vim.cmd [[doautocmd User PackerCompileDone]]
+  vim.notify('PackerCompile: Done', vim.log.levels.INFO, {title = 'Packer'})
 end
 
 --- Clean operation:
@@ -717,7 +718,6 @@ packer.compile = function(raw_args, move_plugins)
       end
     end
     log.info 'Finished compiling lazy-loaders!'
-    vim.notify('PackerCompile: Done', vim.log.levels.INFO, {title = 'Packer'})
     packer.on_compile_done()
   end)()
 end
