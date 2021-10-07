@@ -329,6 +329,7 @@ end)
 --- Hook to fire events after packer compilation
 packer.on_compile_done = function()
   vim.cmd [[doautocmd User PackerCompileDone]]
+  vim.notify('packer.compile: Complete', vim.log.levels.INFO, { title = 'packer.nvim' })
 end
 
 --- Clean operation:
@@ -580,7 +581,7 @@ packer.sync = function(...)
 
     await(a.main)
     if config.compile_on_sync then
-      packer.compile()
+      packer.compile(nil, false)
     end
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
@@ -663,71 +664,66 @@ end
 
 --- Update the compiled lazy-loader code
 --- Takes an optional argument of a path to which to output the resulting compiled code
-packer.compile = function(raw_args)
+packer.compile = function(raw_args, move_plugins)
   local compile = require_and_configure 'compile'
   local log = require_and_configure 'log'
+  local a = require 'packer.async'
+  local async = a.sync
+  local await = a.wait
 
   manage_all_plugins()
-  local args = parse_args(raw_args)
-  local output_path = args.output_path or config.compile_path
-  local output_lua = vim.fn.fnamemodify(output_path, ':e') == 'lua'
-  local should_profile = args.profile
-  -- the user might explicitly choose for this value to be false in which case
-  -- an or operator will not work
-  if should_profile == nil then
-    should_profile = config.profile.enable
-  end
-  refresh_configs(plugins)
-  -- NOTE: we copy the plugins table so the in memory value is not mutated during compilation
-  local compiled_loader = compile(vim.deepcopy(plugins), output_lua, should_profile)
-  output_path = vim.fn.expand(output_path)
-  vim.fn.mkdir(vim.fn.fnamemodify(output_path, ':h'), 'p')
-  local output_file = io.open(output_path, 'w')
-  output_file:write(compiled_loader)
-  output_file:close()
-  if config.auto_reload_compiled then
-    local configs_to_run = {}
-    if _G.packer_plugins ~= nil then
-      for plugin_name, plugin_info in pairs(_G.packer_plugins) do
-        if plugin_info.loaded and plugin_info.config and plugins[plugin_name] and plugins[plugin_name].cmd then
-          configs_to_run[plugin_name] = plugin_info.config
+  async(function()
+    if move_plugins ~= false then
+      local update = require_and_configure 'update'
+      local plugin_utils = require_and_configure 'plugin_utils'
+      local fs_state = await(plugin_utils.get_fs_state(plugins))
+      await(a.main)
+      update.fix_plugin_types(plugins, vim.tbl_keys(fs_state.missing), {}, fs_state)
+    end
+    local args = parse_args(raw_args)
+    local output_path = args.output_path or config.compile_path
+    local output_lua = vim.fn.fnamemodify(output_path, ':e') == 'lua'
+    local should_profile = args.profile
+    -- the user might explicitly choose for this value to be false in which case
+    -- an or operator will not work
+    if should_profile == nil then
+      should_profile = config.profile.enable
+    end
+    refresh_configs(plugins)
+    -- NOTE: we copy the plugins table so the in memory value is not mutated during compilation
+    local compiled_loader = compile(vim.deepcopy(plugins), output_lua, should_profile)
+    output_path = vim.fn.expand(output_path)
+    vim.fn.mkdir(vim.fn.fnamemodify(output_path, ':h'), 'p')
+    local output_file = io.open(output_path, 'w')
+    output_file:write(compiled_loader)
+    output_file:close()
+    if config.auto_reload_compiled then
+      local configs_to_run = {}
+      if _G.packer_plugins ~= nil then
+        for plugin_name, plugin_info in pairs(_G.packer_plugins) do
+          if plugin_info.loaded and plugin_info.config and plugins[plugin_name] and plugins[plugin_name].cmd then
+            configs_to_run[plugin_name] = plugin_info.config
+          end
+        end
+      end
+
+      vim.cmd('source ' .. output_path)
+      for plugin_name, plugin_config in pairs(configs_to_run) do
+        for _, config_line in ipairs(plugin_config) do
+          local success, err = pcall(loadstring(config_line))
+          if not success then
+            vim.notify(
+              'Error running config for ' .. plugin_name .. ': ' .. vim.inspect(err),
+              vim.log.levels.ERROR,
+              { title = 'packer.nvim' }
+            )
+          end
         end
       end
     end
-
-    vim.cmd('source ' .. output_path)
-    for plugin_name, plugin_config in pairs(configs_to_run) do
-      for _, config_line in ipairs(plugin_config) do
-        local success, err = pcall(loadstring(config_line))
-        if not success then
-          vim.notify('Error running config for ' .. plugin_name .. ': ' .. vim.inspect(err), vim.log.levels.ERROR, {})
-        end
-      end
-    end
-  end
-  log.info 'Finished compiling lazy-loaders!'
-  packer.on_compile_done()
-
-  -- TODO: remove this after migration period (written 2021/06/28)
-  local old_output_path
-  if output_lua then
-    old_output_path = vim.fn.fnamemodify(output_path, ':r') .. '.vim'
-  else
-    old_output_path = vim.fn.fnamemodify(output_path, ':r') .. '.lua'
-  end
-
-  if vim.loop.fs_stat(old_output_path) then
-    os.remove(old_output_path)
-    log.warn(
-      '"'
-        .. vim.fn.fnamemodify(old_output_path, ':~:.')
-        .. '" was replaced by "'
-        .. vim.fn.fnamemodify(output_path, ':~:.')
-        .. '"'
-    )
-    log.warn 'If you have not updated Neovim since 2021/06/11 you must do so now'
-  end
-  -- TODO: end migration chunk (2021/07/02)
+    log.info 'Finished compiling lazy-loaders!'
+    packer.on_compile_done()
+  end)()
 end
 
 packer.profile_output = function()
