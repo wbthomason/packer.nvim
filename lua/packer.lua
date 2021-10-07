@@ -329,7 +329,7 @@ end)
 --- Hook to fire events after packer compilation
 packer.on_compile_done = function()
   vim.cmd [[doautocmd User PackerCompileDone]]
-  vim.notify('PackerCompile: Done', vim.log.levels.INFO, {title = 'Packer'})
+  vim.notify('packer.compile: Complete', vim.log.levels.INFO, { title = 'packer.nvim' })
 end
 
 --- Clean operation:
@@ -712,7 +712,11 @@ packer.compile = function(raw_args, move_plugins)
         for _, config_line in ipairs(plugin_config) do
           local success, err = pcall(loadstring(config_line))
           if not success then
-            vim.notify('Error running config for ' .. plugin_name .. ': ' .. vim.inspect(err), vim.log.levels.ERROR, {})
+            vim.notify(
+              'Error running config for ' .. plugin_name .. ': ' .. vim.inspect(err),
+              vim.log.levels.ERROR,
+              { title = 'packer.nvim' }
+            )
           end
         end
       end
