@@ -748,8 +748,8 @@ end
 packer.loader = function(...)
   local plugin_list = { ... }
   local last_arg = plugin_list[#plugin_list]
-  local force = last_arg == '!'
-  if last_arg == '' or last_arg == '!' then
+  local force = last_arg == '!' or last_arg == true
+  if last_arg == '' or last_arg == '!' or type(last_arg) ~= 'string' then
     plugin_list[#plugin_list] = nil
   end
   require 'packer.load'(plugin_list, {}, _G.packer_plugins, force)

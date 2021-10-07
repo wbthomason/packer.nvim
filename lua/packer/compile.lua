@@ -164,12 +164,6 @@ local function timed_chunk(chunk, name, output_table)
   return output_table
 end
 
--- We special-case timing for conditionals because we can't directly wrap the condition test
-local function timed_condition(body, output_table)
-  output_table = vim.list_extend(output_table or {}, vim.split(body, '\n'))
-  return output_table
-end
-
 local function dump_loaders(loaders)
   local result = vim.deepcopy(loaders)
   for k, _ in pairs(result) do
@@ -254,7 +248,6 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   local fts = {}
   local events = {}
   local condition_ids = {}
-  local only_cond = {}
   local commands = {}
   local keymaps = {}
   local after = {}
@@ -318,7 +311,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       if plugin.cond ~= nil then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        only_cond[name] = true
+        loaders[name].only_cond = true
         if type(plugin.cond) ~= 'table' then
           plugin.cond = { plugin.cond }
         end
@@ -340,7 +333,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       if plugin.ft then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        only_cond[name] = false
+        loaders[name].only_cond = false
         vim.list_extend(ftdetect_paths, detect_ftdetect(name, loaders[name].path))
         if type(plugin.ft) == 'string' then
           plugin.ft = { plugin.ft }
@@ -354,7 +347,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       if plugin.event then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        only_cond[name] = false
+        loaders[name].only_cond = false
         if type(plugin.event) == 'string' then
           if not plugin.event:find '%s' then
             plugin.event = { plugin.event .. ' *' }
@@ -375,7 +368,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       if plugin.cmd then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        only_cond[name] = false
+        loaders[name].only_cond = false
         if type(plugin.cmd) == 'string' then
           plugin.cmd = { plugin.cmd }
         end
@@ -391,7 +384,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       if plugin.keys then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        only_cond[name] = false
+        loaders[name].only_cond = false
         if type(plugin.keys) == 'string' then
           plugin.keys = { plugin.keys }
         end
@@ -441,7 +434,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       if plugin.module or plugin.module_pattern then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
-        only_cond[name] = false
+        loaders[name].only_cond = false
 
         if plugin.module then
           if type(plugin.module) == 'string' then
@@ -523,20 +516,15 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   end
 
   local conditionals = {}
-  for condition, names in pairs(condition_ids) do
-    local conditional_loads = {}
+  for _, names in pairs(condition_ids) do
     for _, name in ipairs(names) do
-      if only_cond[name] then
+      if loaders[name].only_cond then
         timed_chunk(
           fmt('  require("packer.load")({"%s"}, {}, _G.packer_plugins)', name),
           'Conditional loading of ' .. name,
-          conditional_loads
+          conditionals
         )
       end
-    end
-
-    if #conditional_loads > 0 then
-      vim.list_extend(conditionals, timed_condition(table.concat(conditional_loads, '\n')))
     end
   end
 
