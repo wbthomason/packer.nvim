@@ -351,15 +351,12 @@ git.setup = function(plugin)
       r
         :and_then(
           await,
-          jobs.run(
-            rev_cmd,
-            {
-              success_test = exit_ok,
-              capture_output = rev_callbacks,
-              cwd = install_to,
-              options = { env = git.job_env },
-            }
-          )
+          jobs.run(rev_cmd, {
+            success_test = exit_ok,
+            capture_output = rev_callbacks,
+            cwd = install_to,
+            options = { env = git.job_env },
+          })
         )
         :map_err(function(err)
           plugin.output = { err = vim.list_extend(update_info.err, update_info.revs), data = {} }

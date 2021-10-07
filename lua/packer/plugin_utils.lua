@@ -221,19 +221,19 @@ plugin_utils.post_update_hook = function(plugin, disp)
         plugin.run = { plugin.run }
       end
       disp:task_update(plugin_name, 'running post update hooks...')
+      local hook_result = result.ok()
       for _, task in ipairs(plugin.run) do
         if type(task) == 'function' then
-          local success, err = pcall(task, plugin)
-          if success then
-            return result.ok()
-          else
-            return result.err { msg = 'Error running post update hook: ' .. vim.inspect(err) }
+          local success, err = pcall(task, plugin, disp)
+          if not success then
+            return result.err {
+              msg = 'Error running post update hook: ' .. vim.inspect(err),
+            }
           end
         elseif type(task) == 'string' then
           if string.sub(task, 1, 1) == ':' then
             await(a.main)
             vim.cmd(string.sub(task, 2))
-            return result.ok()
           else
             local hook_output = { err = {}, output = {} }
             local hook_callbacks = {
@@ -247,7 +247,7 @@ plugin_utils.post_update_hook = function(plugin, disp)
             else
               cmd = { shell, '-c', task }
             end
-            return await(jobs.run(cmd, { capture_output = hook_callbacks, cwd = plugin.install_path })):map_err(
+            hook_result = await(jobs.run(cmd, { capture_output = hook_callbacks, cwd = plugin.install_path })):map_err(
               function(err)
                 return {
                   msg = string.format('Error running post update hook: %s', table.concat(hook_output.output, '\n')),
@@ -255,19 +255,29 @@ plugin_utils.post_update_hook = function(plugin, disp)
                 }
               end
             )
+
+            if hook_result.err then
+              return hook_result
+            end
           end
         else
           -- TODO/NOTE: This case should also capture output in case of error. The minor difficulty is
           -- what to do if the plugin's run table (i.e. this case) already specifies output handling.
 
-          return await(jobs.run(task)):map_err(function(err)
+          hook_result = await(jobs.run(task)):map_err(function(err)
             return {
               msg = string.format('Error running post update hook: %s', vim.inspect(err)),
               data = err,
             }
           end)
+
+          if hook_result.err then
+            return hook_result
+          end
         end
       end
+
+      return hook_result
     else
       return result.ok()
     end

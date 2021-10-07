@@ -72,13 +72,6 @@ local function format_cmd(value)
   return fmt('"%s"', value)
 end
 
-local function get_key_name(key)
-  if key == 'path' then
-    return 'opt'
-  end
-  return key
-end
-
 ---format a configuration value of unknown type into a string or list of strings
 ---@param key string
 ---@param value any
@@ -87,7 +80,7 @@ local function format_values(key, value)
   local value_type = type(value)
   if key == 'path' then
     local is_opt = value:match 'opt' ~= nil
-    return vim.inspect(is_opt)
+    return { fmt('"%s"', vim.fn.fnamemodify(value, ':~')), fmt('opt: %s', vim.inspect(is_opt)) }
   elseif key == 'keys' then
     return unpack_config_value(value, value_type, format_keys)
   elseif key == 'commands' then
@@ -355,29 +348,31 @@ local display_mt = {
     local lines = {}
 
     local padding = string.rep(' ', 3)
+    local rtps = api.nvim_list_runtime_paths()
     for plug_name, plug_conf in pairs(plugins) do
-      local header_lines = {
-        fmt(' • %s', plug_name) .. (not plug_conf.loaded and ' (not loaded)' or ''),
-      }
+      local load_state = plug_conf.loaded and ''
+        or vim.tbl_contains(rtps, plug_conf.path) and ' (manually loaded)'
+        or ' (not loaded)'
+      local header_lines = { fmt(' • %s', plug_name) .. load_state }
       local config_lines = {}
       for key, value in pairs(plug_conf) do
         if vim.tbl_contains(status_keys, key) then
           local details = format_values(key, value)
-          local name = get_key_name(key)
           if type(details) == 'string' then
             -- insert a position one so that one line details appear above multiline ones
-            table.insert(config_lines, 1, fmt('%s%s: %s', padding, name, details))
+            table.insert(config_lines, 1, fmt('%s%s: %s', padding, key, details))
           else
             details = vim.tbl_map(function(line)
               return padding .. line
             end, details)
-            vim.list_extend(config_lines, { fmt('%s%s: ', padding, name), unpack(details) })
+            vim.list_extend(config_lines, { fmt('%s%s: ', padding, key), unpack(details) })
           end
           plugs[plug_name] = { lines = config_lines, displayed = false }
         end
       end
       vim.list_extend(lines, header_lines)
     end
+    table.sort(lines)
     self.items = plugs
     self:set_lines(config.header_lines, -1, lines)
   end),
