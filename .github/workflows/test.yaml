@@ -47,11 +47,11 @@ jobs:
             pkg-config \
             unzip
 
-      - name: Cache Neovim
-        uses: actions/cache@v2
-        with:
-          path: neovim
-          key: build-${{env.NEOVIM_BRANCH}}
+      # - name: Cache Neovim
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: neovim
+      #     key: build-${{env.NEOVIM_BRANCH}}
 
       - name: Build Neovim
         run: |
