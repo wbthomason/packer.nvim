@@ -1,5 +1,5 @@
 ---
-name: Run tests
+name: CI
 on:
   pull_request: ~
   push:
@@ -9,23 +9,62 @@ on:
 jobs:
   build:
     name: Run tests
+    strategy:
+      fail-fast: true
+      matrix:
+        neovim_branch: ['v0.5.0', 'master']
     runs-on: ubuntu-latest
+    env:
+      NEOVIM_BRANCH: ${{ matrix.neovim_branch }}
 
     steps:
+      # Checkout packer
       - uses: actions/checkout@v2
-      - run: date +%F > todays-date
-      - name: Restore cache for today's nightly.
-        uses: actions/cache@v2
-        with:
-          path: _neovim
-          key: ${{ runner.os }}-x64-${{ hashFiles('todays-date') }}
+
+      # Copied/adapted from lewis6991/gitsigns.nvim
+      - name: Setup build dependencies
+        run: |
+          sudo apt update &&
+          sudo apt install -y \
+            autoconf \
+            automake \
+            cmake \
+            g++ \
+            gettext \
+            gperf \
+            libjemalloc-dev \
+            libluajit-5.1-dev \
+            libmsgpack-dev \
+            libtermkey-dev \
+            libtool \
+            libtool-bin \
+            libunibilium-dev \
+            libvterm-dev \
+            lua-bitop \
+            lua-lpeg \
+            lua-mpack \
+            ninja-build \
+            pkg-config \
+            unzip
+
+      # - name: Cache Neovim
+      #   uses: actions/cache@v2
+      #   with:
+      #     path: neovim
+      #     key: build-${{env.NEOVIM_BRANCH}}
+
+      - name: Build Neovim
+        run: |
+          git clone --depth 1 https://github.com/neovim/neovim --branch ${{env.NEOVIM_BRANCH}}
+          make -C neovim
 
       - name: Prepare plenary
         run: |
           git clone --depth 1 https://github.com/nvim-lua/plenary.nvim ~/.local/share/nvim/site/pack/vendor/start/plenary.nvim
           ln -s $(pwd) ~/.local/share/nvim/site/pack/vendor/start
+
       - name: Run tests
         run: |
-          curl -OL https://raw.githubusercontent.com/norcalli/bot-ci/master/scripts/github-actions-setup.sh
-          source github-actions-setup.sh nightly-x64
+          export PATH="neovim/build/bin:${PATH}"
+          export VIM="neovim/runtime"
           nvim --headless --noplugin -u tests/minimal.vim -c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal.vim'}"
