@@ -17,6 +17,9 @@ global record jit
     status: function(): boolean
 end
 
+global record _packer
+end
+
 local record api
   nvim_buf_add_highlight: function(number, number, string, number, number, number): number
   nvim_buf_attach: function(number, boolean, {string:any}): boolean
@@ -165,61 +168,7 @@ global record vim
     executable: function(string): integer
     expand: function(string): string
     getcwd: function(): string
-    stdpath: function(string): string | {string}
-
-    record QFItem
-      bufnr: integer
-      filename: string
-      lnum: integer
-      nr: integer
-      text: string
-      type: string
-    end
-
-    record QFWhat
-      context: any
-      efm: string
-      id: integer
-      idx: integer
-      items: {QFItem}
-      lines: {string}
-      nr: integer
-      quickfixtextfunc: string
-      title: string
-    end
-
-    setqflist: function(list: {QFItem}, action: string, what: QFWhat)
-    setloclist: function(nr: integer, list: {QFItem}, action: string, what: QFWhat)
-
-    sign_unplace: function(string, {string:any})
-    sign_place: function(number, string, string, string | number, {string:any})
-
-    record SignPlaceItem
-      buffer: integer
-      group: string
-      id: integer
-      lnum: integer
-      name: string
-      priority: integer
-    end
-    sign_placelist: function({SignPlaceItem})
-    sign_getdefined: function(string): table
-
-    record SignPlacedInfo
-      bufnr: integer
-      record SignPlacedSigns
-        id: integer
-        name: string
-        group: string
-        lnum: integer
-        priority: integer
-      end
-      signs: {SignPlacedSigns}
-    end
-    sign_getplaced: function(integer, table): {SignPlacedInfo}
-
-    sign_define: function(string, table): number
-    sign_undefine: function(string): number
+    stdpath: function(string): string
     strdisplaywidth: function(string, integer): integer
     stridx: function(haystack: string, needle: string, start: integer): integer
     tempname: function(): string
@@ -425,3 +374,4 @@ global record vim
   wait: function(number, function, number, boolean)
 
 end
+
