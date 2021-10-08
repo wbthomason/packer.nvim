@@ -164,10 +164,9 @@ local defaults: Config = {
 local config: Config
 
 local function setup(user_config: Config)
-  config = util.deep_extend('force', defaults, user_config)
+  config = vim.tbl_deep_extend('keep', user_config as table, defaults as table) as Config
 end
 
--- TODO: Write an __index that checks if config values are valid, makes config read-only
 local M = {
   setup = setup,
   config = config
