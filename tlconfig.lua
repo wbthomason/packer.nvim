@@ -3,8 +3,9 @@ return {
   gen_compat = 'off',
   global_env_def = 'vim',
   include_dir = {
-    'types', 'teal',
+    'types',
+    'teal',
   },
   source_dir = 'teal',
-  build_dir = "lua-rewrite",
+  build_dir = 'lua',
 }
