@@ -79,7 +79,7 @@ packer_load = function(names, cause, plugins)
   end
   if cause.cmd then
     local lines = cause.l1 == cause.l2 and '' or (cause.l1 .. ',' .. cause.l2)
-    vim.cmd(fmt('%s %s%s%s %s', cause.mods, lines, cause.cmd, cause.bang, cause.args))
+    vim.cmd(fmt('%s %s%s%s %s', cause.mods or '', lines, cause.cmd, cause.bang, cause.args))
   elseif cause.keys then
     local extra = ''
     while true do
