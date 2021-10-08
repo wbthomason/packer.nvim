@@ -1,5 +1,5 @@
 local util = require 'packer.util'
-local DisplayIds = require 'packer.display_ids'
+local DisplayIds = require 'packer.display.types'
 
 local join_paths = util.join_paths
 local stdpath = vim.fn.stdpath

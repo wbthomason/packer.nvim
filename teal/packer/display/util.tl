@@ -1,4 +1,4 @@
-local DisplayIds = require 'packer.display_ids'
+local DisplayIds = require 'packer.display.types'
 
 local record M 
 end
