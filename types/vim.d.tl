@@ -372,6 +372,4 @@ global record vim
   end
 
   wait: function(number, function, number, boolean)
-
 end
-
