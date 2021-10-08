@@ -224,7 +224,7 @@ vim.cmd([[
 ## Bootstrapping
 
 If you want to automatically install and set up `packer.nvim` on any machine you clone your configuration to,
-add the following snippet (which is due to @Iron-E and @khuedoan) somewhere in your config:
+add the following snippet (which is due to @Iron-E and @khuedoan) somewhere in your config **before** your first usage of `packer`:
 
 ```lua
 local fn = vim.fn
