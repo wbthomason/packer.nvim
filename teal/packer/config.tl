@@ -1,15 +1,10 @@
 local util = require 'packer.util'
+local DisplayIds = require 'packer.display_ids'
 
 local join_paths = util.join_paths
 local stdpath = vim.fn.stdpath
 
--- TODO: Move to display module once ported
-global record DisplayIds
-  window: integer
-  buffer: integer
-end
-
-global type DisplayOpenerFn = function({string:any}): DisplayIds
+local type DisplayOpenerFn = function({string:any}): DisplayIds
 
 --- Config Schema
 local record Config
