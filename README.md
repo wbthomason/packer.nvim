@@ -32,6 +32,11 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 10. [Contributors](#contributors)
 
 ## Notices
+- **2021-07-31:** If you're on macOS, note that building Neovim with the version of `luv` from `homebrew` [will cause any `packer` command to crash](https://github.com/wbthomason/packer.nvim/issues/496#issuecomment-890371022). More about this issue at [neovim/neovim#15054](https://github.com/neovim/neovim/issues/15054).
+- **2021-07-28:** `packer` will now highlight commits/plugin names with potentially breaking changes
+  (determined by looking for `breaking change` or `breaking_change`, case insensitive, in the update
+  commit bodies and headers) as `WarningMsg` in the status window.
+- **2021-06-06**: Your Neovim must include https://github.com/neovim/neovim/pull/14659; `packer` uses the `noautocmd` key.
 - **2021-04-19**: `packer` now provides built-in profiling for your config via the `packer_compiled`
   file. Take a look at [the docs](#profiling) for more information!
 - **2021-02-18**: Having trouble with Luarocks on macOS? See [this issue](https://github.com/wbthomason/packer.nvim/issues/180).
@@ -55,16 +60,28 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 - Support for local plugins
 
 ## Requirements
-- You need to be running Neovim v0.5.0+; `packer` makes use of extmarks and other newly-added Neovim
+- **You need to be running Neovim v0.5.0+**; `packer` makes use of extmarks and other newly-added Neovim
   features.
-- If you are on Windows 10, you need developer mode enabled in order to use local plugins (`packer`
-  needs to use `mklink`, which requires admin privileges - credit to @TimUntersberger for this note)
+- If you are on Windows 10, you need developer mode enabled in order to use local plugins (creating
+  symbolic links requires admin privileges on Windows - credit to @TimUntersberger for this note)
 
 ## Quickstart
 To get started, first clone this repository to somewhere on your `packpath`, e.g.:
+
+> Unix, Linux Installation
+
 ```shell
-git clone https://github.com/wbthomason/packer.nvim\
+git clone --depth 1 https://github.com/wbthomason/packer.nvim\
  ~/.local/share/nvim/site/pack/packer/start/packer.nvim
+```
+
+If you use Arch Linux, there is also [an AUR
+package](https://aur.archlinux.org/packages/nvim-packer-git/).
+
+> Windows Powershell Installation
+
+```shell
+git clone https://github.com/wbthomason/packer.nvim "$env:LOCALAPPDATA\nvim-data\site\pack\packer\start\packer.nvim"
 ```
 
 Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lua/plugins.lua`):
@@ -163,49 +180,78 @@ end)
 
 ```
 -- You must run this or `PackerSync` whenever you make changes to your plugin configuration
+-- Regenerate compiled loader file
 :PackerCompile
-
--- Only install missing plugins
-:PackerInstall
-
--- Update and install plugins
-:PackerUpdate
 
 -- Remove any disabled or unused plugins
 :PackerClean
 
--- Performs `PackerClean` and then `PackerUpdate`
+-- Clean, then install missing plugins
+:PackerInstall
+
+-- Clean, then update and install plugins
+:PackerUpdate
+
+-- Perform `PackerUpdate` and then `PackerCompile`
 :PackerSync
 
 -- Loads opt plugin immediately
 :PackerLoad completion-nvim ale
 ```
 
-You can configure Neovim to automatically run `:PackerCompile` whenever `plugins.lua` is updated with an autocommand:
+You can configure Neovim to automatically run `:PackerCompile` whenever `plugins.lua` is updated with
+[an autocommand](https://neovim.io/doc/user/autocmd.html#:autocmd):
+
 ```
-autocmd BufWritePost plugins.lua PackerCompile
+augroup packer_user_config
+  autocmd!
+  autocmd BufWritePost plugins.lua source <afile> | PackerCompile
+augroup end
 ```
+
 This autocommand can be placed in your `init.vim`, or any other startup file as per your setup.
+Placing this in `plugins.lua` could look like this:
+
+```lua
+vim.cmd([[
+  augroup packer_user_config
+    autocmd!
+    autocmd BufWritePost plugins.lua source <afile> | PackerCompile
+  augroup end
+]])
+```
 
 ## Bootstrapping
 
-If you want to automatically ensure that `packer.nvim` is installed on any machine you clone your
-configuration to, add the following snippet (which is due to @Iron-E) somewhere in your config **before** your first usage of
-`packer`:
+If you want to automatically install and set up `packer.nvim` on any machine you clone your configuration to,
+add the following snippet (which is due to @Iron-E and @khuedoan) somewhere in your config **before** your first usage of `packer`:
+
 ```lua
-local execute = vim.api.nvim_command
 local fn = vim.fn
-
-local install_path = fn.stdpath('data')..'/site/pack/packer/opt/packer.nvim'
-
+local install_path = fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
 if fn.empty(fn.glob(install_path)) > 0 then
-  fn.system({'git', 'clone', 'https://github.com/wbthomason/packer.nvim', install_path})
-  execute 'packadd packer.nvim'
+  packer_bootstrap = fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
 end
+
+return require('packer').startup(function(use)
+  -- My plugins here
+  -- use 'foo1/bar1.nvim'
+  -- use 'foo2/bar2.nvim'
+
+  -- Automatically set up your configuration after cloning packer.nvim
+  -- Put this at the end after all plugins
+  if packer_bootstrap then
+    require('packer').sync()
+  end
+end)
 ```
 
-Note that this will install `packer` as an `opt` plugin; if you want `packer` to be a `start`
-plugin, you must modify the value of `install_path` in the above snippet.
+You can also use the following command (with `packer` bootstrapped) to have `packer` setup your
+configuration (or simply run updates) and close once all operations are completed:
+
+```sh
+$ nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
+```
 
 ## Usage
 
@@ -213,8 +259,8 @@ The above snippets give some examples of `packer` features and use. Examples inc
 
 - My dotfiles:
   - [Specification file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/lua/plugins.lua)
-  - [Loading file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/plugin/plugins.vim)
-  - [Generated lazy-loader file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/plugin/packer_load.vim)
+  - [Loading file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/lua/plugins.lua)
+  - [Generated lazy-loader file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/plugin/packer_compiled.lua)
 - An example using the `startup` method: [tjdevries](https://github.com/tjdevries/config_manager/blob/master/xdg_config/nvim/lua/tj/plugins.lua)
     - Using this method, you do not require a "loading" file. You can simply `lua require('plugins')` from your `init.vim`
 
@@ -244,7 +290,7 @@ default configuration values (and structure of the configuration table) are:
 {
   ensure_dependencies   = true, -- Should packer install plugin dependencies?
   package_root   = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
-  compile_path = util.join_paths(vim.fn.stdpath('config'), 'plugin', 'packer_compiled.vim'),
+  compile_path = util.join_paths(vim.fn.stdpath('config'), 'plugin', 'packer_compiled.lua'),
   plugin_package = 'packer', -- The default package for plugins
   max_jobs = nil, -- Limit the number of simultaneous jobs. nil means no limit
   auto_clean = true, -- During sync(), remove unused plugins
@@ -257,25 +303,26 @@ default configuration values (and structure of the configuration table) are:
   git = {
     cmd = 'git', -- The base command for git operations
     subcommands = { -- Format strings for git subcommands
-      update         = '-C %s pull --ff-only --progress --rebase=false',
-      install        = 'clone %s %s --depth %i --no-single-branch --progress',
-      fetch          = '-C %s fetch --depth 999999 --progress',
-      checkout       = '-C %s checkout %s --',
-      update_branch  = '-C %s merge --ff-only @{u}',
-      current_branch = '-C %s branch --show-current',
-      diff           = '-C %s log --color=never --pretty=format:FMT --no-show-signature HEAD@{1}...HEAD',
+      update         = 'pull --ff-only --progress --rebase=false',
+      install        = 'clone --depth %i --no-single-branch --progress',
+      fetch          = 'fetch --depth 999999 --progress',
+      checkout       = 'checkout %s --',
+      update_branch  = 'merge --ff-only @{u}',
+      current_branch = 'branch --show-current',
+      diff           = 'log --color=never --pretty=format:FMT --no-show-signature HEAD@{1}...HEAD',
       diff_fmt       = '%%h %%s (%%cr)',
-      get_rev        = '-C %s rev-parse --short HEAD',
-      get_msg        = '-C %s log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',
-      submodules     = '-C %s submodule update --init --recursive --progress'
+      get_rev        = 'rev-parse --short HEAD',
+      get_msg        = 'log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',
+      submodules     = 'submodule update --init --recursive --progress'
     },
     depth = 1, -- Git clone depth
     clone_timeout = 60, -- Timeout, in seconds, for git clones
+    default_url_format = 'https://github.com/%s' -- Lua format string used for "aaa/bbb" style plugins
   },
   display = {
     non_interactive = false, -- If true, disable display windows for all operations
     open_fn  = nil, -- An optional function to open a window for packer's display
-    open_cmd = '65vnew [packer]', -- An optional command to open a window for packer's display
+    open_cmd = '65vnew \\[packer\\]', -- An optional command to open a window for packer's display
     working_sym = '⟳', -- The symbol for a plugin being installed/updated
     error_sym = '✗', -- The symbol for a plugin with an error in installation/updating
     done_sym = '✓', -- The symbol for a plugin which has completed installation/updating
@@ -294,6 +341,7 @@ default configuration values (and structure of the configuration table) are:
   luarocks = {
     python_cmd = 'python' -- Set the python command to use for running hererocks
   },
+  log = { level = 'warn' }, -- The default print log level. One of: "trace", "debug", "info", "warn", "error", "fatal".
   profile = {
     enable = false,
     threshold = 1, -- integer in milliseconds, plugins which load faster than this won't be shown in profile output
@@ -333,14 +381,14 @@ use {
   tag = string,                -- Specifies a git tag to use
   commit = string,             -- Specifies a git commit to use
   lock = boolean,              -- Skip this plugin in updates/syncs
-  run = string or function,    -- Post-update/install hook. See "update/install hooks".
+  run = string, function, or table, -- Post-update/install hook. See "update/install hooks".
   requires = string or list,   -- Specifies plugin dependencies. See "dependencies".
   rocks = string or list,      -- Specifies Luarocks dependencies for the plugin
   config = string or function, -- Specifies code to run after this plugin is loaded.
   -- The setup key implies opt = true
   setup = string or function,  -- Specifies code to run before this plugin is loaded.
   -- The following keys all imply lazy-loading and imply opt = true
-  cmd = string or list,        -- Specifies commands which load this plugin.
+  cmd = string or list,        -- Specifies commands which load this plugin. Can be an autocmd pattern.
   ft = string or list,         -- Specifies filetypes which load this plugin.
   keys = string or list,       -- Specifies maps which load this plugin. See "Keybindings".
   event = string or list,      -- Specifies autocommand events which load this plugin.
@@ -348,8 +396,14 @@ use {
   cond = string, function, or list of strings/functions,   -- Specifies a conditional test to load this plugin
   module = string or list      -- Specifies Lua module names for require. When requiring a string which starts
                                -- with one of these module names, the plugin will be loaded.
+  module_pattern = string/list -- Specifies Lua pattern of Lua module names for require. When
+  requiring a string which matches one of these patterns, the plugin will be loaded.
 }
 ```
+
+For the `cmd` option, the command may be a full command, or an autocommand pattern. If the command contains any
+non-alphanumeric characters, it is assumed to be a pattern, and instead of creating a stub command, it creates
+a CmdUndefined autocmd to load the plugin when a command that matches the pattern is invoked.
 
 #### Checking plugin statuses
 You can check whether or not a particular plugin is installed with `packer` as well as if that plugin is loaded.
@@ -413,13 +467,13 @@ provide a location string for the name of the plugin.
 You may specify operations to be run after successful installs/updates of a plugin with the `run`
 key. This key may either be a Lua function, which will be called with the `plugin` table for this
 plugin (containing the information passed to `use` as well as output from the installation/update
-commands, the installation path of the plugin, etc.), or a string.
+commands, the installation path of the plugin, etc.), a string, or a table of functions and strings.
 
-If `run` is a string, then either:
+If an element of `run` is a string, then either:
 
 1. If the first character of `run` is ":", it is treated as a Neovim command and executed.
 2. Otherwise, `run` is treated as a shell command and run in the installation directory of the
-   plugin via `$SHELL -c 'cd <plugin dir> && <run>'`.
+   plugin via `$SHELL -c '<run>'`.
 
 #### Dependencies
 
@@ -507,28 +561,30 @@ require knowing when the operations are complete, you can use the following `Use
 You can configure Packer to use a floating window for command outputs by passing a utility
 function to `packer`'s config:
 ```lua
-packer.startup(function()
+packer.startup({function()
   -- Your plugins here
-end, {
+end,
+config = {
   display = {
     open_fn = require('packer.util').float,
   }
-})
+}})
 ```
 
 By default, this floating window will show doubled borders. If you want to customize the window
 appearance, you can pass a configuration to `float`, which is the same configuration that would be
 passed to `nvim_open_win`:
 ```lua
-packer.startup(function()
+packer.startup({function()
   -- Your plugins here
-end, {
+end,
+config = {
   display = {
     open_fn = function()
       return require('packer.util').float({ border = 'single' })
     end
   }
-})
+}})
 ```
 
 ## Profiling
@@ -595,3 +651,4 @@ like to be.
 - @shadmansaleh
 - @ur4ltz
 - @EdenEast
+- @khuedoan

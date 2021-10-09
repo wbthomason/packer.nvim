@@ -26,7 +26,7 @@ REQUIREMENTS                                     *packer-intro-requirements*
   on this to detect whether you are running Windows or a Unix-like OS (for path
   separators)
 - If you are on Windows 10, you need developer mode enabled in order to use
-  local plugins (`packer` needs to use `mklink`, which requires admin privileges
+  local plugins (creating symbolic links requires admin privileges on Windows
   - credit to @TimUntersberger for this note)
 
 ==============================================================================
@@ -107,20 +107,21 @@ Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lu
 
 `packer` provides the following commands after you've run and configured `packer` with `require('packer').startup(...)`: *packer-default-commands* *packer-commands*
 
-`PackerCompile`                                 *packer-commands-compile*
-You must run this whenever you make changes to your plugin configuration.
-
-`PackerInstall`                                 *packer-commands-install*
-Install any missing plugins.
-
-`PackerUpdate`                                  *packer-commands-update*
-Update and install plugins.
-
 `PackerClean`                                   *packer-commands-clean*
 Remove any disabled or unused plugins.
 
+`PackerCompile`                                 *packer-commands-compile*
+You must run this or `PackerSync` whenever you make changes to your plugin
+configuration. Regenerate compiled loader file.
+
+`PackerInstall`                                 *packer-commands-install*
+Clean, then install missing plugins.
+
+`PackerUpdate`                                  *packer-commands-update*
+Clean, then update and install plugins.
+
 `PackerSync`                                    *packer-commands-sync*
-Perform `PackerClean` and then `PackerUpdate`.
+Perform `PackerUpdate` and then `PackerCompile`.
 
 `PackerLoad`                                    *packer-commands-load*
 Loads opt plugin immediately
@@ -172,9 +173,9 @@ If you use custom initialization, you'll probably want to define commands to
 load `packer` and perform common package management operations. The following
 commands work well for this purpose: >
 
-  command! PackerInstall packadd packer.nvim | lua require('plugins').install()
-  command! PackerUpdate packadd packer.nvim | lua require('plugins').update()
-  command! PackerSync packadd packer.nvim | lua require('plugins').sync()
+  command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete  PackerInstall lua require('packer').install(<f-args>)
+  command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)
+  command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)
   command! PackerClean packadd packer.nvim | lua require('plugins').clean()
   command! PackerCompile packadd packer.nvim | lua require('plugins').compile('~/.config/nvim/plugin/packer_load.vim')
   command! -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad | lua require('packer').loader(<q-args>)
@@ -186,7 +187,7 @@ default values: >
   {
     ensure_dependencies   = true, -- Should packer install plugin dependencies?
     package_root   = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
-    compile_path = util.join_paths(vim.fn.stdpath('config'), 'plugin', 'packer_compiled.vim'),
+    compile_path = util.join_paths(vim.fn.stdpath('config'), 'plugin', 'packer_compiled.lua'),
     plugin_package = 'packer', -- The default package for plugins
     max_jobs = nil, -- Limit the number of simultaneous jobs. nil means no limit
     auto_clean = true, -- During sync(), remove unused plugins
@@ -198,25 +199,27 @@ default values: >
     git = {
       cmd = 'git', -- The base command for git operations
       subcommands = { -- Format strings for git subcommands
-        update         = '-C %s pull --ff-only --progress --rebase=false',
-        install        = 'clone %s %s --depth %i --no-single-branch --progress',
-        fetch          = '-C %s fetch --depth 999999 --progress',
-        checkout       = '-C %s checkout %s --',
-        update_branch  = '-C %s merge --ff-only @{u}',
-        current_branch = '-C %s branch --show-current',
-        diff           = '-C %s log --color=never --pretty=format:FMT --no-show-signature HEAD@{1}...HEAD',
+        update         = 'pull --ff-only --progress --rebase=false',
+        install        = 'clone --depth %i --no-single-branch --progress',
+        fetch          = 'fetch --depth 999999 --progress',
+        checkout       = 'checkout %s --',
+        update_branch  = 'merge --ff-only @{u}',
+        current_branch = 'branch --show-current',
+        diff           = 'log --color=never --pretty=format:FMT --no-show-signature HEAD@{1}...HEAD',
         diff_fmt       = '%%h %%s (%%cr)',
-        get_rev        = '-C %s rev-parse --short HEAD',
-        get_msg        = '-C %s log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',
-        submodules     = '-C %s submodule update --init --recursive --progress'
+        get_rev        = 'rev-parse --short HEAD',
+        get_msg        = 'log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',
+        submodules     = 'submodule update --init --recursive --progress'
       },
       depth = 1, -- Git clone depth
       clone_timeout = 60, -- Timeout, in seconds, for git clones
+      default_url_format = 'https://github.com/%s' -- Lua format string used for "aaa/bbb" style plugins
     },
+    log = { level = 'warn' }, -- The default print log level. One of: "trace", "debug", "info", "warn", "error", "fatal".
     display = {
       non_interactive = false, -- If true, disable display windows for all operations
       open_fn  = nil, -- An optional function to open a window for packer's display
-      open_cmd = '65vnew [packer]', -- An optional command to open a window for packer's display
+      open_cmd = '65vnew \\[packer\\]', -- An optional command to open a window for packer's display
       working_sym = '⟳', -- The symbol for a plugin being installed/updated
       error_sym = '✗', -- The symbol for a plugin with an error in installation/updating
       done_sym = '✓', -- The symbol for a plugin which has completed installation/updating
@@ -280,13 +283,20 @@ installs/updates the given plugin.
 Providing the `installer`/`updater` keys overrides plugin type detection, but
 you still need to provide a location string for the name of the plugin.
 
-POST-UPDATE HOOKS                              *packer-plugin-hooks* 
+POST-UPDATE HOOKS                              *packer-plugin-hooks*
 You may specify operations to be run after successful installs/updates of a
-plugin with the `run` key in a plugin specification. This key may either be a
-Lua function, which will be called with the `plugin` table for this plugin
-(containing the information passed to |packer.use()| as well as output from
-the installation/update commands, the installation path of the plugin, etc.),
-or a string.
+plugin with the `run` key. This key may either be a Lua function, which will be
+called with the `plugin` table for this plugin (containing the information
+passed to `use` as well as output from the installation/update commands, the
+installation path of the plugin, etc.), a string, or a table of functions and
+strings.
+
+If an element of `run` is a string, then either:
+
+1. If the first character of `run` is ":", it is treated as a Neovim command and
+executed.
+2. Otherwise, `run` is treated as a shell command and run in the installation
+directory of the plugin via `$SHELL -c '<run>'`.
 
 DEPENDENCIES                                   *packer-plugin-dependencies*
 Plugins may specify dependencies via the `requires` key in their specification
@@ -306,7 +316,7 @@ installed.
 Plugins specified in `requires` are removed when no active plugins require
 them.
 
-LUAROCKS                                       *packer-plugin-luarocks* 
+LUAROCKS                                       *packer-plugin-luarocks*
 
 You may specify that a plugin requires one or more Luarocks packages using the
 `rocks` key. This key takes either a string specifying the name of a package
@@ -375,7 +385,7 @@ to `path`. Then, when you start vim, the file at `path` is loaded (because
 If `path` is not provided to |packer.compile()|, the output file will default
 to the value of `config.compile_path`.
 
-The option `compile_on_sync`, which defaults to `true`, will run 
+The option `compile_on_sync`, which defaults to `true`, will run
 `packer.compile()` during `packer.sync()`, if set to `true`.
 Note that otherwise, you **must** run `packer.compile` yourself to generate
 the lazy-loader file!
@@ -384,27 +394,29 @@ USING A FLOATING WINDOW                        *packer-floating-window*
 You can configure Packer to use a floating window for command outputs by
 passing a utility function to `packer`'s config: >
 
-  packer.startup(function()
+  packer.startup({function()
     -- Your plugins here
-  end, {
+  end,
+  config = {
     display = {
       open_fn = require('packer.util').float,
     }
-  })
+  }})
 <
 By default, this floating window will show doubled borders. If you want to
 customize the window appearance, you can pass a configuration to `float`,
 which is the same configuration that would be passed to |nvim_open_win|: >
 
-  packer.startup(function()
+  packer.startup({function()
     -- Your plugins here
-  end, {
+  end,
+  config = {
     display = {
       open_fn = function()
         return require('packer.util').float({ border = 'single' })
       end
     }
-  })
+  }})
 <
 PROFILING PLUGINS                              *packer-profiling*
 You can measure how long it takes your plugins to load using packer's builtin
@@ -538,12 +550,12 @@ invoked as follows:
     tag = string,                -- Specifies a git tag to use
     commit = string,             -- Specifies a git commit to use
     lock = boolean,              -- Skip this plugin in updates/syncs
-    run = string or function,    -- Post-update/install hook. See |packer-plugin-hooks|
+    run = string, function, or table  -- Post-update/install hook. See |packer-plugin-hooks|
     requires = string or list    -- Specifies plugin dependencies. See |packer-plugin-dependencies|
     config = string or function, -- Specifies code to run after this plugin is loaded.
     rocks = string or list,      -- Specifies Luarocks dependencies for the plugin
     -- The following keys all imply lazy-loading
-    cmd = string or list,        -- Specifies commands which load this plugin.
+    cmd = string or list,        -- Specifies commands which load this plugin.  Can be an autocmd pattern.
     ft = string or list,         -- Specifies filetypes which load this plugin.
     keys = string or list,       -- Specifies maps which load this plugin. See |packer-plugin-keybindings|
     event = string or list,      -- Specifies autocommand events which load this plugin.
@@ -552,7 +564,13 @@ invoked as follows:
     setup = string or function,  -- Specifies code to run before this plugin is loaded.
     module = string or list      -- Specifies Lua module names for require. When requiring a string which starts
                                  -- with one of these module names, the plugin will be loaded.
+    module_pattern = string/list -- Specifies Lua pattern of Lua module names for require. When requiring a string
+                                 -- which matches one of these patterns, the plugin will be loaded.
   }
 - With a list of plugins specified in either of the above two forms
+
+For the *cmd* option, the command may be a full command, or an autocommand pattern. If the command contains any
+non-alphanumeric characters, it is assumed to be a pattern, and instead of creating a stub command, it creates
+a CmdUndefined autocmd to load the plugin when a command that matches the pattern is invoked.
 
  vim:tw=78:ts=2:ft=help:norl:

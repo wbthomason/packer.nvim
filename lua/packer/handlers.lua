@@ -5,7 +5,7 @@ local function cfg(_config)
 end
 
 local handlers = {
-  cfg = cfg
+  cfg = cfg,
 }
 
 return handlers
