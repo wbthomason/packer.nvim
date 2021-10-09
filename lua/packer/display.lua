@@ -115,12 +115,12 @@ local keymaps = {
   },
   prompt_revert = {
     rhs = '<cmd>lua require"packer.display".prompt_revert()<cr>',
-    action = 'revert an update'
+    action = 'revert an update',
   },
   retry = {
     rhs = '<cmd>lua require"packer.display".retry()<cr>',
-    action = 'retry failed operations'
-  }
+    action = 'retry failed operations',
+  },
 }
 
 --- The order of the keys in a dict-like table isn't guaranteed, meaning the display window can
@@ -130,7 +130,7 @@ local keymap_display_order = {
   [2] = 'toggle_info',
   [3] = 'diff',
   [4] = 'prompt_revert',
-  [5] = 'retry'
+  [5] = 'retry',
 }
 
 --- Utility function to prompt a user with a question in a floating window
@@ -425,8 +425,15 @@ local display_mt = {
     if results.installs then
       for plugin, result in pairs(results.installs) do
         table.insert(item_order, plugin)
-        table.insert(raw_lines, fmt(' %s %s %s', result.ok and config.done_sym or config.error_sym,
-                                    result.ok and 'Installed' or 'Failed to install', plugin))
+        table.insert(
+          raw_lines,
+          fmt(
+            ' %s %s %s',
+            result.ok and config.done_sym or config.error_sym,
+            result.ok and 'Installed' or 'Failed to install',
+            plugin
+          )
+        )
         display.status.any_failed_install = display.status.any_failed_install or not result.ok
       end
     end
@@ -470,9 +477,15 @@ local display_mt = {
             rocks_items[package] = { lines = strip_newlines(result.err.output.data.stderr) }
           end
 
-          table.insert(raw_lines,
-                       fmt(' %s %s %s', result.ok and config.done_sym or config.error_sym,
-                           result.ok and 'Installed' or 'Failed to install', package))
+          table.insert(
+            raw_lines,
+            fmt(
+              ' %s %s %s',
+              result.ok and config.done_sym or config.error_sym,
+              result.ok and 'Installed' or 'Failed to install',
+              package
+            )
+          )
           display.status.any_failed_install = display.status.any_failed_install or not result.ok
         end
       end
@@ -504,9 +517,8 @@ local display_mt = {
     local show_retry = display.status.any_failed_install or #display.status.failed_update_list > 0
     for _, keymap in ipairs(keymap_display_order) do
       if keymaps[keymap].lhs then
-        if not (keymap == "retry") or show_retry then
-          table.insert(raw_lines,
-                       fmt(" Press '%s' to %s", keymaps[keymap].lhs, keymaps[keymap].action))
+        if not (keymap == 'retry') or show_retry then
+          table.insert(raw_lines, fmt(" Press '%s' to %s", keymaps[keymap].lhs, keymaps[keymap].action))
         end
       end
     end
@@ -865,9 +877,9 @@ end
 
 display.retry = function()
   if display.status.any_failed_install then
-      require("packer").install()
+    require('packer').install()
   elseif #display.status.failed_update_list > 0 then
-      require("packer").update(unpack(display.status.failed_update_list))
+    require('packer').update(unpack(display.status.failed_update_list))
   end
 end
 
