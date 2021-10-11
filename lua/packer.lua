@@ -309,6 +309,12 @@ packer.use = function(plugin_spec)
   }
 end
 
+packer.use_with_context = function(ctx, plugin_specs)
+  for _, plugin_spec in ipairs(plugin_specs) do
+    packer.use(vim.tbl_deep_extend('keep', plugin_spec, ctx))
+  end
+end
+
 local function manage_all_plugins()
   local log = require_and_configure 'log'
   log.debug 'Processing plugin specs'
