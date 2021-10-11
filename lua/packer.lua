@@ -309,8 +309,12 @@ packer.use = function(plugin_spec)
   }
 end
 
-packer.use_with_context = function(ctx, plugin_specs)
-  for _, plugin_spec in ipairs(plugin_specs) do
+packer.use_with_context = function(ctx, ...)
+  for _, plugin_spec in ipairs { ... } do
+    if type(plugin_spec) == 'string' then
+      plugin_spec = { plugin_spec }
+    end
+
     packer.use(vim.tbl_deep_extend('keep', plugin_spec, ctx))
   end
 end
