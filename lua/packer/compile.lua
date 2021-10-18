@@ -164,22 +164,6 @@ local function timed_chunk(chunk, name, output_table)
   return output_table
 end
 
--- We special-case timing for conditionals because we can't directly wrap the condition test
-local function timed_condition(condition, body, name, output_table)
-  output_table = output_table or {}
-  local condition_time_call = 'time("' .. name .. '", '
-  output_table[#output_table + 1] = condition_time_call .. 'true)'
-  output_table[#output_table + 1] = 'if'
-  output_table[#output_table + 1] = condition
-  output_table[#output_table + 1] = 'then'
-  output_table[#output_table + 1] = condition_time_call .. 'false)'
-  output_table[#output_table + 1] = body
-  output_table[#output_table + 1] = 'else'
-  output_table[#output_table + 1] = condition_time_call .. 'false)'
-  output_table[#output_table + 1] = 'end'
-  return output_table
-end
-
 local function dump_loaders(loaders)
   local result = vim.deepcopy(loaders)
   for k, _ in pairs(result) do
@@ -264,7 +248,6 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   local fts = {}
   local events = {}
   local condition_ids = {}
-  local condition_bytecode = {}
   local commands = {}
   local keymaps = {}
   local after = {}
@@ -324,9 +307,33 @@ local function make_loaders(_, plugins, output_lua, should_profile)
         setup[name] = plugin.setup
       end
 
+      -- Keep this as first opt loader to maintain only_cond ?
+      if plugin.cond ~= nil then
+        loaders[name].only_sequence = false
+        loaders[name].only_setup = false
+        loaders[name].only_cond = true
+        if type(plugin.cond) ~= 'table' then
+          plugin.cond = { plugin.cond }
+        end
+
+        for _, condition in ipairs(plugin.cond) do
+          loaders[name].cond = {}
+          if type(condition) == 'function' then
+            _, condition = make_try_loadstring(condition, 'condition', name)
+          elseif type(condition) == 'string' then
+            condition = 'return ' .. condition
+          end
+
+          condition_ids[condition] = condition_ids[condition] or {}
+          table.insert(loaders[name].cond, condition)
+          table.insert(condition_ids[condition], name)
+        end
+      end
+
       if plugin.ft then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
+        loaders[name].only_cond = false
         vim.list_extend(ftdetect_paths, detect_ftdetect(name, loaders[name].path))
         if type(plugin.ft) == 'string' then
           plugin.ft = { plugin.ft }
@@ -340,6 +347,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       if plugin.event then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
+        loaders[name].only_cond = false
         if type(plugin.event) == 'string' then
           if not plugin.event:find '%s' then
             plugin.event = { plugin.event .. ' *' }
@@ -357,27 +365,10 @@ local function make_loaders(_, plugins, output_lua, should_profile)
         end
       end
 
-      if plugin.cond then
-        loaders[name].only_sequence = false
-        loaders[name].only_setup = false
-        if type(plugin.cond) == 'string' or type(plugin.cond) == 'function' then
-          plugin.cond = { plugin.cond }
-        end
-
-        for _, condition in ipairs(plugin.cond) do
-          if type(condition) == 'function' then
-            condition = vim.inspect(string.dump(condition, true))
-            condition_bytecode[condition] = true
-          end
-
-          condition_ids[condition] = condition_ids[condition] or {}
-          table.insert(condition_ids[condition], name)
-        end
-      end
-
       if plugin.cmd then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
+        loaders[name].only_cond = false
         if type(plugin.cmd) == 'string' then
           plugin.cmd = { plugin.cmd }
         end
@@ -393,6 +384,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       if plugin.keys then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
+        loaders[name].only_cond = false
         if type(plugin.keys) == 'string' then
           plugin.keys = { plugin.keys }
         end
@@ -442,6 +434,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       if plugin.module or plugin.module_pattern then
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
+        loaders[name].only_cond = false
 
         if plugin.module then
           if type(plugin.module) == 'string' then
@@ -523,33 +516,16 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   end
 
   local conditionals = {}
-  for condition, names in pairs(condition_ids) do
-    local conditional_loads = {}
+  for _, names in pairs(condition_ids) do
     for _, name in ipairs(names) do
-      timed_chunk(
-        fmt('\trequire("packer.load")({"%s"}, {}, _G.packer_plugins)', name),
-        'packadd for ' .. name,
-        conditional_loads
-      )
-      if plugins[name].config then
-        local lines = { '-- Config for: ' .. name }
-        timed_chunk(plugins[name].executable_config, 'Config for ' .. name, lines)
-        vim.list_extend(conditional_loads, lines)
+      if loaders[name].only_cond then
+        timed_chunk(
+          fmt('  require("packer.load")({"%s"}, {}, _G.packer_plugins)', name),
+          'Conditional loading of ' .. name,
+          conditionals
+        )
       end
     end
-    local executable_conditional = condition
-    if condition_bytecode[condition] then
-      executable_conditional = 'try_loadstring(' .. condition .. ', "condition", \'' .. vim.inspect(names) .. "')"
-    end
-
-    vim.list_extend(
-      conditionals,
-      timed_condition(
-        executable_conditional,
-        table.concat(conditional_loads, '\n\t'),
-        'Condition for ' .. vim.inspect(names):gsub('"', "'")
-      )
-    )
   end
 
   local command_defs = {}
