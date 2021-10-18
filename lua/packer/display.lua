@@ -353,7 +353,7 @@ local display_mt = {
       local load_state = plug_conf.loaded and ''
         or vim.tbl_contains(rtps, plug_conf.path) and ' (manually loaded)'
         or ' (not loaded)'
-      local header_lines = { fmt(' • %s', plug_name) .. load_state }
+      local header_lines = { fmt(' • %s', plug_conf.url) .. load_state }
       local config_lines = {}
       for key, value in pairs(plug_conf) do
         if vim.tbl_contains(status_keys, key) then
@@ -438,19 +438,19 @@ local display_mt = {
         if result.ok then
           if plugin.type ~= plugin_utils.git_plugin_type or plugin.revs[1] == plugin.revs[2] then
             actual_update = false
-            table.insert(message, fmt(' %s %s is already up to date', config.done_sym, plugin_name))
+            table.insert(message, fmt(' %s %s is already up to date', config.done_sym, plugin.url))
           else
             table.insert(item_order, plugin_name)
             table.insert(
               message,
-              fmt(' %s Updated %s: %s..%s', config.done_sym, plugin_name, plugin.revs[1], plugin.revs[2])
+              fmt(' %s Updated %s: %s..%s', config.done_sym, plugin.url, plugin.revs[1], plugin.revs[2])
             )
           end
         else
           failed_update = true
           actual_update = false
           table.insert(item_order, plugin_name)
-          table.insert(message, fmt(' %s Failed to update %s', config.error_sym, plugin_name))
+          table.insert(message, fmt(' %s Failed to update %s', config.error_sym, plugin.url))
         end
 
         plugin.actual_update = actual_update
