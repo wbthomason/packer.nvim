@@ -81,6 +81,8 @@ local function format_values(key, value)
   if key == 'path' then
     local is_opt = value:match 'opt' ~= nil
     return { fmt('"%s"', vim.fn.fnamemodify(value, ':~')), fmt('opt: %s', vim.inspect(is_opt)) }
+  elseif key == 'url' then
+    return fmt('"%s"', value)
   elseif key == 'keys' then
     return unpack_config_value(value, value_type, format_keys)
   elseif key == 'commands' then
@@ -92,6 +94,7 @@ end
 
 local status_keys = {
   'path',
+  'url',
   'commands',
   'keys',
   'module',
@@ -353,7 +356,7 @@ local display_mt = {
       local load_state = plug_conf.loaded and ''
         or vim.tbl_contains(rtps, plug_conf.path) and ' (manually loaded)'
         or ' (not loaded)'
-      local header_lines = { fmt(' • %s', plug_conf.url) .. load_state }
+      local header_lines = { fmt(' • %s', plug_name) .. load_state }
       local config_lines = {}
       for key, value in pairs(plug_conf) do
         if vim.tbl_contains(status_keys, key) then
@@ -423,7 +426,7 @@ local display_mt = {
             ' %s %s %s',
             result.ok and config.done_sym or config.error_sym,
             result.ok and 'Installed' or 'Failed to install',
-            plugin
+            plugin_name
           )
         )
       end
@@ -438,19 +441,19 @@ local display_mt = {
         if result.ok then
           if plugin.type ~= plugin_utils.git_plugin_type or plugin.revs[1] == plugin.revs[2] then
             actual_update = false
-            table.insert(message, fmt(' %s %s is already up to date', config.done_sym, plugin.url))
+            table.insert(message, fmt(' %s %s is already up to date', config.done_sym, plugin_name))
           else
             table.insert(item_order, plugin_name)
             table.insert(
               message,
-              fmt(' %s Updated %s: %s..%s', config.done_sym, plugin.url, plugin.revs[1], plugin.revs[2])
+              fmt(' %s Updated %s: %s..%s', config.done_sym, plugin_name, plugin.revs[1], plugin.revs[2])
             )
           end
         else
           failed_update = true
           actual_update = false
           table.insert(item_order, plugin_name)
-          table.insert(message, fmt(' %s Failed to update %s', config.error_sym, plugin.url))
+          table.insert(message, fmt(' %s Failed to update %s', config.error_sym, plugin_name))
         end
 
         plugin.actual_update = actual_update
@@ -532,6 +535,7 @@ local display_mt = {
       end
 
       if plugin.messages and #plugin.messages > 0 then
+        table.insert(plugin_data.lines, fmt('  URL: %s', plugin.url))
         table.insert(plugin_data.lines, '  Commits:')
         for _, msg in ipairs(plugin.messages) do
           for _, line in ipairs(vim.split(msg, '\n')) do
