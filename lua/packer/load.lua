@@ -123,7 +123,7 @@ packer_load = function(names, cause, plugins, force)
     local plugin = plugins[names[i]]
     if not plugin then
       local err_message = 'Error: attempted to load ' .. names[i] .. ' which is not present in plugins table!'
-      print(err_message)
+      vim.notify(err_message, vim.log.levels.ERROR, { title = 'packer.nvim' })
       error(err_message)
     end
 
