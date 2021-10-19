@@ -745,12 +745,26 @@ end
 -- Load plugins
 -- @param plugins string String of space separated plugins names
 --                      intended for PackerLoad command
+--                or list of plugin names as independent strings
 packer.loader = function(...)
-  local plugin_list = { ... }
-  local force = plugin_list[#plugin_list] == true
-  if type(plugin_list[#plugin_list]) == 'boolean' then
-    plugin_list[#plugin_list] = nil
+  local plugin_names = { ... }
+  local force = plugin_names[#plugin_names] == true
+  if type(plugin_names[#plugin_names]) == 'boolean' then
+    plugin_names[#plugin_names] = nil
   end
+
+  -- We make a new table here because it's more convenient than expanding a space-separated string
+  -- into the existing plugin_names
+  local plugin_list = {}
+  for _, plugin_name in ipairs(plugin_names) do
+    vim.list_extend(
+      plugin_list,
+      vim.tbl_filter(function(name)
+        return #name > 0
+      end, vim.split(plugin_name, ' '))
+    )
+  end
+
   require 'packer.load'(plugin_list, {}, _G.packer_plugins, force)
 end
 
