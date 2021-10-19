@@ -426,7 +426,7 @@ local display_mt = {
             ' %s %s %s',
             result.ok and config.done_sym or config.error_sym,
             result.ok and 'Installed' or 'Failed to install',
-            plugin_name
+            plugin
           )
         )
       end
