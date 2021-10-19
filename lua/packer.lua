@@ -765,8 +765,6 @@ packer.loader = function(...)
     )
   end
 
-  print(vim.inspect(plugin_list))
-
   require 'packer.load'(plugin_list, {}, _G.packer_plugins, force)
 end
 
