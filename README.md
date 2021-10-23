@@ -626,7 +626,6 @@ case has been tested. People willing to give it a try and report bugs/errors are
   displaying results)
 - Automatic generation of lazy-loading code works
 - More testing is needed
-$ source ~/.bashrc
 - The code is messy and needs more cleanup and refactoring
 
 ## Current work-in-progress
