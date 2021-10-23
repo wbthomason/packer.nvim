@@ -633,7 +633,7 @@ case has been tested. People willing to give it a try and report bugs/errors are
 
 ## Testing
 
-CI is handled by a GitHub workflow defined in [test.yaml][.github/workflows/test.yaml].
+CI is handled by a GitHub workflow defined in [test.yaml](.github/workflows/test.yaml).
 
 For local testing, one way is to use `luarocks` to install `plenary.nvim`. The following
 steps are targetted at Ubuntu and `lua5.3` using a non-root `luarocks` installation.
@@ -649,7 +649,7 @@ $ ./configure --prefix=$HOME/bin --with-lua-include=/usr/include/lua5.3
 $ make
 $ make install
 $ ln -s ~/bin/bin/luarocks ~/bin/luarocks
-$ echo "export PATH="$PATH:~/bin" >> ~/.bashrc
+$ echo 'export PATH="$PATH:~/bin"' >> ~/.bashrc
 $ source ~/.bashrc
 $
 $ # We also need to update Lua's path for luarocks.
