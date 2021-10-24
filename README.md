@@ -29,8 +29,7 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 7. [Profiling](#profiling)
 8. [Debugging](#debugging)
 9. [Status](#status)
-10. [Testing](#testing)
-11. [Contributors](#contributors)
+10. [Contributors](#contributors)
 
 ## Notices
 - **2021-07-31:** If you're on macOS, note that building Neovim with the version of `luv` from `homebrew` [will cause any `packer` command to crash](https://github.com/wbthomason/packer.nvim/issues/496#issuecomment-890371022). More about this issue at [neovim/neovim#15054](https://github.com/neovim/neovim/issues/15054).
@@ -630,41 +629,6 @@ case has been tested. People willing to give it a try and report bugs/errors are
 
 ## Current work-in-progress
 - Playing with ideas to make manual compilation less necessary
-
-## Testing
-
-CI is handled by a GitHub workflow defined in [test.yaml](.github/workflows/test.yaml).
-
-For local testing, one way is to use `luarocks` to install `plenary.nvim`. The following
-steps are targetted at Ubuntu and `lua5.3` using a non-root `luarocks` installation.
-
-```console
-$ sudo apt-get install lua5.3 liblua5.3-dev
-$ git clone https://github.com/luarocks/luarocks.git
-$ cd luarocks
-$
-$ # This next section assumes we want the final luarocks binary to be at ~/bin.
-$ # The ~/bin directory also needs to be added to our PATH.
-$ ./configure --prefix=$HOME/bin --with-lua-include=/usr/include/lua5.3
-$ make
-$ make install
-$ ln -s ~/bin/bin/luarocks ~/bin/luarocks
-$ echo 'export PATH="$PATH:~/bin"' >> ~/.bashrc
-$ source ~/.bashrc
-$
-$ # We also need to update Lua's path for luarocks.
-$ echo "$(luarocks path --bin)" >> ~/.bashrc
-$ source ~/.bashrc
-$
-$ luarocks install plenary.nvim
-```
-
-After this setup, we should be able to run the tests from the repo's root directory
-by using this command:
-
-```console
-$ nvim --headless --noplugin -c "lua require('plenary.test_harness').test_directory_command('tests/')"
-```
 
 ## Contributors
 Many thanks to those who have contributed to the project! PRs and issues are always welcome. This

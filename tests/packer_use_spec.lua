@@ -1,5 +1,3 @@
-package.path = package.path .. ";lua/?.lua" .. ";lua/packer/?.lua"
-
 local packer = require("packer")
 local use = packer.use
 local packer_path = vim.fn.stdpath("data").."/site/pack/packer/start/"

@@ -1,5 +1,3 @@
-package.path = package.path .. ";lua/?.lua" .. ";lua/packer/?.lua"
-
 local a = require('plenary.async_lib.tests')
 local await = require('packer.async').wait
 local plugin_utils = require("packer.plugin_utils")
