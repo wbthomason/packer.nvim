@@ -46,7 +46,7 @@ packer_load = function(names, cause, plugins)
 
       if plugin.config then
         for _, config_line in ipairs(plugin.config) do
-          local success, err = pcall(loadstring(config_line))
+          local success, err = pcall(loadstring(config_line), names[i], plugin)
           if not success then
             vim.schedule(function()
               vim.api.nvim_notify(
