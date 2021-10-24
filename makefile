@@ -7,7 +7,3 @@ test:
 	fi; \
 	nvim --headless --noplugin -u tests/minimal.vim \
 		-c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal.vim'}"
-
-clean:
-	rm -rf ~/.local/share/nvim/site/pack/vendor/start/plenary.nvim; \
-	rm -f  ~/.local/share/nvim/site/pack/vendor/start/packer.nvim \
