@@ -566,7 +566,7 @@ end
 --  - Clean stale plugins
 --  - Install missing plugins and update installed plugins
 --  - Update helptags and rplugins
-packer.sync = function(...)
+local function sync_then(callback, ...)
   local log = require_and_configure 'log'
   log.debug 'packer.sync: requiring modules'
   local plugin_utils = require_and_configure 'plugin_utils'
@@ -648,8 +648,12 @@ packer.sync = function(...)
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta, opts)
     packer.on_complete()
+    callback()
   end)()
 end
+
+packer.sync = function(...) return sync_then(function() end, ...) end
+packer.sync_then = sync_then
 
 packer.status = function()
   local async = require('packer.async').sync
