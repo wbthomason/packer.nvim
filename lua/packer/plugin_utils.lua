@@ -6,11 +6,8 @@ local log = require 'packer.log'
 
 local await = a.wait
 
-local config = nil
+local config = require('packer.config').config
 local plugin_utils = {}
-plugin_utils.cfg = function(_config)
-  config = _config
-end
 
 plugin_utils.custom_plugin_type = 'custom'
 plugin_utils.local_plugin_type = 'local'
