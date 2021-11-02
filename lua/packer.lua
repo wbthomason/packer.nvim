@@ -253,6 +253,9 @@ manage = function(plugin_data)
     packer.use_rocks(plugin_spec.rocks)
   end
 
+  -- Add the git URL for displaying in PackerStatus and PackerSync.
+  plugins[plugin_spec.short_name].url = plugin_spec.url:gsub('%.git', '')
+
   if plugin_spec.requires and config.ensure_dependencies then
     if type(plugin_spec.requires) == 'string' then
       plugin_spec.requires = { plugin_spec.requires }

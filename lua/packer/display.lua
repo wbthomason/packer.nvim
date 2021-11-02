@@ -81,6 +81,8 @@ local function format_values(key, value)
   if key == 'path' then
     local is_opt = value:match 'opt' ~= nil
     return { fmt('"%s"', vim.fn.fnamemodify(value, ':~')), fmt('opt: %s', vim.inspect(is_opt)) }
+  elseif key == 'url' then
+    return fmt('"%s"', value)
   elseif key == 'keys' then
     return unpack_config_value(value, value_type, format_keys)
   elseif key == 'commands' then
@@ -92,6 +94,7 @@ end
 
 local status_keys = {
   'path',
+  'url',
   'commands',
   'keys',
   'module',
@@ -532,6 +535,7 @@ local display_mt = {
       end
 
       if plugin.messages and #plugin.messages > 0 then
+        table.insert(plugin_data.lines, fmt('  URL: %s', plugin.url))
         table.insert(plugin_data.lines, '  Commits:')
         for _, msg in ipairs(plugin.messages) do
           for _, line in ipairs(vim.split(msg, '\n')) do
