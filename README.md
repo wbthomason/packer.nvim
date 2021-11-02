@@ -91,8 +91,6 @@ Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lu
 
 -- Only required if you have packer configured as `opt`
 vim.cmd [[packadd packer.nvim]]
--- Only if your version of Neovim doesn't have https://github.com/neovim/neovim/pull/12632 merged
-vim._update_package_paths()
 
 return require('packer').startup(function()
   -- Packer can manage itself
