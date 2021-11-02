@@ -58,13 +58,8 @@ jobs:
           git clone --depth 1 https://github.com/neovim/neovim --branch ${{env.NEOVIM_BRANCH}}
           make -C neovim
 
-      - name: Prepare plenary
-        run: |
-          git clone --depth 1 https://github.com/nvim-lua/plenary.nvim ~/.local/share/nvim/site/pack/vendor/start/plenary.nvim
-          ln -s $(pwd) ~/.local/share/nvim/site/pack/vendor/start
-
       - name: Run tests
         run: |
           export PATH="neovim/build/bin:${PATH}"
           export VIM="neovim/runtime"
-          nvim --headless --noplugin -u tests/minimal.vim -c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal.vim'}"
+          make test
