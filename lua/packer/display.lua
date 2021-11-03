@@ -606,6 +606,7 @@ local display_mt = {
       return
     end
 
+    local current_cursor_pos = api.nvim_win_get_cursor(0)
     local plugin_name, cursor_pos = self:find_nearest_plugin()
     if plugin_name == nil then
       log.warn 'No plugin selected!'
@@ -622,6 +623,8 @@ local display_mt = {
     else
       log.info('No further information for ' .. plugin_name)
     end
+
+    api.nvim_win_set_cursor(0, current_cursor_pos)
   end,
 
   diff = function(self)
