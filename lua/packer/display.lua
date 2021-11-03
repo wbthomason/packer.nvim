@@ -708,12 +708,17 @@ local display_mt = {
     if not self:valid_display() then
       return
     end
+
     local cursor_pos = api.nvim_win_get_cursor(0)
     -- TODO: this is a dumb hack
     for i = cursor_pos[1], 1, -1 do
       local curr_line = api.nvim_buf_get_lines(0, i - 1, i, true)[1]
       for name, _ in pairs(self.items) do
         if string.find(curr_line, name, 1, true) then
+          if string.find(curr_line, '  URL:', 1, true) then
+            i = i - 1
+          end
+
           return name, { i, 0 }
         end
       end
