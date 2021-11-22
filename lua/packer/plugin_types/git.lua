@@ -128,6 +128,31 @@ local handle_checkouts = function(plugin, dest, disp)
   end)
 end
 
+local get_rev = function(plugin)
+  local plugin_name = util.get_plugin_full_name(plugin)
+
+  local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
+
+  return async(function()
+    local rev = await(
+      jobs.run(
+        rev_cmd,
+        { cwd = plugin.install_path, options = { env = git.job_env }, capture_output = true }
+      ))
+    :map_ok(function (ok)
+        local _, r = next(ok.output.data.stdout)
+        return r
+      end)
+    :map_err(function(err)
+        local _, msg = fmt("%s: %s",plugin_name,next(err.output.data.stderr))
+        error(msg)
+        return ""
+      end)
+
+    return rev.ok
+  end)
+end
+
 git.setup = function(plugin)
   local plugin_name = util.get_plugin_full_name(plugin)
   local install_to = plugin.install_path
@@ -453,6 +478,15 @@ git.setup = function(plugin)
       return r
     end)()
     return r
+  end
+
+  ---Returns HEAD's short hash
+  ---@return string
+  plugin.get_rev = function()
+    return async(function()
+      local res = await(get_rev(plugin))
+      return res
+    end)
   end
 end
 

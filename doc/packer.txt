@@ -44,6 +44,7 @@ FEATURES                                         *packer-intro-features*
 - Uses jobs for async installation
 - Support for `git` tags, branches, revisions, submodules
 - Support for local plugins
+- Support snapshots for plugins
 
 ==============================================================================
 QUICKSTART                                       *packer-intro-quickstart*
@@ -126,6 +127,14 @@ Perform `PackerUpdate` and then `PackerCompile`.
 `PackerLoad`                                    *packer-commands-load*
 Loads opt plugin immediately
 
+`PackerSnapshot`                                    *packer-commands-snapshot*
+Snapshots your plugins to a file
+
+`PackerDelete`                                    *packer-commands-delete*
+Deletes a snapshot
+
+`PackerRollback`                                    *packer-commands-rollback*
+Rolls back plugins' commit specified by the snapshot
 ==============================================================================
 USAGE                                          *packer-usage*
 
@@ -533,6 +542,15 @@ post-update hooks, and updates rplugins (|remote-plugin|) and helptags.
 It can be invoked with no arguments or with a list of plugin names to update.
 These plugin names must already be managed by `packer` via a call to
 |packer.use()|.
+
+snapshot()		                                *packer.snapshot()*
+`snapshot` takes the rev of all the installed plugins and serializes them into a lua table which will be saved at `config.snapshot_path` or an absolute path provided by the users. The snapshot can be loaded via `dofile`
+
+delete()		                                *packer.delete()*
+`delete` deletes a snapshot given the name or the absolute path
+
+rollback()		                                *packer.rollback()*
+`rollback` reverts all plugins to the commit specified in the snapshot
 
 use()		                                       *packer.use()*
 `use` allows you to add one or more plugins to the managed set. It can be
