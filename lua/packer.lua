@@ -39,6 +39,7 @@ local config_defaults = {
       get_bodies = 'log --color=never --pretty=format:"===COMMIT_START===%h%n%s===BODY_START===%b" --no-show-signature HEAD@{1}...HEAD',
       submodules = 'submodule update --init --recursive --progress',
       revert = 'reset --hard HEAD@{1}',
+      revert_to = 'reset --hard %s --',
     },
     depth = 1,
     clone_timeout = 60,
@@ -873,6 +874,7 @@ packer.rollback = function(snapshot_name)
     end
 
     log.debug("Rolling back to " .. snapshot_path)
+    print("Rolling back to " .. snapshot_path)
 
     local snap_plugins = dofile(snapshot_path)
     local jobs = {}
@@ -886,13 +888,13 @@ packer.rollback = function(snapshot_name)
       table.insert(jobs,
         async(function ()
           await(plugin.revert())
-          packer.on_complete()
         end)
       )
     end
 
     wait_all(unpack(jobs))
     log.info('Rollback complete')
+    packer.on_complete()
     print('Rollback complete')
   end)()
 end

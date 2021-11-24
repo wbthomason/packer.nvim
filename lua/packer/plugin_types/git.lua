@@ -19,19 +19,6 @@ local blocked_env_vars = {
   GIT_COMMON_DIR = true,
 }
 
----Resets a git repo `dest` to `commit`
----@param dest string @ path to the local git repo
----@param commit string @ commit hash
----@return function @ async function
-local function reset(dest, commit)
-    local reset_cmd = fmt(config.exec_cmd .. config.subcommands.revert_to, commit)
-    local opts = { capture_output = true, cwd = dest, options = { env = git.job_env } }
-    reset()
-    return async(function ()
-      await(jobs.run(reset_cmd, opts))
-    end)
-end
-
 local function ensure_git_env()
   if git.job_env == nil then
     local job_env = {}
@@ -68,6 +55,18 @@ git.cfg = function(_config)
   config.default_base_dir = util.join_paths(config.base_dir, _config.plugin_package)
   config.exec_cmd = config.cmd .. ' '
   ensure_git_env()
+end
+
+---Resets a git repo `dest` to `commit`
+---@param dest string @ path to the local git repo
+---@param commit string @ commit hash
+---@return function @ async function
+local function reset(dest, commit)
+    local reset_cmd = fmt(config.exec_cmd .. config.subcommands.revert_to, commit)
+    local opts = { capture_output = true, cwd = dest, options = { env = git.job_env } }
+    return async(function ()
+      await(jobs.run(reset_cmd, opts))
+    end)
 end
 
 local handle_checkouts = function(plugin, dest, disp)
@@ -495,15 +494,16 @@ git.setup = function(plugin)
 
   ---Reset the plugin to `plugin.commit`
   plugin.revert = function ()
+    local log = require('packer.log')
     if plugin.commit ~= nil then
       return async(function ()
-        print(fmt("Reverting '%s' to commit '%s'", plugin.name, plugin.commit))
+        log.info(fmt("Reverting '%s' to commit '%s'", plugin.name, plugin.commit))
         await(reset(install_to, plugin.commit))
       end)
     end
 
     return async(function ()
-        print(fmt("'%s' has no commit to revert to", plugin.name))
+        log.info(fmt("'%s' has no commit to revert to", plugin.name))
     end)
   end
 
