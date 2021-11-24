@@ -8,6 +8,7 @@ local stdpath = vim.fn.stdpath
 -- Config
 local packer = {}
 local config_defaults = {
+  snapshot_path = join_paths(stdpath 'cache', 'packer'),
   ensure_dependencies = true,
   package_root = join_paths(stdpath 'data', 'site', 'pack'),
   compile_path = join_paths(stdpath 'config', 'plugin', 'packer_compiled.lua'),
@@ -829,10 +830,12 @@ packer.snapshot = function(snapshot_name)
     log.debug(fmt('Taking snapshots of currently installed plugins to %s...', snapshot_name))
     if vim.fn.fnamemodify(snapshot_name, ":p") ~= snapshot_path then -- is not absolute path
       snapshot_path = util.join_paths(config.snapshot_path, snapshot_path) -- save to default path
+
     end
-    await(snapshot(snapshot_name, plugins))
-    log.info('Snapshot complete')
-    print('Snapshot complete')
+    await(snapshot(snapshot_path, plugins))
+    local msg = fmt("Snapshot '%s' complete", snapshot_path)
+    log.info(msg)
+    print(msg)
     packer.on_complete() --not sure if it should fire packer.on_complete()
   end)()
 end
