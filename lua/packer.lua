@@ -789,9 +789,7 @@ end
 packer.plugin_complete = function(lead, _, _)
   local completion_list = vim.tbl_filter(function(name)
     return vim.startswith(name, lead)
-  end, vim.tbl_keys(
-    _G.packer_plugins
-  ))
+  end, vim.tbl_keys(_G.packer_plugins))
   table.sort(completion_list)
   return completion_list
 end
@@ -811,7 +809,7 @@ packer.config = config
 --  overrides as another element:
 --  packer.startup({{'tjdevries/colorbuddy.vim'}, config = { ... }})
 packer.startup = function(spec)
-  local log = require_and_configure 'log'
+  local log = require 'packer.log'
   local user_func = nil
   local user_config = nil
   local user_plugins = nil
@@ -835,6 +833,7 @@ packer.startup = function(spec)
 
   packer.init(user_config)
   packer.reset()
+  log = require_and_configure 'log'
 
   if user_func then
     setfenv(user_func, vim.tbl_extend('force', getfenv(), { use = packer.use, use_rocks = packer.use_rocks }))
