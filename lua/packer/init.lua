@@ -108,8 +108,32 @@ function M.add_handler(handler)
   require('packer.handlers').add(handler)
 end
 
---- Recursively flatten a potentially nested list of plugin specifications
+--- Utility iterator for flatten_specification
 --- NOTE: This special-cases the `requires` key, as it can nest specifications
+local function flatten_iterator(specifications, index_stack)
+  local plugin = nil
+  for i = 1, #index_stack do
+    local idx = index_stack[i]
+    if plugin == nil and idx <= #specifications then
+      plugin = specifications[idx]
+    elseif plugin.requires ~= nil and idx <= #plugin.requires then
+      plugin = plugin.requires[idx]
+    else
+      assert(i == #index_stack, 'Stack length not as expected!')
+      index_stack[i] = nil
+      index_stack[i - 1] = index_stack[i - 1] + 1
+      break
+    end
+  end
+
+  if plugin.requires ~= nil then
+    index_stack[#index_stack + 1] = 1
+  end
+
+  return plugin, index_stack
+end
+
+--- Recursively flatten a potentially nested list of plugin specifications
 ---@param plugin_specification string or full plugin specification or list of plugin specifications
 local function flatten_specification(plugin_specification)
   if plugin_specification == nil then
