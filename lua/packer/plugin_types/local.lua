@@ -11,7 +11,21 @@ local function cfg(_config)
   config = _config
 end
 
-local symlink = a.wrap(vim.loop.fs_symlink)
+-- Due to #679, we know that fs_symlink requires admin privileges on Windows. This is a workaround,
+-- as suggested by @nonsleepr.
+
+local symlink_fn
+if util.is_windows then
+  symlink_fn = function(path, new_path, flags, callback)
+    flags = flags or {}
+    flags.junction = true
+    return vim.loop.fs_symlink(path, new_path, flags, callback)
+  end
+else
+  symlink_fn = vim.loop.fs_symlink
+end
+
+local symlink = a.wrap(symlink_fn)
 
 local function setup_local(plugin)
   local from = plugin.path
