@@ -546,6 +546,8 @@ to generate the lazy-loader file!
 **NOTE:** If you use a function value for `config` or `setup` keys in any plugin specifications, it
 **must not** have any upvalues (i.e. captures). We currently use Lua's `string.dump` to compile
 config/setup functions to bytecode, which has this limitation.
+Additionally, if functions are given for these keys, the functions will be passed the plugin
+name and information table as arguments.
 
 ### User autocommands
 `packer` runs most of its operations asyncronously. If you would like to implement automations that
