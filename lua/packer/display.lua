@@ -81,6 +81,8 @@ local function format_values(key, value)
   if key == 'path' then
     local is_opt = value:match 'opt' ~= nil
     return { fmt('"%s"', vim.fn.fnamemodify(value, ':~')), fmt('opt: %s', vim.inspect(is_opt)) }
+  elseif key == 'url' then
+    return fmt('"%s"', value)
   elseif key == 'keys' then
     return unpack_config_value(value, value_type, format_keys)
   elseif key == 'commands' then
@@ -92,6 +94,7 @@ end
 
 local status_keys = {
   'path',
+  'url',
   'commands',
   'keys',
   'module',
@@ -532,6 +535,7 @@ local display_mt = {
       end
 
       if plugin.messages and #plugin.messages > 0 then
+        table.insert(plugin_data.lines, fmt('  URL: %s', plugin.url))
         table.insert(plugin_data.lines, '  Commits:')
         for _, msg in ipairs(plugin.messages) do
           for _, line in ipairs(vim.split(msg, '\n')) do
@@ -602,6 +606,7 @@ local display_mt = {
       return
     end
 
+    local current_cursor_pos = api.nvim_win_get_cursor(0)
     local plugin_name, cursor_pos = self:find_nearest_plugin()
     if plugin_name == nil then
       log.warn 'No plugin selected!'
@@ -618,6 +623,8 @@ local display_mt = {
     else
       log.info('No further information for ' .. plugin_name)
     end
+
+    api.nvim_win_set_cursor(0, current_cursor_pos)
   end,
 
   diff = function(self)
@@ -704,12 +711,17 @@ local display_mt = {
     if not self:valid_display() then
       return
     end
+
     local cursor_pos = api.nvim_win_get_cursor(0)
     -- TODO: this is a dumb hack
     for i = cursor_pos[1], 1, -1 do
       local curr_line = api.nvim_buf_get_lines(0, i - 1, i, true)[1]
       for name, _ in pairs(self.items) do
         if string.find(curr_line, name, 1, true) then
+          if string.find(curr_line, '  URL:', 1, true) then
+            i = i - 1
+          end
+
           return name, { i, 0 }
         end
       end

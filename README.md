@@ -91,8 +91,6 @@ Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lu
 
 -- Only required if you have packer configured as `opt`
 vim.cmd [[packadd packer.nvim]]
--- Only if your version of Neovim doesn't have https://github.com/neovim/neovim/pull/12632 merged
-vim._update_package_paths()
 
 return require('packer').startup(function()
   -- Packer can manage itself
@@ -380,7 +378,7 @@ use {
   branch = string,             -- Specifies a git branch to use
   tag = string,                -- Specifies a git tag to use
   commit = string,             -- Specifies a git commit to use
-  lock = boolean,              -- Skip this plugin in updates/syncs
+  lock = boolean,              -- Skip updating this plugin in updates/syncs. Still cleans.
   run = string, function, or table, -- Post-update/install hook. See "update/install hooks".
   requires = string or list,   -- Specifies plugin dependencies. See "dependencies".
   rocks = string or list,      -- Specifies Luarocks dependencies for the plugin

@@ -130,7 +130,7 @@ packer.make_commands = function()
   vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
   vim.cmd [[command! PackerStatus            lua require('packer').status()]]
   vim.cmd [[command! PackerProfile           lua require('packer').profile_output()]]
-  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad lua require('packer').loader(<q-args>)]]
+  vim.cmd [[command! -bang -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad lua require('packer').loader(<f-args>, '<bang>' == '!')]]
 end
 
 packer.reset = function()
@@ -226,7 +226,7 @@ manage = function(plugin_data)
 
   local compile = require_and_configure 'compile'
   for _, key in ipairs(compile.opt_keys) do
-    if plugin_spec[key] then
+    if plugin_spec[key] ~= nil then
       plugin_spec.opt = true
       break
     end
@@ -252,6 +252,9 @@ manage = function(plugin_data)
   if plugin_spec.rocks then
     packer.use_rocks(plugin_spec.rocks)
   end
+
+  -- Add the git URL for displaying in PackerStatus and PackerSync.
+  plugins[plugin_spec.short_name].url = plugin_spec.url:gsub('%.git', '')
 
   if plugin_spec.requires and config.ensure_dependencies then
     if type(plugin_spec.requires) == 'string' then
@@ -745,11 +748,27 @@ end
 -- Load plugins
 -- @param plugins string String of space separated plugins names
 --                      intended for PackerLoad command
-packer.loader = function(plugins_names)
-  local plugin_list = vim.tbl_filter(function(name)
-    return #name > 0
-  end, vim.split(plugins_names, ' '))
-  require 'packer.load'(plugin_list, {}, _G.packer_plugins)
+--                or list of plugin names as independent strings
+packer.loader = function(...)
+  local plugin_names = { ... }
+  local force = plugin_names[#plugin_names] == true
+  if type(plugin_names[#plugin_names]) == 'boolean' then
+    plugin_names[#plugin_names] = nil
+  end
+
+  -- We make a new table here because it's more convenient than expanding a space-separated string
+  -- into the existing plugin_names
+  local plugin_list = {}
+  for _, plugin_name in ipairs(plugin_names) do
+    vim.list_extend(
+      plugin_list,
+      vim.tbl_filter(function(name)
+        return #name > 0
+      end, vim.split(plugin_name, ' '))
+    )
+  end
+
+  require 'packer.load'(plugin_list, {}, _G.packer_plugins, force)
 end
 
 -- Completion for not yet loaded plugins
