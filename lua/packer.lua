@@ -789,9 +789,7 @@ end
 packer.plugin_complete = function(lead, _, _)
   local completion_list = vim.tbl_filter(function(name)
     return vim.startswith(name, lead)
-  end, vim.tbl_keys(
-    _G.packer_plugins
-  ))
+  end, vim.tbl_keys(_G.packer_plugins))
   table.sort(completion_list)
   return completion_list
 end
