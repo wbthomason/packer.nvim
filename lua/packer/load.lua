@@ -47,7 +47,7 @@ end
 local function loader_apply_config(plugin, name)
   if plugin.config then
     for _, config_line in ipairs(plugin.config) do
-      local success, err = pcall(loadstring(config_line))
+      local success, err = pcall(loadstring(config_line), name, plugin)
       if not success then
         vim.schedule(function()
           vim.api.nvim_notify('packer.nvim: Error running config for ' .. name .. ': ' .. err, vim.log.levels.ERROR, {})

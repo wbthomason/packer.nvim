@@ -259,6 +259,8 @@ CONFIGURING PLUGINS                            *packer-plugin-configuration*
 `packer` allows you to configure plugins either before they are loaded (the
 `setup` key described in |packer.use()|) or after they are loaded (the
 `config` key described in |packer.use()|).
+If functions are given for these keys, the functions will be passed the plugin
+name and information table as arguments.
 
 PLUGIN STATUSES                                 *packer-plugin-status*
 You can check whether or not a particular plugin is installed with `packer` as
