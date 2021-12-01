@@ -8,7 +8,7 @@ local stdpath = vim.fn.stdpath
 -- Config
 local packer = {}
 local config_defaults = {
-  snapshot_path = join_paths(stdpath 'cache', 'packer'),
+  snapshot_path = join_paths(stdpath 'cache', 'packer.nvim'),
   ensure_dependencies = true,
   package_root = join_paths(stdpath 'data', 'site', 'pack'),
   compile_path = join_paths(stdpath 'config', 'plugin', 'packer_compiled.lua'),
@@ -790,19 +790,30 @@ packer.loader_complete = function(lead, _, _)
   return completion_list
 end
 
---- Completion for listing snapshots in `snapshot_path`
+--- Completion for listing snapshots in `config.snapshot_path`
 --- Intended to provide completion for PackerRollback command
---- TODO: using vim.fn.readdir to get entries the snapshot directory
 packer.snapshot_complete = function(lead, _, _)
   local completion_list = {}
-  local res = io.popen('ls ' .. config.snapshot_path, 'r')
-  for entry in res:lines() do
-    if vim.startswith(entry, lead) then
-      table.insert(completion_list, entry)
+  if config.snapshot_path == nil then
+    return completion_list
+  end
+
+  local dir = vim.loop.fs_opendir(config.snapshot_path)
+
+  if dir ~= nil then
+    local res = vim.loop.fs_readdir(dir)
+    while res ~= nil do
+      for _, entry in ipairs(res) do
+        if entry.type == "file" and vim.startswith(entry.name, lead) then
+          completion_list[#completion_list + 1] = entry.name
+        end
+      end
+
+      res = vim.loop.fs_readdir(dir)
     end
   end
-  res:close()
-  table.sort(completion_list)
+
+  vim.loop.fs_closedir(dir)
   return completion_list
 end
 
