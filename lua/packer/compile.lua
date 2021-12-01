@@ -256,8 +256,10 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   local module_lazy_loads = {}
   for name, plugin in pairs(plugins) do
     if not plugin.disable then
+      plugin.simple_load = true
       local quote_name = "'" .. name .. "'"
       if plugin.config and not plugin.executable_config then
+        plugin.simple_load = false
         plugin.executable_config = {}
         if type(plugin.config) ~= 'table' then
           plugin.config = { plugin.config }
@@ -289,11 +291,13 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       }
 
       if plugin.opt then
+        plugin.simple_load = false
         loaders[name].after_files = detect_after_plugin(name, loaders[name].path)
         loaders[name].needs_bufread = detect_bufread(loaders[name].path)
       end
 
       if plugin.setup then
+        plugin.simple_load = false
         if type(plugin.setup) ~= 'table' then
           plugin.setup = { plugin.setup }
         end
@@ -309,6 +313,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
 
       -- Keep this as first opt loader to maintain only_cond ?
       if plugin.cond ~= nil then
+        plugin.simple_load = false
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
         loaders[name].only_cond = true
@@ -334,6 +339,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       loaders[name].url = plugin.url
 
       if plugin.ft then
+        plugin.simple_load = false
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
         loaders[name].only_cond = false
@@ -348,6 +354,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       end
 
       if plugin.event then
+        plugin.simple_load = false
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
         loaders[name].only_cond = false
@@ -369,6 +376,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       end
 
       if plugin.cmd then
+        plugin.simple_load = false
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
         loaders[name].only_cond = false
@@ -385,6 +393,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       end
 
       if plugin.keys then
+        plugin.simple_load = false
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
         loaders[name].only_cond = false
@@ -403,6 +412,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       end
 
       if plugin.after then
+        plugin.simple_load = false
         loaders[name].only_setup = false
 
         if type(plugin.after) == 'string' then
@@ -416,6 +426,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       end
 
       if plugin.wants then
+        plugin.simple_load = false
         if type(plugin.wants) == 'string' then
           plugin.wants = { plugin.wants }
         end
@@ -423,6 +434,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       end
 
       if plugin.fn then
+        plugin.simple_load = false
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
         if type(plugin.fn) == 'string' then
@@ -435,6 +447,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       end
 
       if plugin.module or plugin.module_pattern then
+        plugin.simple_load = false
         loaders[name].only_sequence = false
         loaders[name].only_setup = false
         loaders[name].only_cond = false
@@ -459,6 +472,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       end
 
       if plugin.config and (not plugin.opt or loaders[name].only_setup) then
+        plugin.simple_load = false
         plugin.only_config = true
         configs[name] = plugin.executable_config
       end
@@ -583,7 +597,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       loaders[pre] = { after = posts, only_sequence = true, only_config = true }
     end
 
-    if plugins[pre].opt or plugins[pre].only_config then
+    if plugins[pre].simple_load or plugins[pre].opt or plugins[pre].only_config then
       for _, name in ipairs(posts) do
         loaders[name].load_after = {}
         sequence_loads[name] = sequence_loads[name] or {}
