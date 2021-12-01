@@ -127,8 +127,8 @@ end
 
 packer.make_commands = function()
   vim.cmd [[command! -nargs=+ PackerSnapshot  lua require('packer').snapshot(<q-args>)]]
-  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer'.snapshot_complete PackerRollback  lua require('packer').rollback(<q-args>)]]
-  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer'.snapshot_complete PackerDelete lua require('packer').delete(<q-args>)]]
+  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer'.snapshot_complete PackerRollback  lua require('packer').rollback(<f-args>)]]
+  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer'.snapshot_complete PackerDelete lua require('packer').delete(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete  PackerInstall lua require('packer').install(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)]]
