@@ -62,11 +62,11 @@ end
 ---@param commit string @ commit hash
 ---@return function @ async function
 local function reset(dest, commit)
-    local reset_cmd = fmt(config.exec_cmd .. config.subcommands.revert_to, commit)
-    local opts = { capture_output = true, cwd = dest, options = { env = git.job_env } }
-    return async(function ()
-      await(jobs.run(reset_cmd, opts))
-    end)
+  local reset_cmd = fmt(config.exec_cmd .. config.subcommands.revert_to, commit)
+  local opts = { capture_output = true, cwd = dest, options = { env = git.job_env } }
+  return async(function ()
+    return await(jobs.run(reset_cmd, opts))
+  end)
 end
 
 local handle_checkouts = function(plugin, dest, disp)
@@ -157,11 +157,10 @@ local get_rev = function(plugin)
       end)
     :map_err(function(err)
         local _, msg = fmt("%s: %s",plugin_name,next(err.output.data.stderr))
-        error(msg)
-        return ""
+        return msg
       end)
 
-    return rev.ok
+    return rev
   end)
 end
 
@@ -492,28 +491,20 @@ git.setup = function(plugin)
     return r
   end
 
-  ---Reset the plugin to `plugin.commit`
-  plugin.revert = function ()
-    local log = require('packer.log')
-    if plugin.commit ~= nil then
-      return async(function ()
-        log.info(fmt("Reverting '%s' to commit '%s'", plugin.name, plugin.commit))
-        await(reset(install_to, plugin.commit))
-      end)
-    end
-
+  ---Reset the plugin to `commit`
+  ---@param commit string
+  plugin.revert_to = function (commit)
+    assert(type(commit)=="string", fmt("commit: string expected but '%s' provided", type(commit)))
     return async(function ()
-        log.info(fmt("'%s' has no commit to revert to", plugin.name))
+      require('packer.log').info(fmt("Reverting '%s' to commit '%s'", plugin.name, plugin.commit))
+      return await(reset(install_to, plugin.commit))
     end)
   end
 
   ---Returns HEAD's short hash
   ---@return string
   plugin.get_rev = function()
-    return async(function()
-      local res = await(get_rev(plugin))
-      return res
-    end)
+    return get_rev(plugin)
   end
 end
 

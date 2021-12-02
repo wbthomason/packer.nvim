@@ -841,31 +841,46 @@ packer.snapshot = function(snapshot_name)
     local fmt = string.format
     log.debug(fmt('Taking snapshots of currently installed plugins to %s...', snapshot_name))
     if vim.fn.fnamemodify(snapshot_name, ":p") ~= snapshot_path then -- is not absolute path
-      snapshot_path = util.join_paths(config.snapshot_path, snapshot_path) -- save to default path
-
+      if config.snapshot_path == nil then
+        return
+      else
+        snapshot_path = util.join_paths(config.snapshot_path, snapshot_path) -- set to default path
+      end
     end
-    await(snapshot(snapshot_path, plugins))
-    local msg = fmt("Snapshot '%s' complete", snapshot_path)
-    log.info(msg)
-    print(msg)
-    packer.on_complete() --not sure if it should fire packer.on_complete()
+
+    local result = await(snapshot:snapshot(snapshot_path, plugins))
+    if type(result) == "string" then
+      log.warn(result)
+    else
+      local msg = fmt("Snapshot '%s' complete", snapshot_path)
+      log.info(msg)
+      print(vim.inspect(result))
+    end
   end)()
 end
 
 ---Deletes the snapshot provided
----@param snapshot_name string @name of the snapshot or the absolute path
+---@param snapshot_name string @name of the snapshot or an absolute path
 ---@return boolean @true if success, false if failed
 packer.delete = function (snapshot_name)
   local async = require('packer.async').sync
   local log = require_and_configure 'log'
+  local fmt = string.format
 
     async(function ()
-      local snapshot_path = snapshot_name
-      if vim.fn.fnamemodify(snapshot_path, ":p") ~= snapshot_path then
-        snapshot_path = util.join_paths(config.snapshot_path, snapshot_path)
+      local snapshot_path = vim.loop.fs_realpath(snapshot_name) or
+        vim.loop.fs_realpath(util.join_paths(config.snapshot_path, snapshot_name))
+
+      if snapshot_path == nil then
+        log.warn(fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name))
       end
+
       log.debug("Deleting " .. snapshot_path)
-      return vim.fn.delete(snapshot_path) == 0
+      if vim.fn.delete(snapshot_path) == 0 then
+        log.info(fmt("Snapshot '%s' deleted succesfully", snapshot_name))
+      else
+        log.warn(fmt("Error when deleting snapshot '%s'", snapshot_name))
+      end
     end)()
 end
 
