@@ -497,7 +497,7 @@ git.setup = function(plugin)
     assert(type(commit)=="string", fmt("commit: string expected but '%s' provided", type(commit)))
     return async(function ()
       require('packer.log').info(fmt("Reverting '%s' to commit '%s'", plugin.name, plugin.commit))
-      return await(reset(install_to, plugin.commit))
+      return await(reset(install_to, commit))
     end)
   end
 

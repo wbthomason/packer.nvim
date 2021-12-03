@@ -7,9 +7,12 @@ local log = require 'packer.log'
 local loop = vim.loop
 local plugin_utils = require 'packer.plugin_utils'
 
-local function cfg(_config)
+local snapshot = {}
+
+snapshot.cfg = function(_config)
   config = _config
 end
+
 
 ---@class SnapshotResult
 ---@field ok table[]
@@ -24,7 +27,7 @@ end
 ---@param plugins table[]
 ---@return SnapshotResult|string result @ `SnapshotResult` if snapshot has success,
 --otherwise a string of the error message
-local function snapshot(_, snapshot_path, plugins)
+snapshot.snapshot = function(snapshot_path, plugins)
   assert(type(snapshot_path) == "string",
     fmt("filename needs to be a string but '%s' provided", type(snapshot_path)))
   assert(type(plugins) == "table",
@@ -32,15 +35,15 @@ local function snapshot(_, snapshot_path, plugins)
 
   return async(function()
     local snapshot_plugins = {}
-    ---@type SnapshotResult
+    local installed = {}
     local completed = {}
     local not_completed = {}
+    ---@type SnapshotResult
     local result = {
       ok = completed,
       err = not_completed
     }
     local opt, start = plugin_utils.list_installed_plugins()
-    local installed = {}
 
     for key, _ in pairs(opt) do installed[key] = key end
     for key, _ in pairs(start) do installed[key] = key end
@@ -52,12 +55,10 @@ local function snapshot(_, snapshot_path, plugins)
           local rev = await(plugin.get_rev())
 
           if rev.err then
-
             local warn = fmt("Snapshotting %s failed because of error '%s'",
               plugin.short_name,
               rev.err
             )
-
             log.warn(warn)
             not_completed[#not_completed + 1] = {[plugin.short_name] = plugin, err = warn}
           else
@@ -84,9 +85,7 @@ local function snapshot(_, snapshot_path, plugins)
         print(vim.inspect(snapshot_content))
         local warn = fmt(
           "Snapshot '%s' generation failed. Written '%d' bytes instead of '%d' ",
-          snapshot_path,
-          res,
-          #snapshot_content
+          snapshot_path, res, #snapshot_content
         )
         log.warn(warn)
         return warn
@@ -100,17 +99,20 @@ end
 ---Rollbacks `plugins` to the hash specified in `snapshot_path` if exists
 ---@param snapshot_path string @ realpath to the snapshot file
 ---@param plugins table[] @ list of `plugin_utils.git_plugin_type` type of plugins
----@return SnapshotResult|"stronzo" result @ `SnapshotResult` if rollback has success,
---otherwise a string of the error message
-local function rollback(_, snapshot_path, plugins)
+---@return SnapshotResult|string result @ `SnapshotResult` if rollback has success,
+--otherwise a `string` of the error message
+snapshot.rollback = function(snapshot_path, plugins)
   return async(function()
     log.debug("Rolling back to " .. snapshot_path)
     local completed = {}
     local not_completed = {}
-    local jobs = {}
+    local result = {
+      ok = completed,
+      err = not_completed
+    }
     local snap_plugins = dofile(snapshot_path)
 
-    if snap_plugins == nil then
+    if snap_plugins == nil then -- not valid snapshot file
       not_completed = vim.fn.map(plugins, function (_, plugin)
         return {
           [plugin.short_name] = plugin,
@@ -118,6 +120,7 @@ local function rollback(_, snapshot_path, plugins)
         }
       end)
     else
+      local jobs = {}
       for _, plugin in pairs(plugins) do
         if snap_plugins[plugin.short_name] then
           local commit = snap_plugins[plugin.short_name].commit
@@ -138,15 +141,8 @@ local function rollback(_, snapshot_path, plugins)
       wait_all(unpack(jobs))
     end
 
-    return {ok = completed, err = not_completed}
+    return result
   end)
 end
 
---@class Snapshot @ Module that provides snapshotting feature
-local M = {
-  cfg = cfg,
-  snapshot = snapshot,
-  rollback = rollback
-}
-
-return M
+return snapshot
