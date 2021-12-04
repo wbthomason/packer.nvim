@@ -1,33 +1,83 @@
 local a = require 'packer.async'
+local log = require 'packer.log'
+local plugin_utils = require 'packer.plugin_utils'
+local plugin_complete = require('packer').plugin_complete
 local async = a.sync
 local await = a.wait
 local wait_all = a.wait_all
 local fmt = string.format
-local log = require 'packer.log'
 local loop = vim.loop
-local plugin_utils = require 'packer.plugin_utils'
 
-local snapshot = {}
+local config = {}
+
+local snapshot = {
+  completion = {}
+}
 
 snapshot.cfg = function(_config)
   config = _config
 end
 
+--- Completion for listing snapshots in `config.snapshot_path`
+--- Intended to provide completion for PackerDelete command
+snapshot.completion.snapshot = function(lead, cmdline, pos)
+  local completion_list = {}
+  if config.snapshot_path == nil then
+    return completion_list
+  end
 
----@class SnapshotResult
----@field ok table[]
----@field err table[]
+  local dir = vim.loop.fs_opendir(config.snapshot_path)
+
+  if dir ~= nil then
+    local res = vim.loop.fs_readdir(dir)
+    while res ~= nil do
+      for _, entry in ipairs(res) do
+        if entry.type == "file" and vim.startswith(entry.name, lead) then
+          completion_list[#completion_list + 1] = entry.name
+        end
+      end
+
+      res = vim.loop.fs_readdir(dir)
+    end
+  end
+
+  vim.loop.fs_closedir(dir)
+  return completion_list
+end
+
+--- Completion for listing single plugins before taking snapshot
+--- Intended to provide completion for PackerSnapshot command
+snapshot.completion.create = function (lead, cmdline, pos)
+  local cmd_args = (vim.fn.split(cmdline, " "))
+
+  if #cmd_args > 1 then
+    return plugin_complete(lead, cmdline, pos)
+  end
+
+  return {}
+end
+
+--- Completion for listing snapshots in `config.snapshot_path` and single plugins after
+--- the first argument is provided
+--- Intended to provide completion for PackerRollback command
+snapshot.completion.rollback = function (lead, cmdline, pos)
+  local cmd_args = vim.split(cmdline, " ")
+
+  if #cmd_args > 2 then
+    return plugin_complete(lead)
+  else
+    return snapshot.completion.snapshot(lead, cmdline, pos)
+  end
+end
 
 ---Serializes a table of git-plugins with `short_name` as table key and another
 ---table with `commit`; the serialized tables will be written in the path `snapshot_path`
 ---provided, if there is already a snapshot it will be overwritten
 ---Snapshotting work only with `plugin_utils.git_plugin_type` type of plugins,
 ---other will be ignored.
----@param snapshot_path string @ realpath for snapshot file
----@param plugins table[]
----@return SnapshotResult|string result @ `SnapshotResult` if snapshot has success,
---otherwise a string of the error message
-snapshot.snapshot = function(snapshot_path, plugins)
+---@param snapshot_path string realpath for snapshot file
+---@param plugins table<string, any>[]
+snapshot.create = function(snapshot_path, plugins)
   assert(type(snapshot_path) == "string",
     fmt("filename needs to be a string but '%s' provided", type(snapshot_path)))
   assert(type(plugins) == "table",
@@ -36,13 +86,6 @@ snapshot.snapshot = function(snapshot_path, plugins)
   return async(function()
     local snapshot_plugins = {}
     local installed = {}
-    local completed = {}
-    local not_completed = {}
-    ---@type SnapshotResult
-    local result = {
-      ok = completed,
-      err = not_completed
-    }
     local opt, start = plugin_utils.list_installed_plugins()
 
     for key, _ in pairs(opt) do installed[key] = key end
@@ -60,10 +103,8 @@ snapshot.snapshot = function(snapshot_path, plugins)
               rev.err
             )
             log.warn(warn)
-            not_completed[#not_completed + 1] = {[plugin.short_name] = plugin, err = warn}
           else
             snapshot_plugins[plugin.short_name] = {commit = rev.ok}
-            completed[#completed + 1] = plugin
           end
         end
       end
@@ -77,48 +118,32 @@ snapshot.snapshot = function(snapshot_path, plugins)
     if fd == nil then
       local warn = fmt("Error on creation of snapshot '%s'",snapshot_path)
       log.warn(warn)
-      return warn
     else
       local res = loop.fs_write(fd, snapshot_content)
       loop.fs_close(fd)
       if res ~= #snapshot_content then
-        print(vim.inspect(snapshot_content))
         local warn = fmt(
           "Snapshot '%s' generation failed. Written '%d' bytes instead of '%d' ",
           snapshot_path, res, #snapshot_content
         )
         log.warn(warn)
-        return warn
       end
     end
 
-    return result
   end)
 end
 
 ---Rollbacks `plugins` to the hash specified in `snapshot_path` if exists
----@param snapshot_path string @ realpath to the snapshot file
----@param plugins table[] @ list of `plugin_utils.git_plugin_type` type of plugins
----@return SnapshotResult|string result @ `SnapshotResult` if rollback has success,
---otherwise a `string` of the error message
+---@param snapshot_path string realpath to the snapshot file
+---@param plugins table<string, any>[] list of `plugin_utils.git_plugin_type` type of plugins
 snapshot.rollback = function(snapshot_path, plugins)
   return async(function()
     log.debug("Rolling back to " .. snapshot_path)
-    local completed = {}
-    local not_completed = {}
-    local result = {
-      ok = completed,
-      err = not_completed
-    }
     local snap_plugins = dofile(snapshot_path)
 
     if snap_plugins == nil then -- not valid snapshot file
-      not_completed = vim.fn.map(plugins, function (_, plugin)
-        return {
-          [plugin.short_name] = plugin,
-          error = fmt("Couldn't load '%s' file", snapshot_path)
-        }
-      end)
+      local err = fmt("Couldn't load '%s' file", snapshot_path)
+      log.warn(err)
     else
       local jobs = {}
       for _, plugin in pairs(plugins) do
@@ -129,9 +154,6 @@ snapshot.rollback = function(snapshot_path, plugins)
               local res = await(plugin.revert_to(commit))
               if res.err then
                 log.error(res.err)
-                not_completed[#not_completed] = {[plugin.short_name] = plugin, error = res.err}
-              else
-                completed[#completed + 1] = plugin
               end
             end)
           end
@@ -140,8 +162,6 @@ snapshot.rollback = function(snapshot_path, plugins)
 
       wait_all(unpack(jobs))
     end
-
-    return result
   end)
 end
 

@@ -8,8 +8,9 @@ local stdpath = vim.fn.stdpath
 -- Config
 local packer = {}
 local config_defaults = {
-  snapshot_path = join_paths(stdpath 'cache', 'packer.nvim'),
   ensure_dependencies = true,
+  snapshot = nil,
+  snapshot_path = join_paths(stdpath 'cache', 'packer.nvim'),
   package_root = join_paths(stdpath 'data', 'site', 'pack'),
   compile_path = join_paths(stdpath 'config', 'plugin', 'packer_compiled.lua'),
   plugin_package = 'packer',
@@ -86,7 +87,7 @@ local configurable_modules = {
   update = false,
   luarocks = false,
   log = false,
-  snapshot = false,
+  snapshot = false
 }
 
 local function require_and_configure(module_name)
@@ -126,9 +127,9 @@ packer.init = function(user_config)
 end
 
 packer.make_commands = function()
-  vim.cmd [[command! -nargs=+ PackerSnapshot  lua require('packer').snapshot(<f-args>)]]
-  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer'.snapshot_complete PackerRollback  lua require('packer').rollback(<f-args>)]]
-  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer'.snapshot_complete PackerDelete lua require('packer').delete(<f-args>)]]
+  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.create PackerSnapshot  lua require('packer').snapshot(<f-args>)]]
+  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.rollback PackerRollback  lua require('packer').rollback(<f-args>)]]
+  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.snapshot PackerDelete lua require('packer').delete(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete  PackerInstall lua require('packer').install(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)]]
@@ -790,33 +791,6 @@ packer.loader_complete = function(lead, _, _)
   return completion_list
 end
 
---- Completion for listing snapshots in `config.snapshot_path`
---- Intended to provide completion for PackerRollback command
-packer.snapshot_complete = function(lead, _, _)
-  local completion_list = {}
-  if config.snapshot_path == nil then
-    return completion_list
-  end
-
-  local dir = vim.loop.fs_opendir(config.snapshot_path)
-
-  if dir ~= nil then
-    local res = vim.loop.fs_readdir(dir)
-    while res ~= nil do
-      for _, entry in ipairs(res) do
-        if entry.type == "file" and vim.startswith(entry.name, lead) then
-          completion_list[#completion_list + 1] = entry.name
-        end
-      end
-
-      res = vim.loop.fs_readdir(dir)
-    end
-  end
-
-  vim.loop.fs_closedir(dir)
-  return completion_list
-end
-
 -- Completion user plugins
 -- Intended to provide completion for PackerUpdate/Sync/Install command
 packer.plugin_complete = function(lead, _, _)
@@ -828,15 +802,15 @@ packer.plugin_complete = function(lead, _, _)
 end
 
 ---Snapshots installed plugins
----@param snapshot_name string @ absolute path or just a snapshot name
+---@param snapshot_name string absolute path or just a snapshot name
 packer.snapshot = function(snapshot_name, ...)
   local async = require('packer.async').sync
   local await = require('packer.async').wait
+  local snapshot = require('packer.snapshot')
   local log = require_and_configure 'log'
   local args = {...}
-  
+
   async(function()
-    local snapshot = require('packer.snapshot')
     local snapshot_path = snapshot_name
     manage_all_plugins()
     local fmt = string.format
@@ -849,20 +823,29 @@ packer.snapshot = function(snapshot_name, ...)
       end
     end
 
-    local result = await(snapshot.snapshot(snapshot_path, plugins))
-    if type(result) == "string" then
-      log.warn(result)
-    else
-      local msg = fmt("Snapshot '%s' complete", snapshot_path)
-      log.info(msg)
-      print(vim.inspect(result))
+    local target_plugins = plugins
+    if next(args) ~= nil then -- provided extra args
+      target_plugins = vim.tbl_filter( -- filter plugins
+        function (x)
+          for k, plugin_sname in pairs(args) do
+            if plugin_sname == x.short_name then
+              args[k] = nil
+              return true
+            end
+          end
+          return false
+        end, plugins)
     end
+
+    await(snapshot.create(snapshot_path,target_plugins))
+
+    local msg = fmt("Snapshot '%s' complete", snapshot_path)
+    log.info(msg)
   end)()
 end
 
 ---Deletes the snapshot provided
----@param snapshot_name string @ absolute path or just a snapshot name
----@return boolean @true if success, false if failed
+---@param snapshot_name string absolute path or just a snapshot name
 packer.delete = function (snapshot_name)
   local async = require('packer.async').sync
   local log = require_and_configure 'log'
@@ -894,12 +877,12 @@ packer.rollback = function(snapshot_name, ...)
   local args = {...}
   local async = require('packer.async').sync
   local await = require('packer.async').wait
-  local wait_all = require('packer.async').wait_all
+  local snapshot = require('packer.snapshot')
   local log = require_and_configure 'log'
   local fmt = string.format
+
   async(function()
     manage_all_plugins()
-    local snapshot = require('packer.snapshot')
 
     ---@type string
     local snapshot_path = vim.loop.fs_realpath(snapshot_name) or
@@ -912,7 +895,7 @@ packer.rollback = function(snapshot_name, ...)
 
     local target_plugins = plugins
 
-    if next(args) ~= nil then
+    if next(args) ~= nil then -- provided extra args
       target_plugins = vim.tbl_filter(
         function (x)
           for _, plugin_sname in pairs(args) do
@@ -924,15 +907,11 @@ packer.rollback = function(snapshot_name, ...)
         end, plugins)
     end
 
-    local result = await(snapshot.rollback(snapshot_path, target_plugins))
-    if type(result) == "string" then
-      log.warn(result)
-    else
-      log.debug("Rolling back to " .. snapshot_path)
-      log.info('Rollback complete')
-      print(vim.inspect(result))
-      packer.on_complete()
-    end
+    await(snapshot.rollback(snapshot_path,target_plugins))
+
+    log.debug("Rolling back to " .. snapshot_path)
+    log.info('Rollback complete')
+    packer.on_complete()
   end)()
 end
 
@@ -992,6 +971,7 @@ packer.startup = function(spec)
     end
   end
 
+  require_and_configure('snapshot') -- initialize snapshot config
   if config.snapshot ~= nil then
     packer.rollback(config.snapshot)
   end
