@@ -1,4 +1,5 @@
 local a = require 'packer.async'
+local util = require 'packer.util'
 local log = require 'packer.log'
 local plugin_utils = require 'packer.plugin_utils'
 local plugin_complete = require('packer').plugin_complete
@@ -161,6 +162,29 @@ snapshot.rollback = function(snapshot_path, plugins)
       end
 
       wait_all(unpack(jobs))
+    end
+  end)
+end
+
+---Deletes the snapshot provided
+---@param snapshot_name string absolute path or just a snapshot name
+snapshot.delete = function (snapshot_name)
+  return async(function ()
+    assert(type(snapshot_name) == "string", fmt("Expected string, got %s", type(snapshot_name)))
+    ---@type string
+    local snapshot_path = vim.loop.fs_realpath(snapshot_name) or
+      vim.loop.fs_realpath(util.join_paths(config.snapshot_path, snapshot_name))
+
+    if snapshot_path == nil then
+      log.warn(fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name))
+      return
+    end
+
+    log.debug("Deleting " .. snapshot_path)
+    if vim.loop.fs_unlink(snapshot_path) then
+      log.info("Deleted " .. snapshot_path)
+    else
+      log.warn("Couldn't delete " .. snapshot_path)
     end
   end)
 end

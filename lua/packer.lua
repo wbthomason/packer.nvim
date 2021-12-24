@@ -129,7 +129,7 @@ end
 packer.make_commands = function()
   vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.create PackerSnapshot  lua require('packer').snapshot(<f-args>)]]
   vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.rollback PackerRollback  lua require('packer').rollback(<f-args>)]]
-  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.snapshot PackerDelete lua require('packer').delete(<f-args>)]]
+  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.snapshot PackerDelete lua require('packer.snapshot').delete(<f-args>)()]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete  PackerInstall lua require('packer').install(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)]]
@@ -842,30 +842,6 @@ packer.snapshot = function(snapshot_name, ...)
     local msg = fmt("Snapshot '%s' complete", snapshot_path)
     log.info(msg)
   end)()
-end
-
----Deletes the snapshot provided
----@param snapshot_name string absolute path or just a snapshot name
-packer.delete = function (snapshot_name)
-  local async = require('packer.async').sync
-  local log = require_and_configure 'log'
-  local fmt = string.format
-
-    async(function ()
-      local snapshot_path = vim.loop.fs_realpath(snapshot_name) or
-        vim.loop.fs_realpath(util.join_paths(config.snapshot_path, snapshot_name))
-
-      if snapshot_path == nil then
-        log.warn(fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name))
-      end
-
-      log.debug("Deleting " .. snapshot_path)
-      if vim.fn.delete(snapshot_path) == 0 then
-        log.info(fmt("Snapshot '%s' deleted succesfully", snapshot_name))
-      else
-        log.warn(fmt("Error when deleting snapshot '%s'", snapshot_name))
-      end
-    end)()
 end
 
 ---Instantly rolls back plugins to a previous state specified by `snapshot_name`
