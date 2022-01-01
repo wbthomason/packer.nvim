@@ -1,6 +1,7 @@
 local packer_load = nil
 local cmd = vim.api.nvim_command
 local fmt = string.format
+local util = require 'packer.util'
 
 local function verify_conditions(conds, name)
   if conds == nil then
@@ -77,6 +78,34 @@ local function loader_apply_after(plugin, plugins, name)
   end
 end
 
+local function loader_denops(plugin, name)
+  local plugin_denops_dir = plugin.path .. util.get_separator() .. 'denops'
+  if vim.fn.isdirectory(plugin_denops_dir) == 0 then
+    return
+  end
+  local candidates = vim.fn.globpath(plugin.path, 'denops/*/main.ts', true, true)
+  local to_load = {}
+  for _, c in ipairs(candidates) do
+    local denops_plugin = vim.fn.fnamemodify(c, ':h:t')
+    if not to_load[denops_plugin] then
+      local ok, is_loaded = pcall(vim.fn['denops#plugin#is_loaded'], denops_plugin)
+      if not ok then
+        local msg = fmt('%s needs denops.vim to be loaded before itself.', name)
+        vim.api.nvim_echo({{msg, 'WarningMsg'}}, true, {})
+        return
+      end
+      if is_loaded == 0 then
+        table.insert(to_load, denops_plugin)
+      end
+    end
+  end
+  -- Note: denops#plugin#register() may fail
+  for _, denops_plugin in ipairs(to_load) do
+    pcall(vim.fn['denops#plugin#register'], denops_plugin, { mode = 'skip' })
+    vim.fn['denops#plugin#wait'](denops_plugin)
+  end
+end
+
 local function apply_cause_side_effcts(cause)
   if cause.cmd then
     local lines = cause.l1 == cause.l2 and '' or (cause.l1 .. ',' .. cause.l2)
@@ -137,6 +166,7 @@ packer_load = function(names, cause, plugins, force)
         needs_bufread = needs_bufread or plugin.needs_bufread
         loader_apply_wants(plugin, plugins)
         cmd('packadd ' .. names[i])
+        loader_denops(plugin, names[i])
         if plugin.after_files then
           for _, file in ipairs(plugin.after_files) do
             cmd('silent source ' .. file)
