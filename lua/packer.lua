@@ -171,6 +171,23 @@ packer.use_rocks = function(rock)
   end
 end
 
+local get_plugin_name = nil
+get_plugin_name = function(log, plugin_spec, plugin_spec_line)
+  if plugin_spec[1] == vim.NIL or plugin_spec[1] == nil then
+    log.warn('No plugin name provided! (line ' .. plugin_spec_line .. ')')
+    return
+  end
+
+  local plugin_name, plugin_path = util.get_plugin_short_name(plugin_spec)
+
+  if plugin_name == '' then
+    log.warn('"' .. plugin_spec[1] .. '" is an invalid plugin name! (line ' .. plugin_spec_line .. ')')
+    return
+  end
+
+  return plugin_name, plugin_path
+end
+
 --- The main logic for adding a plugin (and any dependencies) to the managed set
 -- Can be invoked with (1) a single plugin spec as a string, (2) a single plugin spec table, or (3)
 -- a list of plugin specs
@@ -191,15 +208,8 @@ manage = function(plugin_data)
   end
 
   local log = require_and_configure 'log'
-  if plugin_spec[1] == vim.NIL or plugin_spec[1] == nil then
-    log.warn('No plugin name provided! (line ' .. spec_line .. ')')
-    return
-  end
-
-  local name, path = util.get_plugin_short_name(plugin_spec)
-
-  if name == '' then
-    log.warn('"' .. plugin_spec[1] .. '" is an invalid plugin name! (line ' .. spec_line .. ')')
+  local name, path = get_plugin_name(log, plugin_spec, spec_line)
+  if name == nil then
     return
   end
 
@@ -274,14 +284,13 @@ manage = function(plugin_data)
       if type(req) == 'string' then
         req = { req }
       end
-      local req_name_segments = vim.split(req[1], '/')
-      local req_name = req_name_segments[#req_name_segments]
+      local req_name, req_path = get_plugin_name(log, req, spec_line)
       -- this flag marks a plugin as being from a require which we use to allow
       -- multiple requires for a plugin without triggering a duplicate warning *IF*
       -- the plugin is from a `requires` field and the full specificaiton has not been called yet.
       -- @see: https://github.com/wbthomason/packer.nvim/issues/258#issuecomment-876568439
       req.from_requires = true
-      if not plugins[req_name] then
+      if req_name ~= nil and not plugins[req_name] then
         if config.transitive_opt and plugin_spec.manual_opt then
           req.opt = true
           if type(req.after) == 'string' then
