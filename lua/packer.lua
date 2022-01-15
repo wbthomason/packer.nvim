@@ -192,14 +192,14 @@ manage = function(plugin_data)
 
   local log = require_and_configure 'log'
   if plugin_spec[1] == vim.NIL or plugin_spec[1] == nil then
-    log.warn('No plugin name provided at line ' .. spec_line .. '!')
+    log.warn('No plugin name provided! (line ' .. spec_line .. ')')
     return
   end
 
   local name, path = util.get_plugin_short_name(plugin_spec)
 
   if name == '' then
-    log.warn('"' .. plugin_spec[1] .. '" is an invalid plugin name!')
+    log.warn('"' .. plugin_spec[1] .. '" is an invalid plugin name! (line ' .. spec_line .. ')')
     return
   end
 
@@ -214,9 +214,9 @@ manage = function(plugin_data)
         .. plugin_spec.as
         .. ', specified for '
         .. path
-        .. ' at '
+        .. ' is already used as another plugin name! (line '
         .. spec_line
-        .. ' is already used as another plugin name!'
+        .. ')'
     )
     return
   end
