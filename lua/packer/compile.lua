@@ -33,6 +33,20 @@ vim.api.nvim_command('packadd packer.nvim')
 local no_errors, error_msg = pcall(function()
 ]]
 
+
+local enter_packer_compile = [[
+vim.g.packer_inside_compile = true
+]]
+
+local exit_packer_compile = [[
+
+vim.g.packer_inside_compile = false
+if vim.g.packer_needs_bufread == true then
+  vim.cmd("doautocmd BufRead")
+end
+vim.g.packer_needs_bufread = false
+]]
+
 local catch_errors = [[
 catch
   echohl ErrorMsg
@@ -56,23 +70,23 @@ end
 local profile_time = function(should_profile)
   return fmt(
     [[
-  local time
-  local profile_info
-  local should_profile = %s
-  if should_profile then
-    local hrtime = vim.loop.hrtime
-    profile_info = {}
-    time = function(chunk, start)
-      if start then
-        profile_info[chunk] = hrtime()
-      else
-        profile_info[chunk] = (hrtime() - profile_info[chunk]) / 1e6
-      end
+local time
+local profile_info
+local should_profile = %s
+if should_profile then
+  local hrtime = vim.loop.hrtime
+  profile_info = {}
+  time = function(chunk, start)
+    if start then
+      profile_info[chunk] = hrtime()
+    else
+      profile_info[chunk] = (hrtime() - profile_info[chunk]) / 1e6
     end
-  else
-    time = function(chunk, start) end
   end
-  ]],
+else
+  time = function(chunk, start) end
+end
+]],
     vim.inspect(should_profile)
   )
 end
@@ -694,6 +708,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
     table.insert(result, feature_guard)
     table.insert(result, 'lua << END')
   end
+  table.insert(result, enter_packer_compile)
   table.insert(result, profile_time(should_profile))
   table.insert(result, profile_output)
   timed_chunk(luarocks.generate_path_setup(), 'Luarocks path setup', result)
@@ -777,6 +792,8 @@ local function make_loaders(_, plugins, output_lua, should_profile)
 
     table.insert(result, 'vim.cmd("augroup END")')
   end
+
+  table.insert(result, exit_packer_compile)
 
   table.insert(result, conditionally_output_profile(config.threshold))
   if output_lua then
