@@ -84,7 +84,7 @@ package](https://aur.archlinux.org/packages/nvim-packer-git/).
 git clone https://github.com/wbthomason/packer.nvim "$env:LOCALAPPDATA\nvim-data\site\pack\packer\start\packer.nvim"
 ```
 
-Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lua/plugins.lua`):
+It is recommended to keep plugin requirements in a separate file, e.g. `~/.config/nvim/lua/plugins.lua`. Having all plugins listed in a distinct configuration would help with bootstraping, since all dependencies would be isolated. Here is an example of plugin specification in Lua:
 
 ```lua
 -- This file can be loaded by calling `lua require('plugins')` from your init.vim
@@ -248,8 +248,10 @@ You can also use the following command (with `packer` bootstrapped) to have `pac
 configuration (or simply run updates) and close once all operations are completed:
 
 ```sh
-$ nvim --headless -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
+$ nvim --headless -u ~/.config/nvim/lua/plugins.lua -c 'autocmd User PackerComplete quitall' -c 'PackerSync'
 ```
+
+
 
 ## Usage
 
