@@ -182,12 +182,16 @@ plugin_utils.get_fs_state = function(plugins)
 end
 
 plugin_utils.load_plugin = function(plugin)
-  vim.cmd('packadd ' .. plugin.short_name)
-  if not plugin.opt then
+  if plugin.opt then
+    vim.cmd('packadd ' .. plugin.short_name)
+  else
     vim.o.runtimepath = vim.o.runtimepath .. ',' .. plugin.install_path
     for _, pat in
       ipairs {
+        -- TODO: Maybe also want to source ftdetect here
+        table.concat({ 'plugin', '**/*.lua' }, util.get_separator()),
         table.concat({ 'plugin', '**/*.vim' }, util.get_separator()),
+        table.concat({ 'after', 'plugin', '**/*.lua' }, util.get_separator()),
         table.concat({ 'after', 'plugin', '**/*.vim' }, util.get_separator()),
       }
     do
