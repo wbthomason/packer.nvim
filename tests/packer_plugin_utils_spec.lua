@@ -14,6 +14,7 @@ a.describe("Packer post update hooks", function()
   a.it("should run the command in the correct folder", function()
     local plugin_spec = {
       name = "test/test_plugin",
+      short_name = "test/test_plugin",
       install_path = test_plugin_path,
       run = "touch 'this_file_should_exist'"
     }
