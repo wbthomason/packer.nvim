@@ -182,14 +182,15 @@ plugin_utils.get_fs_state = function(plugins)
 end
 
 plugin_utils.load_plugin = function(plugin)
-  if plugin.opt then
-    vim.cmd('packadd ' .. plugin.short_name)
-  else
+  vim.cmd('packadd ' .. plugin.short_name)
+  if not plugin.opt then
     vim.o.runtimepath = vim.o.runtimepath .. ',' .. plugin.install_path
-    for _, pat in ipairs {
-      table.concat({ 'plugin', '**/*.vim' }, util.get_separator()),
-      table.concat({ 'after', 'plugin', '**/*.vim' }, util.get_separator()),
-    } do
+    for _, pat in
+      ipairs {
+        table.concat({ 'plugin', '**/*.vim' }, util.get_separator()),
+        table.concat({ 'after', 'plugin', '**/*.vim' }, util.get_separator()),
+      }
+    do
       local path = util.join_paths(plugin.install_path, pat)
       local glob_ok, files = pcall(vim.fn.glob, path, false, true)
       if not glob_ok then
