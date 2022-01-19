@@ -183,30 +183,6 @@ end
 
 plugin_utils.load_plugin = function(plugin)
   vim.cmd('packadd ' .. plugin.short_name)
-  if not plugin.opt then
-    vim.o.runtimepath = vim.o.runtimepath .. ',' .. plugin.install_path
-    for _, pat in
-      ipairs {
-        table.concat({ 'plugin', '**/*.vim' }, util.get_separator()),
-        table.concat({ 'after', 'plugin', '**/*.vim' }, util.get_separator()),
-      }
-    do
-      local path = util.join_paths(plugin.install_path, pat)
-      local glob_ok, files = pcall(vim.fn.glob, path, false, true)
-      if not glob_ok then
-        if string.find(files, 'E77') then
-          vim.cmd('silent exe "source ' .. path .. '"')
-        else
-          error(files)
-        end
-      elseif #files > 0 then
-        for _, file in ipairs(files) do
-          file = file:gsub('\\', '/')
-          vim.cmd('silent exe "source ' .. file .. '"')
-        end
-      end
-    end
-  end
 end
 
 plugin_utils.post_update_hook = function(plugin, disp)
