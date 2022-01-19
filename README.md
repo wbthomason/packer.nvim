@@ -271,8 +271,8 @@ The following is a more in-depth explanation of `packer`'s features and use.
 - `spec` can be a function: `packer.startup(function() use 'tjdevries/colorbuddy.vim' end)`
 - `spec` can be a table with a function as its first element and config overrides as another element:
   `packer.startup({function() use 'tjdevries/colorbuddy.vim' end, config = { ... }})`
-- `spec` can be a table with a table of plugin specifications as its first element and config overrides as another element:
- `packer.startup({{'tjdevries/colorbuddy.vim'}, config = { ... }})`
+- `spec` can be a table with a table of plugin specifications as its first element, config overrides as another element, and optional rock specifications as another element:
+ `packer.startup({{'tjdevries/colorbuddy.vim'}, config = { ... }, rocks = { ... }})`
 
 ### Custom Initialization
 You are not required to use `packer.startup` if you prefer a more manual setup with finer control
