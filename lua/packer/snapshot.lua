@@ -130,7 +130,6 @@ snapshot.create = function(snapshot_path, plugins)
         log.warn(warn)
       end
     end
-
   end)
 end
 

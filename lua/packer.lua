@@ -838,9 +838,15 @@ packer.snapshot = function(snapshot_name, ...)
     end
 
     await(snapshot.create(snapshot_path,target_plugins))
-
     local msg = fmt("Snapshot '%s' complete", snapshot_path)
-    log.info(msg)
+    log.debug(msg)
+    vim.schedule(function ()
+      vim.notify(
+        msg,
+        vim.log.levels.INFO,
+        { title = 'packer.nvim' }
+      )
+    end)
   end)()
 end
 
@@ -884,9 +890,16 @@ packer.rollback = function(snapshot_name, ...)
     end
 
     await(snapshot.rollback(snapshot_path,target_plugins))
+    local msg = "Rolling back to " .. snapshot_path
+    log.debug(msg)
 
-    log.debug("Rolling back to " .. snapshot_path)
-    log.info('Rollback complete')
+    vim.schedule(function ()
+      vim.notify(
+        msg,
+        vim.log.levels.INFO,
+        { title = 'packer.nvim' }
+      )
+    end)
     packer.on_complete()
   end)()
 end
