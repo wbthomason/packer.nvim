@@ -20,7 +20,7 @@ snapshot.cfg = function(_config)
 end
 
 --- Completion for listing snapshots in `config.snapshot_path`
---- Intended to provide completion for PackerDelete command
+--- Intended to provide completion for PackerSnapshotDelete command
 snapshot.completion.snapshot = function(lead, cmdline, pos)
   local completion_list = {}
   if config.snapshot_path == nil then
@@ -60,7 +60,7 @@ end
 
 --- Completion for listing snapshots in `config.snapshot_path` and single plugins after
 --- the first argument is provided
---- Intended to provide completion for PackerRollback command
+--- Intended to provide completion for PackerSnapshotRollback command
 snapshot.completion.rollback = function (lead, cmdline, pos)
   local cmd_args = vim.split(cmdline, " ")
 

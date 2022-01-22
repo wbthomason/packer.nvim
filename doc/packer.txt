@@ -130,10 +130,10 @@ Loads opt plugin immediately
 `PackerSnapshot`                                    *packer-commands-snapshot*
 Snapshots your plugins to a file
 
-`PackerDelete`                                    *packer-commands-delete*
+`PackerSnapshotDelete`                                    *packer-commands-delete*
 Deletes a snapshot
 
-`PackerRollback`                                    *packer-commands-rollback*
+`PackerSnapshotRollback`                                    *packer-commands-rollback*
 Rolls back plugins' commit specified by the snapshot
 ==============================================================================
 USAGE                                          *packer-usage*
