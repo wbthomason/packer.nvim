@@ -606,7 +606,6 @@ local display_mt = {
       return
     end
 
-    local current_cursor_pos = api.nvim_win_get_cursor(0)
     local plugin_name, cursor_pos = self:find_nearest_plugin()
     if plugin_name == nil then
       log.warn 'No plugin selected!'
@@ -624,7 +623,7 @@ local display_mt = {
       log.info('No further information for ' .. plugin_name)
     end
 
-    api.nvim_win_set_cursor(0, current_cursor_pos)
+    api.nvim_win_set_cursor(0, cursor_pos)
   end,
 
   diff = function(self)
@@ -712,8 +711,13 @@ local display_mt = {
       return
     end
 
-    local cursor_pos = api.nvim_win_get_cursor(0)
-    for i = cursor_pos[1], 1, -1 do
+    local current_cursor_pos = api.nvim_win_get_cursor(0)
+    local nb_lines = api.nvim_buf_line_count(0)
+    local cursor_pos_y = math.max(current_cursor_pos[1], config.header_lines + 1)
+    if cursor_pos_y > nb_lines then
+      return
+    end
+    for i = cursor_pos_y, 1, -1 do
       local curr_line = api.nvim_buf_get_lines(0, i - 1, i, true)[1]
       if string.find(curr_line, config.item_sym, 1, true) then
         for name, _ in pairs(self.items) do
