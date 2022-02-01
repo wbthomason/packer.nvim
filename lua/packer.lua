@@ -837,16 +837,13 @@ packer.snapshot = function(snapshot_name, ...)
         end, plugins)
     end
 
-    await(snapshot.create(snapshot_path,target_plugins))
-    local msg = fmt("Snapshot '%s' complete", snapshot_path)
-    log.debug(msg)
-    vim.schedule(function ()
-      vim.notify(
-        msg,
-        vim.log.levels.INFO,
-        { title = 'packer.nvim' }
-      )
-    end)
+    local r = await(snapshot.create(snapshot_path,target_plugins))
+    
+    if r.err then
+      vim.notify(r.err, vim.log.levels.WARN, { title = 'packer.nvim' })
+    else
+      vim.notify(r.ok, vim.log.levels.INFO, { title = 'packer.nvim' })
+    end
   end)()
 end
 
@@ -857,8 +854,10 @@ end
 ---otherwise all the plugins will be rolled back
 packer.rollback = function(snapshot_name, ...)
   local args = {...}
-  local async = require('packer.async').sync
-  local await = require('packer.async').wait
+  local a = require('packer.async')
+  local async = a.sync
+  local await = a.wait
+  local wait_all = a.wait_all
   local snapshot = require('packer.snapshot')
   local log = require_and_configure 'log'
   local fmt = string.format
@@ -871,7 +870,9 @@ packer.rollback = function(snapshot_name, ...)
       vim.loop.fs_realpath(util.join_paths(config.snapshot_path, snapshot_name))
 
     if snapshot_path == nil then
-      log.warn(fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name))
+      local warn = fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name)
+      log.warn(warn)
+      vim.notify(warn, vim.log.levels.WARN)
       return
     end
 
@@ -889,17 +890,13 @@ packer.rollback = function(snapshot_name, ...)
         end, plugins)
     end
 
-    await(snapshot.rollback(snapshot_path,target_plugins))
-    local msg = "Rolling back to " .. snapshot_path
+    local jobs = snapshot.rollback(snapshot_path,target_plugins)
+    wait_all(unpack(jobs))
+    local msg = "Rolling back to " .. snapshot_path .. " completed"
     log.debug(msg)
 
-    vim.schedule(function ()
-      vim.notify(
-        msg,
-        vim.log.levels.INFO,
-        { title = 'packer.nvim' }
-      )
-    end)
+    await(a.main)
+    vim.notify(msg, vim.log.levels.INFO, { title = 'packer.nvim' })
     packer.on_complete()
   end)()
 end

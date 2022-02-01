@@ -3,11 +3,10 @@ local util = require 'packer.util'
 local log = require 'packer.log'
 local plugin_utils = require 'packer.plugin_utils'
 local plugin_complete = require('packer').plugin_complete
+local result          = require('packer.result')
 local async = a.sync
 local await = a.wait
-local wait_all = a.wait_all
 local fmt = string.format
-local loop = vim.loop
 
 local config = {}
 
@@ -104,65 +103,66 @@ snapshot.create = function(snapshot_path, plugins)
               rev.err
             )
             log.warn(warn)
+            await(a.main)
+            vim.notify(warn, vim.log.levels.WARN, { title = 'packer.nvim' })
           else
             snapshot_plugins[plugin.short_name] = {commit = rev.ok}
           end
         end
       end
     end
+    
+    local r = nil
 
-    ---@type string
-    local snapshot_content = "return " .. vim.inspect(snapshot_plugins)
-
-    local fd = loop.fs_open(snapshot_path, "w", tonumber("600", 8))
-
-    if fd == nil then
+    await(a.main)
+      ---@type string
+    local snapshot_content = vim.fn.json_encode(snapshot_plugins)
+    local res = vim.fn.writefile({snapshot_content}, snapshot_path) == 0
+    if res then
+      local msg = fmt("Snapshot '%s' complete", snapshot_path)
+      log.info(msg)
+      r = result.ok(msg)
+    else
       local warn = fmt("Error on creation of snapshot '%s'",snapshot_path)
       log.warn(warn)
-    else
-      local res = loop.fs_write(fd, snapshot_content)
-      loop.fs_close(fd)
-      if res ~= #snapshot_content then
-        local warn = fmt(
-          "Snapshot '%s' generation failed. Written '%d' bytes instead of '%d' ",
-          snapshot_path, res, #snapshot_content
-        )
-        log.warn(warn)
-      end
+      r = result.err(warn)
     end
+
+    return r
   end)
 end
 
 ---Rollbacks `plugins` to the hash specified in `snapshot_path` if exists
 ---@param snapshot_path string realpath to the snapshot file
 ---@param plugins table<string, any>[] list of `plugin_utils.git_plugin_type` type of plugins
+---@return Array of jobs to wait on (wait_all)
 snapshot.rollback = function(snapshot_path, plugins)
-  return async(function()
-    log.debug("Rolling back to " .. snapshot_path)
-    local snap_plugins = dofile(snapshot_path)
-
-    if snap_plugins == nil then -- not valid snapshot file
-      local err = fmt("Couldn't load '%s' file", snapshot_path)
-      log.warn(err)
-    else
-      local jobs = {}
-      for _, plugin in pairs(plugins) do
-        if snap_plugins[plugin.short_name] then
-          local commit = snap_plugins[plugin.short_name].commit
-          if commit ~= nil then
-            jobs[#jobs + 1] = async(function ()
-              local res = await(plugin.revert_to(commit))
-              if res.err then
-                log.error(res.err)
-              end
-            end)
-          end
+  log.debug("Rolling back to " .. snapshot_path)
+  local content = vim.fn.readfile(snapshot_path)
+  ---@type string
+  local snap_plugins = vim.fn.json_decode(content)
+  if snap_plugins == nil then -- not valid snapshot file
+    local err = fmt("Couldn't load '%s' file", snapshot_path)
+    log.warn(err)
+    vim.notify(err, vim.log.levels.ERROR, { title = 'packer.nvim' })
+  else
+    local jobs = {}
+    for _, plugin in pairs(plugins) do
+      if snap_plugins[plugin.short_name] then
+        local commit = snap_plugins[plugin.short_name].commit
+        if commit ~= nil then
+          jobs[#jobs + 1] = async(function ()
+            local res = await(plugin.revert_to(commit))
+            if res.err then
+              log.error(res.err)
+            end
+          end)
         end
       end
-
-      wait_all(unpack(jobs))
     end
-  end)
+
+    return jobs
+  end
 end
 
 ---Deletes the snapshot provided
@@ -175,15 +175,21 @@ snapshot.delete = function (snapshot_name)
       vim.loop.fs_realpath(util.join_paths(config.snapshot_path, snapshot_name))
 
     if snapshot_path == nil then
-      log.warn(fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name))
+      local warn = fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name)
+      log.warn(warn)
+      vim.notify(warn, vim.log.levels.WARN, { title = 'packer.nvim' })
       return
     end
 
     log.debug("Deleting " .. snapshot_path)
     if vim.loop.fs_unlink(snapshot_path) then
-      log.info("Deleted " .. snapshot_path)
+      local info = "Deleted " .. snapshot_path
+      log.info(info)
+      vim.notify(info, vim.log.levels.INFO, { title = 'packer.nvim' })
     else
-      log.warn("Couldn't delete " .. snapshot_path)
+      local warn = "Couldn't delete " .. snapshot_path
+      log.warn(warn)
+      vim.notify(warn, vim.log.levels.WARN, { title = 'packer.nvim' })
     end
   end)
 end
