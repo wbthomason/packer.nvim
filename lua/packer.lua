@@ -124,6 +124,10 @@ packer.init = function(user_config)
   if not config.disable_commands then
     packer.make_commands()
   end
+
+  if vim.fn.mkdir(config.snapshot_path, "p") ~= 1 then
+    vim.notify("Couldn't create " .. config.snapshot_path, vim.log.levels.WARN)
+  end
 end
 
 packer.make_commands = function()
