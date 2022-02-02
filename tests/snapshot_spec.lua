@@ -37,8 +37,7 @@ end
 
 local spec = {'wbthomason/packer.nvim'}
 
-local cache_path = path:new(config.snapshot_path)
-vim.fn.mkdir(tostring(cache_path), "p")
+vim.fn.mkdir(config.snapshot_path, "p")
 
 a.describe('Packer testing ', function ()
   local snapshot_name = "test"
