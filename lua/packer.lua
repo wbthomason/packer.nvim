@@ -870,8 +870,8 @@ packer.rollback = function(snapshot_name, ...)
     manage_all_plugins()
 
     ---@type string
-    local snapshot_path = vim.loop.fs_realpath(snapshot_name) or
-      vim.loop.fs_realpath(util.join_paths(config.snapshot_path, snapshot_name))
+    local snapshot_path = 
+      vim.loop.fs_realpath(util.join_paths(config.snapshot_path, snapshot_name)) or vim.loop.fs_realpath(snapshot_name)
 
     if snapshot_path == nil then
       local warn = fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name)
