@@ -179,8 +179,17 @@ manage = function(plugin_data)
     return
   end
 
+  local plugin_utils = require_and_configure 'plugin_utils'
+  local plugin_types = require_and_configure 'plugin_types'
+  local handlers = require_and_configure 'handlers'
   local path = vim.fn.expand(plugin_spec[1])
-  local name_segments = vim.split(path, util.get_separator())
+  plugin_spec.path = path
+  if not plugin_spec.type then
+    plugin_utils.guess_type(plugin_spec)
+  end
+
+  local segment_separator = plugin_spec.type == plugin_utils.local_plugin_type and util.get_separator() or '/'
+  local name_segments = vim.split(path, segment_separator)
   local segment_idx = #name_segments
   local name = plugin_spec.as or name_segments[segment_idx]
   while name == '' and segment_idx > 0 do
@@ -214,7 +223,6 @@ manage = function(plugin_data)
   -- Handle aliases
   plugin_spec.short_name = name
   plugin_spec.name = path
-  plugin_spec.path = path
 
   -- Some config keys modify a plugin type
   if plugin_spec.opt then
@@ -234,12 +242,6 @@ manage = function(plugin_data)
 
   plugin_spec.install_path = join_paths(plugin_spec.opt and config.opt_dir or config.start_dir, plugin_spec.short_name)
 
-  local plugin_utils = require_and_configure 'plugin_utils'
-  local plugin_types = require_and_configure 'plugin_types'
-  local handlers = require_and_configure 'handlers'
-  if not plugin_spec.type then
-    plugin_utils.guess_type(plugin_spec)
-  end
   if plugin_spec.type ~= plugin_utils.custom_plugin_type then
     plugin_types[plugin_spec.type].setup(plugin_spec)
   end
