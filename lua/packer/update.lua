@@ -94,7 +94,11 @@ local function update_plugin(plugin, display_win, results)
       end
     else
       display_win:task_failed(plugin_name, 'failed to update')
-      log.debug(fmt('Failed to update %s: %s', plugin_name, vim.inspect(r.err)))
+      local errmsg = '<unknown error>'
+      if r ~= nil and r.err ~= nil then
+        errmsg = r.err
+      end
+      log.debug(fmt('Failed to update %s: %s', plugin_name, vim.inspect(errmsg)))
     end
 
     results.updates[plugin_name] = r
