@@ -95,14 +95,6 @@ end
 
 local spec = {'wbthomason/packer.nvim'}
 
-<<<<<<< Updated upstream
-vim.fn.mkdir(config.snapshot_path, "p")
-=======
-vim.fn.mkdir(config.snapshot_path ,"p")
-
-
->>>>>>> Stashed changes
-
 local snapshotted_plugins = {}
 a.describe('Packer testing ', function ()
   local snapshot_name = "test"
@@ -154,11 +146,13 @@ a.describe('Packer testing ', function ()
 
     a.it("restore 'packer' to the commit hash HEAD~5", function ()
       local r = await(jobs.run(prev_commit_cmd, opts))
-      snapshotted_plugins["packer.nvim"].commit = r.ok.output.data.stdout
+      _, snapshotted_plugins["packer.nvim"].commit = next(r.ok.output.data.stdout)
       await(main)
       local encoded_json = vim.fn.json_encode(snapshotted_plugins)
       vim.fn.writefile({encoded_json}, rollback_test_path)
-      wait_all(snapshot.rollback(rollback_test_path, {spec}))
+      -- wait_all(snapshot.rollback(rollback_test_path, {spec}))
+      local jobs = snapshot.rollback(rollback_test_path, {spec})
+      await(jobs[1])
       local rev = await(spec.get_rev())
       assert.are.equals(snapshotted_plugins["packer.nvim"].commit, rev.ok)
     end)
