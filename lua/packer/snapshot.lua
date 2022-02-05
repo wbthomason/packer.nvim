@@ -132,7 +132,8 @@ snapshot.create = function(snapshot_path, plugins)
   end)
 end
 
----Rollbacks `plugins` to the hash specified in `snapshot_path` if exists
+---Rollbacks `plugins` to the hash specified in `snapshot_path` if exists.
+---It automatically runs `git fetch --depth 999999 --progress` to retrieve the history
 ---@param snapshot_path string realpath to the snapshot file
 ---@param plugins table<string, any>[] list of `plugin_utils.git_plugin_type` type of plugins
 ---@return Array of jobs to wait on (wait_all)
@@ -152,9 +153,22 @@ snapshot.rollback = function(snapshot_path, plugins)
         local commit = snap_plugins[plugin.short_name].commit
         if commit ~= nil then
           jobs[#jobs + 1] = async(function ()
-            local res = await(plugin.revert_to(commit))
+            local git = require("packer.plugin_types.git")
+
+            local opts = { capture_output = true, cwd = plugin.install_path,
+              options = { env = git.job_env }
+            }
+            local res = await(require'packer.jobs'.run("git " .. config.git.subcommands.fetch, opts))
             if res.err then
-              log.error(res.err)
+              log.warn(res.err)
+              vim.notify(res.err, vim.log.levels.WARN, { title = 'packer.nvim' })
+              return
+            end
+
+            res = await(plugin.revert_to(commit))
+            if res.err then
+              log.warn(res.err)
+              vim.notify(res.err, vim.log.levels.WARN, { title = 'packer.nvim' })
             end
           end)
         end
