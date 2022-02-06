@@ -112,9 +112,30 @@ end
 --- NOTE: This special-cases the `requires` key, as it can nest specifications
 ---@param plugin_specification string or full plugin specification or list of plugin specifications
 local function flatten_specification(plugin_specification)
-  if type(plugin_specification) == 'string' then
-    plugin_specification = {plugin_specification}
+  if plugin_specification == nil then
+    return nil
   end
+
+  if type(plugin_specification) == 'string' then
+    plugin_specification = { plugin_specification }
+  end
+
+  local result = {}
+  local function flatten(specs, from_requires)
+    local num_specs = #specs
+    for i = 1, num_specs do
+      local spec = specs[i]
+      spec.from_requires = from_requires
+      result[#result + 1] = spec
+      if spec.requires then
+        ensure_table(spec.requires)
+        flatten(spec.requires, true)
+      end
+    end
+  end
+
+  flatten(plugin_specification)
+  return result
 end
 
 --- Add one or more plugin specifications to the managed set
@@ -122,7 +143,10 @@ end
 --- See main packer documentation for expected format
 function M.use(plugin_specification)
   local current_line = debug.getinfo(2, 'l').currentline
-  for i, plugin in flatten_specification(plugin_specification) do
+  local flattened_specification = flatten_specification(plugin_specification)
+  local num_specs = #flattened_specification
+  for i = 1, num_specs do
+    local plugin = flattened_specification[i]
     plugin_specifications[#plugin_specifications + 1] = {
       spec = plugin,
       line = current_line,
@@ -278,9 +302,7 @@ function M._complete_plugin_names(lead, _, _)
   ensure_all_plugins_managed()
   local completion_list = vim.tbl_filter(function(name)
     return vim.startswith(name, lead)
-  end, vim.tbl_keys(
-    plugins
-  ))
+  end, vim.tbl_keys(plugins))
   table.sort(completion_list)
   return completion_list
 end
