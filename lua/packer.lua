@@ -38,6 +38,7 @@ local config_defaults = {
       get_bodies = 'log --color=never --pretty=format:"===COMMIT_START===%h%n%s===BODY_START===%b" --no-show-signature HEAD@{1}...HEAD',
       submodules = 'submodule update --init --recursive --progress',
       revert = 'reset --hard HEAD@{1}',
+      tags_expand_fmt = 'tag -l %s --sort -version:refname',
     },
     depth = 1,
     clone_timeout = 60,
