@@ -87,6 +87,9 @@ local handle_checkouts = function(plugin, dest, disp)
       local data = output.data.stdout[1]
       if data then
         plugin.tag = vim.split(data, '\n')[1]
+      else
+        -- TODO: show warning
+        plugin.tag = nil -- Wildcard is not found, then we bypass the tag
       end
     end
 
@@ -215,17 +218,6 @@ git.setup = function(plugin)
               data = { err, output },
             }
           end)
-      elseif plugin.tag and has_wildcard() then
-        -- disp:task_update(plugin_name, fmt('getting tag %s...', plugin.tag))
-        -- local test = config.exec_cmd .. fmt(config.subcommands.tags_expand_fmt, plugin.tag)
-        -- r:and_then(await, jobs.run(test, installer_opts)):map_ok(function()
-        --   local data = output.data.stdout[1]
-        --   if data then
-        --     plugin.tag = vim.split(data, '\n')[1]
-        --     r:and_then(await, handle_checkouts(plugin, install_to, disp))
-        --   end
-        --   -- TODO: error
-        -- end)
       end
 
       r
