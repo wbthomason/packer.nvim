@@ -33,6 +33,13 @@ local function ensure_git_env()
   end
 end
 
+local function has_wildcard(tag)
+  if not tag then
+    return false
+  end
+  return string.match(tag, '*') ~= nil
+end
+
 local breaking_change_pattern = [=[[bB][rR][eE][aA][kK][iI][nN][gG][ _][cC][hH][aA][nN][gG][eE]]=]
 local function mark_breaking_commits(plugin, commit_bodies)
   local commits = vim.gsplit(table.concat(commit_bodies, '\n'), '===COMMIT_START===', true)
@@ -72,6 +79,16 @@ local handle_checkouts = function(plugin, dest, disp)
     local opts = { capture_output = callbacks, cwd = dest, options = { env = git.job_env } }
 
     local r = result.ok()
+
+    if plugin.tag and has_wildcard(plugin.tag) then
+      disp:task_update(plugin_name, fmt('getting tag for wildcard %s...', plugin.tag))
+      local fetch_tags = config.exec_cmd .. fmt(config.subcommands.tags_expand_fmt, plugin.tag)
+      r:and_then(await, jobs.run(fetch_tags, opts))
+      local data = output.data.stdout[1]
+      if data then
+        plugin.tag = vim.split(data, '\n')[1]
+      end
+    end
 
     if plugin.branch or plugin.tag then
       local branch_or_tag = plugin.branch and plugin.branch or plugin.tag
@@ -136,13 +153,6 @@ git.setup = function(plugin)
     '%s+'
   )
 
-  local has_wildcard = function()
-    if not plugin.tag then
-      return false
-    end
-    return string.match(plugin.tag, '*') ~= nil
-  end
-
   local submodule_cmd = config.exec_cmd .. config.subcommands.submodules
   local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
   local update_cmd = config.exec_cmd
@@ -165,7 +175,7 @@ git.setup = function(plugin)
 
   local commit_bodies_cmd = config.exec_cmd .. config.subcommands.get_bodies
 
-  if plugin.branch or (plugin.tag and not has_wildcard()) then
+  if plugin.branch or (plugin.tag and not has_wildcard(plugin.tag)) then
     install_cmd[#install_cmd + 1] = '--branch'
     install_cmd[#install_cmd + 1] = plugin.branch and plugin.branch or plugin.tag
   end
@@ -206,16 +216,16 @@ git.setup = function(plugin)
             }
           end)
       elseif plugin.tag and has_wildcard() then
-        disp:task_update(plugin_name, fmt('getting tag %s...', plugin.tag))
-        local test = config.exec_cmd .. fmt(config.subcommands.tags_expand_fmt, plugin.tag)
-        r:and_then(await, jobs.run(test, installer_opts)):map_ok(function()
-          local data = output.data.stdout[1]
-          if data then
-            plugin.tag = vim.split(data, '\n')[1]
-            r:and_then(await, handle_checkouts(plugin, install_to, disp))
-          end
-          -- TODO: error
-        end)
+        -- disp:task_update(plugin_name, fmt('getting tag %s...', plugin.tag))
+        -- local test = config.exec_cmd .. fmt(config.subcommands.tags_expand_fmt, plugin.tag)
+        -- r:and_then(await, jobs.run(test, installer_opts)):map_ok(function()
+        --   local data = output.data.stdout[1]
+        --   if data then
+        --     plugin.tag = vim.split(data, '\n')[1]
+        --     r:and_then(await, handle_checkouts(plugin, install_to, disp))
+        --   end
+        --   -- TODO: error
+        -- end)
       end
 
       r
