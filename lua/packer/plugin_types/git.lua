@@ -2,6 +2,7 @@ local util = require 'packer.util'
 local jobs = require 'packer.jobs'
 local a = require 'packer.async'
 local result = require 'packer.result'
+local log = require 'packer.log'
 local await = a.wait
 local async = a.sync
 local fmt = string.format
@@ -88,7 +89,9 @@ local handle_checkouts = function(plugin, dest, disp)
       if data then
         plugin.tag = vim.split(data, '\n')[1]
       else
-        -- TODO: show warning
+        log.warn(
+          fmt('Wildcard expansion did not found any tag for plugin %s: defaulting to latest commit...', plugin.name)
+        )
         plugin.tag = nil -- Wildcard is not found, then we bypass the tag
       end
     end
