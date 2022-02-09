@@ -47,6 +47,7 @@ local function fix_plugin_type(plugin, results, fs_state)
     log.error('Failed to move ' .. from .. ' to ' .. to .. ': ' .. msg)
     results.moves[plugin.short_name] = { from = from, to = to, result = result.err(success) }
   else
+    log.debug('Moved ' .. plugin.short_name .. ' from ' .. from .. ' to ' .. to)
     results.moves[plugin.short_name] = { from = from, to = to, result = result.ok(success) }
   end
 end
