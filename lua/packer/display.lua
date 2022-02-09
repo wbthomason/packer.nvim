@@ -705,6 +705,15 @@ local display_mt = {
     end
   end,
 
+  is_plugin_line = function (self, line)
+    for _, sym in pairs({ config.item_sym, config.done_sym, config.working_sym, config.error_sym }) do
+      if string.find(line, sym, 1, true) then
+        return true
+      end
+    end
+    return false
+  end,
+
   --- Heuristically find the plugin nearest to the cursor for displaying detailed information
   find_nearest_plugin = function(self)
     if not self:valid_display() then
@@ -719,7 +728,7 @@ local display_mt = {
     end
     for i = cursor_pos_y, 1, -1 do
       local curr_line = api.nvim_buf_get_lines(0, i - 1, i, true)[1]
-      if string.find(curr_line, config.item_sym, 1, true) then
+      if self:is_plugin_line(curr_line) then
         for name, _ in pairs(self.items) do
           if string.find(curr_line, name, 1, true) then
             return name, { i, 0 }
