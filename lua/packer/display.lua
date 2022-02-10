@@ -705,8 +705,8 @@ local display_mt = {
     end
   end,
 
-  is_plugin_line = function (self, line)
-    for _, sym in pairs({ config.item_sym, config.done_sym, config.working_sym, config.error_sym }) do
+  is_plugin_line = function(self, line)
+    for _, sym in pairs { config.item_sym, config.done_sym, config.working_sym, config.error_sym } do
       if string.find(line, sym, 1, true) then
         return true
       end
