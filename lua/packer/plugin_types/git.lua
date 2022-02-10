@@ -2,6 +2,7 @@ local util = require 'packer.util'
 local jobs = require 'packer.jobs'
 local a = require 'packer.async'
 local result = require 'packer.result'
+local log = require 'packer.log'
 local await = a.wait
 local async = a.sync
 local fmt = string.format
@@ -31,6 +32,13 @@ local function ensure_git_env()
     table.insert(job_env, 'GIT_TERMINAL_PROMPT=0')
     git.job_env = job_env
   end
+end
+
+local function has_wildcard(tag)
+  if not tag then
+    return false
+  end
+  return string.match(tag, '*') ~= nil
 end
 
 local breaking_change_pattern = [=[[bB][rR][eE][aA][kK][iI][nN][gG][ _][cC][hH][aA][nN][gG][eE]]=]
@@ -72,6 +80,21 @@ local handle_checkouts = function(plugin, dest, disp)
     local opts = { capture_output = callbacks, cwd = dest, options = { env = git.job_env } }
 
     local r = result.ok()
+
+    if plugin.tag and has_wildcard(plugin.tag) then
+      disp:task_update(plugin_name, fmt('getting tag for wildcard %s...', plugin.tag))
+      local fetch_tags = config.exec_cmd .. fmt(config.subcommands.tags_expand_fmt, plugin.tag)
+      r:and_then(await, jobs.run(fetch_tags, opts))
+      local data = output.data.stdout[1]
+      if data then
+        plugin.tag = vim.split(data, '\n')[1]
+      else
+        log.warn(
+          fmt('Wildcard expansion did not found any tag for plugin %s: defaulting to latest commit...', plugin.name)
+        )
+        plugin.tag = nil -- Wildcard is not found, then we bypass the tag
+      end
+    end
 
     if plugin.branch or plugin.tag then
       local branch_or_tag = plugin.branch and plugin.branch or plugin.tag
@@ -158,7 +181,7 @@ git.setup = function(plugin)
 
   local commit_bodies_cmd = config.exec_cmd .. config.subcommands.get_bodies
 
-  if plugin.branch or plugin.tag then
+  if plugin.branch or (plugin.tag and not has_wildcard(plugin.tag)) then
     install_cmd[#install_cmd + 1] = '--branch'
     install_cmd[#install_cmd + 1] = plugin.branch and plugin.branch or plugin.tag
   end
