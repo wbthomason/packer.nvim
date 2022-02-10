@@ -40,6 +40,10 @@ else
   }
 end
 
+local user_shell = os.getenv('TERM') or os.getenv('COMSPEC')
+local shell = user_shell:gmatch '([^/\\]*)$'()
+local c_flag = shell == 'cmd.exe' and '/c' or '-c'
+local source = vim.fn.has('win32') and '' or 'source'
 local cache_path = vim.fn.stdpath 'cache'
 local rocks_path = util.join_paths(cache_path, 'packer_hererocks')
 local hererocks_file = util.join_paths(rocks_path, 'hererocks.py')
@@ -166,22 +170,25 @@ end
 
 local function activate_hererocks_cmd(install_path)
   local activate_file = 'activate'
-  local user_shell = os.getenv 'SHELL'
-  local shell = user_shell:gmatch '([^/]*)$'()
   if shell == 'fish' then
     activate_file = 'activate.fish'
   elseif shell == 'csh' then
     activate_file = 'activate.csh'
+  elseif shell == 'cmd.exe' then
+    activate_file = 'activate.bat'
+  elseif shell == 'pwsh.exe' or shell == 'powershell.exe' then
+    activate_file = 'activate.ps1'
   end
 
-  return fmt('source %s', util.join_paths(install_path, 'bin', activate_file))
+  return fmt('%s %s', source, util.join_paths(install_path, 'bin', activate_file))
 end
 
 local function run_luarocks(args, disp, operation_name)
+  local if_vs_bt = shell == 'cmd.exe' and 'VsDevCmd.bat && ' or ''
   local cmd = {
-    os.getenv 'SHELL',
-    '-c',
-    fmt('%s && luarocks --tree=%s %s', activate_hererocks_cmd(hererocks_install_dir), shell_hererocks_dir, args),
+    user_shell,
+    c_flag,
+    fmt('%s%s && luarocks --tree=%s %s', if_vs_bt, activate_hererocks_cmd(hererocks_install_dir), shell_hererocks_dir, args),
   }
   return async(function()
     local output = jobs.output_table()
