@@ -388,25 +388,28 @@ packer.install = function(...)
     if not install_plugins then
       install_plugins = vim.tbl_keys(fs_state.missing)
     end
-    if #install_plugins == 0 then
-      log.info 'All configured plugins are installed'
-      packer.on_complete()
-      return
-    end
 
     await(a.main)
     local start_time = vim.fn.reltime()
     local results = {}
     await(clean(plugins, fs_state, results))
+
+    if #install_plugins == 0 and next(rocks) == nil then
+      log.info 'All configured plugins and rocks are installed'
+      packer.on_complete()
+      return
+    end
+
     await(a.main)
     log.debug 'Gathering install tasks'
     local tasks, display_win = install(plugins, install_plugins, results)
+    log.debug 'Gathering Luarocks tasks'
+    local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
+    if luarocks_ensure_task ~= nil then
+      table.insert(tasks, luarocks_ensure_task)
+    end
+
     if next(tasks) then
-      log.debug 'Gathering Luarocks tasks'
-      local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
-      if luarocks_ensure_task ~= nil then
-        table.insert(tasks, luarocks_ensure_task)
-      end
       table.insert(tasks, 1, function()
         return not display.status.running
       end)

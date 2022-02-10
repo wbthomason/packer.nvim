@@ -1,6 +1,7 @@
 -- Add support for installing and cleaning Luarocks dependencies
 -- Based off of plenary/neorocks/init.lua in https://github.com/nvim-lua/plenary.nvim
 local a = require 'packer.async'
+local display = require 'packer.display'
 local jobs = require 'packer.jobs'
 local log = require 'packer.log'
 local result = require 'packer.result'
@@ -496,9 +497,15 @@ local function ensure_rocks(rocks, results, disp)
     if next(to_install) == nil then
       return r
     end
+
     if not hererocks_is_setup() then
+      if disp == nil then
+        disp = display.open(config.display.open_fn or config.display.open_cmd)
+      end
+
       r = r:and_then(await, hererocks_installer(disp))
     end
+
     r:and_then(await, luarocks_list(disp))
     r:map_ok(function(installed_packages)
       for _, package in ipairs(installed_packages) do
