@@ -52,6 +52,7 @@ local config_defaults = {
     done_sym = '✓',
     removed_sym = '-',
     moved_sym = '→',
+    item_sym = '•',
     header_sym = '━',
     header_lines = 2,
     title = 'packer.nvim',

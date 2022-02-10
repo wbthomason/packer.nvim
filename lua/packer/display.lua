@@ -356,7 +356,7 @@ local display_mt = {
       local load_state = plug_conf.loaded and ''
         or vim.tbl_contains(rtps, plug_conf.path) and ' (manually loaded)'
         or ' (not loaded)'
-      local header_lines = { fmt(' • %s', plug_name) .. load_state }
+      local header_lines = { fmt(' %s %s', config.item_sym, plug_name) .. load_state }
       local config_lines = {}
       for key, value in pairs(plug_conf) do
         if vim.tbl_contains(status_keys, key) then
@@ -606,7 +606,6 @@ local display_mt = {
       return
     end
 
-    local current_cursor_pos = api.nvim_win_get_cursor(0)
     local plugin_name, cursor_pos = self:find_nearest_plugin()
     if plugin_name == nil then
       log.warn 'No plugin selected!'
@@ -624,7 +623,7 @@ local display_mt = {
       log.info('No further information for ' .. plugin_name)
     end
 
-    api.nvim_win_set_cursor(0, current_cursor_pos)
+    api.nvim_win_set_cursor(0, cursor_pos)
   end,
 
   diff = function(self)
@@ -706,23 +705,34 @@ local display_mt = {
     end
   end,
 
+  is_plugin_line = function (self, line)
+    for _, sym in pairs({ config.item_sym, config.done_sym, config.working_sym, config.error_sym }) do
+      if string.find(line, sym, 1, true) then
+        return true
+      end
+    end
+    return false
+  end,
+
   --- Heuristically find the plugin nearest to the cursor for displaying detailed information
   find_nearest_plugin = function(self)
     if not self:valid_display() then
       return
     end
 
-    local cursor_pos = api.nvim_win_get_cursor(0)
-    -- TODO: this is a dumb hack
-    for i = cursor_pos[1], 1, -1 do
+    local current_cursor_pos = api.nvim_win_get_cursor(0)
+    local nb_lines = api.nvim_buf_line_count(0)
+    local cursor_pos_y = math.max(current_cursor_pos[1], config.header_lines + 1)
+    if cursor_pos_y > nb_lines then
+      return
+    end
+    for i = cursor_pos_y, 1, -1 do
       local curr_line = api.nvim_buf_get_lines(0, i - 1, i, true)[1]
-      for name, _ in pairs(self.items) do
-        if string.find(curr_line, name, 1, true) then
-          if string.find(curr_line, '  URL:', 1, true) then
-            i = i - 1
+      if self:is_plugin_line(curr_line) then
+        for name, _ in pairs(self.items) do
+          if string.find(curr_line, name, 1, true) then
+            return name, { i, 0 }
           end
-
-          return name, { i, 0 }
         end
       end
     end
