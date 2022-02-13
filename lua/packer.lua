@@ -333,8 +333,10 @@ end)
 
 --- Hook to fire events after packer compilation
 packer.on_compile_done = function()
+  local log = require_and_configure 'log'
+
   vim.cmd [[doautocmd User PackerCompileDone]]
-  vim.notify('packer.compile: Complete', vim.log.levels.INFO, { title = 'packer.nvim' })
+  log.debug 'packer.compile: Complete'
 end
 
 --- Clean operation:
