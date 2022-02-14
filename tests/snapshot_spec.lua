@@ -1,17 +1,18 @@
-local before_each         = require('plenary.busted').before_each
-local a                   = require('plenary.async_lib.tests')
-local util                = require('packer.util')
-local mocked_plugin_utils = require('packer.plugin_utils')
-local log                 = require('packer.log')
-local await               = require('packer.async').wait
-local wait_all            = require('packer.async').wait_all
-local main                = require('packer.async').main
-local packer              = require('packer')
-local jobs                = require 'packer.jobs'
-local git                 = require('packer.plugin_types.git')
+local before_each = require('plenary.busted').before_each
+local a = require 'plenary.async_lib.tests'
+local util = require 'packer.util'
+local mocked_plugin_utils = require 'packer.plugin_utils'
+local log = require 'packer.log'
+local async = require('packer.async').sync
+local await = require('packer.async').wait
+local wait_all = require('packer.async').wait_all
+local main = require('packer.async').main
+local packer = require 'packer'
+local jobs = require 'packer.jobs'
+local git = require 'packer.plugin_types.git'
 local join_paths = util.join_paths
-local stdpath    = vim.fn.stdpath
-local fmt        = string.format
+local stdpath = vim.fn.stdpath
+local fmt = string.format
 
 local config = {
   ensure_dependencies = true,
@@ -79,13 +80,13 @@ git.cfg(config)
 it could manage itself as if it was in `~/.local/share/nvim/site/pack/packer/start/` --]]
 local install_path = vim.fn.getcwd()
 
-mocked_plugin_utils.list_installed_plugins = function ()
-  return {[install_path] = true}, {}
+mocked_plugin_utils.list_installed_plugins = function()
+  return { [install_path] = true }, {}
 end
 
 local old_require = _G.require
 
-_G.require = function (modname)
+_G.require = function(modname)
   if modname == 'plugin_utils' then
     return mocked_plugin_utils
   end
@@ -93,68 +94,72 @@ _G.require = function (modname)
   return old_require(modname)
 end
 
-local spec = {'wbthomason/packer.nvim'}
+local spec = { 'wbthomason/packer.nvim' }
 
 local snapshotted_plugins = {}
-a.describe('Packer testing ', function ()
-  local snapshot_name = "test"
+a.describe('Packer testing ', function()
+  local snapshot_name = 'test'
   local test_path = join_paths(config.snapshot_path, snapshot_name)
   local snapshot = require 'packer.snapshot'
   snapshot.cfg(config)
 
-  before_each(function ()
+  before_each(function()
     packer.reset()
     packer.init(config)
     packer.use(spec)
     packer.__manage_all()
   end)
 
-  after_each(function ()
-    spec = {'wbthomason/packer.nvim'}
+  after_each(function()
+    spec = { 'wbthomason/packer.nvim' }
     spec.install_path = install_path
   end)
 
-  a.describe('snapshot.create()', function ()
-    a.it(fmt("create snapshot in '%s'", test_path), function ()
-      local result = await(snapshot.create(test_path, {spec}))
+  a.describe('snapshot.create()', function()
+    a.it(fmt("create snapshot in '%s'", test_path), function()
+      local result = await(snapshot.create(test_path, { spec }))
       local stat = vim.loop.fs_stat(test_path)
       assert.truthy(stat)
     end)
 
-    a.it("checking if snapshot content corresponds to plugins'", function ()
-      local file_content = vim.fn.readfile(test_path)
-      snapshotted_plugins = vim.fn.json_decode(file_content)
-      local expected_rev = await(spec.get_rev())
-      assert.are.equals(expected_rev.ok, snapshotted_plugins["packer.nvim"].commit)
+    a.it("checking if snapshot content corresponds to plugins'", function()
+      async(function()
+        local file_content = vim.fn.readfile(test_path)
+        snapshotted_plugins = vim.fn.json_decode(file_content)
+        local expected_rev = await(spec.get_rev())
+        assert.are.equals(expected_rev.ok, snapshotted_plugins['packer.nvim'].commit)
+      end)()
     end)
   end)
 
-  a.describe("packer.delete()", function ()
-    a.it(fmt("delete '%s' snapshot", snapshot_name), function ()
+  a.describe('packer.delete()', function()
+    a.it(fmt("delete '%s' snapshot", snapshot_name), function()
       await(snapshot.delete(snapshot_name))
       local stat = vim.loop.fs_stat(test_path)
       assert.falsy(stat)
     end)
   end)
 
-  a.describe('packer.rollback()', function ()
-    local rollback_snapshot_name = "rollback_test"
+  a.describe('packer.rollback()', function()
+    local rollback_snapshot_name = 'rollback_test'
     local rollback_test_path = join_paths(config.snapshot_path, rollback_snapshot_name)
-    local prev_commit_cmd = "git rev-parse --short HEAD~5"
+    local prev_commit_cmd = 'git rev-parse --short HEAD~5'
 
     local opts = { capture_output = true, cwd = spec.install_path, options = { env = git.job_env } }
 
-    a.it("restore 'packer' to the commit hash HEAD~5", function ()
-      local r = await(jobs.run(prev_commit_cmd, opts))
-      _, snapshotted_plugins["packer.nvim"].commit = next(r.ok.output.data.stdout)
-      await(main)
-      local encoded_json = vim.fn.json_encode(snapshotted_plugins)
-      vim.fn.writefile({encoded_json}, rollback_test_path)
-      -- wait_all(snapshot.rollback(rollback_test_path, {spec}))
-      local jobs = snapshot.rollback(rollback_test_path, {spec})
-      await(jobs[1])
-      local rev = await(spec.get_rev())
-      assert.are.equals(snapshotted_plugins["packer.nvim"].commit, rev.ok)
+    a.it("restore 'packer' to the commit hash HEAD~5", function()
+      async(function()
+        local r = await(jobs.run(prev_commit_cmd, opts))
+        _, snapshotted_plugins['packer.nvim'].commit = next(r.ok.output.data.stdout)
+        await(main)
+        local encoded_json = vim.fn.json_encode(snapshotted_plugins)
+        vim.fn.writefile({ encoded_json }, rollback_test_path)
+        -- wait_all(snapshot.rollback(rollback_test_path, {spec}))
+        local job = snapshot.rollback(rollback_test_path, { spec })
+        await(job[1])
+        local rev = await(spec.get_rev())
+        assert.are.equals(snapshotted_plugins['packer.nvim'].commit, rev.ok)
+      end)()
     end)
   end)
 end)
