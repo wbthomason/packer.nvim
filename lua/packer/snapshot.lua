@@ -70,6 +70,46 @@ snapshot.completion.rollback = function (lead, cmdline, pos)
   end
 end
 
+--- Creates a with with `completed` and `failed` keys, each containing a map with plugin name as key and commit hash/error as value
+--- @param plugins
+--- @return table
+local function generate_snapshot(plugins)
+  return async(function()
+    local completed = {}
+    local failed = {}
+    local opt, start = plugin_utils.list_installed_plugins()
+    local installed = vim.tbl_extend('error', start, opt)
+
+    plugins = vim.tbl_filter(function(plugin)
+      if installed[plugin.install_path] and plugin.type == plugin_utils.git_plugin_type then -- this plugin is installed
+        return plugin
+      end
+    end, plugins)
+
+    log.debug('plugins: ' .. vim.inspect(plugins))
+    for _, plugin in pairs(plugins) do
+      local rev = await(plugin.get_rev())
+      log.debug('rev: ' .. vim.inspect(rev))
+
+      if rev.err then
+        failed[plugin.short_name] = fmt(
+          "Snapshotting %s failed because of error '%s'",
+          plugin.short_name,
+          vim.inspect(rev.err)
+        )
+        -- log.warn(warn)
+        -- await(a.main)
+        -- vim.notify(warn, vim.log.levels.WARN, { title = 'packer.nvim' })
+      else
+        completed[plugin.short_name] = { commit = rev.ok }
+      end
+    end
+    log.debug('plugins: ' .. vim.inspect(plugins))
+
+    return result.ok { failed = failed, completed = completed }
+  end)
+end
+
 ---Serializes a table of git-plugins with `short_name` as table key and another
 ---table with `commit`; the serialized tables will be written in the path `snapshot_path`
 ---provided, if there is already a snapshot it will be overwritten
@@ -84,51 +124,21 @@ snapshot.create = function(snapshot_path, plugins)
     fmt("plugins needs to be an array but '%s' provided", type(plugins)))
 
   return async(function()
-    local snapshot_plugins = {}
-    local installed = {}
-    local opt, start = plugin_utils.list_installed_plugins()
-
-    for key, _ in pairs(opt) do installed[key] = key end
-    for key, _ in pairs(start) do installed[key] = key end
-
-    for _, plugin in pairs(plugins) do
-      if installed[plugin.install_path] then -- this plugin is installed
-        log.debug(fmt("Snapshotting '%s'", plugin.short_name))
-        if plugin.type == plugin_utils.git_plugin_type then
-          local rev = await(plugin.get_rev())
-
-          if rev.err then
-            local warn = fmt("Snapshotting %s failed because of error '%s'",
-              plugin.short_name,
-              rev.err
-            )
-            log.warn(warn)
+    -- local res = await(generate_snapshot(plugins)):and_then(function (this)
+    return await(generate_snapshot(plugins)):map_ok(function(ok)
             await(a.main)
-            vim.notify(warn, vim.log.levels.WARN, { title = 'packer.nvim' })
-          else
-            snapshot_plugins[plugin.short_name] = {commit = rev.ok}
-          end
-        end
-      end
-    end
-    
-    local r = nil
-
-    await(a.main)
-      ---@type string
-    local snapshot_content = vim.fn.json_encode(snapshot_plugins)
-    local res = vim.fn.writefile({snapshot_content}, snapshot_path) == 0
-    if res then
+      local snapshot_content = vim.fn.json_encode(ok.completed)
+      if vim.fn.writefile({ snapshot_content }, snapshot_path) == 0 then
       local msg = fmt("Snapshot '%s' complete", snapshot_path)
-      log.info(msg)
-      r = result.ok(msg)
+        return { message = msg, completed = ok.completed, failed = ok.failed }
     else
-      local warn = fmt("Error on creation of snapshot '%s'",snapshot_path)
-      log.warn(warn)
-      r = result.err(warn)
+        local warn = fmt("Error on creation of snapshot '%s'", snapshot_path)
+        return warn
     end
-
-    return r
+    end)
+    -- await(a.main)
+    ---@type string
+    --
   end)
 end
 
@@ -152,13 +162,12 @@ snapshot.rollback = function(snapshot_path, plugins)
       if snap_plugins[plugin.short_name] then
         local commit = snap_plugins[plugin.short_name].commit
         if commit ~= nil then
-          jobs[#jobs + 1] = async(function ()
-            local git = require("packer.plugin_types.git")
+          jobs[#jobs + 1] = async(function()
+            local git = require 'packer.plugin_types.git'
 
-            local opts = { capture_output = true, cwd = plugin.install_path,
-              options = { env = git.job_env }
-            }
-            local res = await(require'packer.jobs'.run("git " .. config.git.subcommands.fetch, opts))
+            local opts = { capture_output = true, cwd = plugin.install_path, options = { env = git.job_env } }
+            -- local res = await(require'packer.jobs'.run("git pull --unshallow", opts))
+            local res = await(require('packer.jobs').run('git ' .. config.git.subcommands.fetch, opts))
             if res.err then
               log.warn(res.err)
               vim.notify(res.err, vim.log.levels.WARN, { title = 'packer.nvim' })
