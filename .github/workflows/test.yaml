@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        neovim_branch: ['v0.5.0', 'master']
+        neovim_branch: ['v0.5.0', 'v0.6.1', 'master']
     runs-on: ubuntu-latest
     env:
       NEOVIM_BRANCH: ${{ matrix.neovim_branch }}
