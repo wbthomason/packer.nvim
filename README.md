@@ -378,7 +378,7 @@ use {
   rtp = string,                -- Specifies a subdirectory of the plugin to add to runtimepath.
   opt = boolean,               -- Manually marks a plugin as optional.
   branch = string,             -- Specifies a git branch to use
-  tag = string,                -- Specifies a git tag to use
+  tag = string,                -- Specifies a git tag to use. Supports '*' for "latest tag"
   commit = string,             -- Specifies a git commit to use
   lock = boolean,              -- Skip updating this plugin in updates/syncs. Still cleans.
   run = string, function, or table, -- Post-update/install hook. See "update/install hooks".

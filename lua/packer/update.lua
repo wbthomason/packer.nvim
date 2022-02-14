@@ -47,6 +47,7 @@ local function fix_plugin_type(plugin, results, fs_state)
     log.error('Failed to move ' .. from .. ' to ' .. to .. ': ' .. msg)
     results.moves[plugin.short_name] = { from = from, to = to, result = result.err(success) }
   else
+    log.debug('Moved ' .. plugin.short_name .. ' from ' .. from .. ' to ' .. to)
     results.moves[plugin.short_name] = { from = from, to = to, result = result.ok(success) }
   end
 end
@@ -94,7 +95,11 @@ local function update_plugin(plugin, display_win, results)
       end
     else
       display_win:task_failed(plugin_name, 'failed to update')
-      log.debug(fmt('Failed to update %s: %s', plugin_name, vim.inspect(r.err)))
+      local errmsg = '<unknown error>'
+      if r ~= nil and r.err ~= nil then
+        errmsg = r.err
+      end
+      log.debug(fmt('Failed to update %s: %s', plugin_name, vim.inspect(errmsg)))
     end
 
     results.updates[plugin_name] = r

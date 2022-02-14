@@ -496,6 +496,9 @@ local function ensure_rocks(rocks, results, disp)
     if next(to_install) == nil then
       return r
     end
+    if disp == nil then
+      disp = require('packer.display').open(config.display.open_fn or config.display.open_cmd)
+    end
     if not hererocks_is_setup() then
       r = r:and_then(await, hererocks_installer(disp))
     end
