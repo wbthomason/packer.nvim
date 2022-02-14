@@ -72,7 +72,7 @@ To get started, first clone this repository to somewhere on your `packpath`, e.g
 
 ```shell
 git clone --depth 1 https://github.com/wbthomason/packer.nvim\
- ~/.local/share/nvim/site/pack/packer/start/packer.nvim
+ ~/.local/share/nvim/site/pack/packer/start/wbthomason/packer.nvim
 ```
 
 If you use Arch Linux, there is also [an AUR
@@ -81,7 +81,7 @@ package](https://aur.archlinux.org/packages/nvim-packer-git/).
 > Windows Powershell Installation
 
 ```shell
-git clone https://github.com/wbthomason/packer.nvim "$env:LOCALAPPDATA\nvim-data\site\pack\packer\start\packer.nvim"
+git clone https://github.com/wbthomason/packer.nvim "$env:LOCALAPPDATA\nvim-data\site\pack\packer\start\wbthomason\packer.nvim"
 ```
 
 Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lua/plugins.lua`):
@@ -226,7 +226,7 @@ add the following snippet (which is due to @Iron-E and @khuedoan) somewhere in y
 
 ```lua
 local fn = vim.fn
-local install_path = fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
+local install_path = fn.stdpath('data')..'/site/pack/packer/start/wbthomason/packer.nvim'
 if fn.empty(fn.glob(install_path)) > 0 then
   packer_bootstrap = fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
 end
