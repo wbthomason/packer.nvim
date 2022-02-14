@@ -72,7 +72,7 @@ end
 local function reset(dest, commit)
   local reset_cmd = fmt(config.exec_cmd .. config.subcommands.revert_to, commit)
   local opts = { capture_output = true, cwd = dest, options = { env = git.job_env } }
-  return async(function ()
+  return async(function()
     return await(jobs.run(reset_cmd, opts))
   end)
 end
@@ -170,16 +170,14 @@ local get_rev = function(plugin)
 
   return async(function()
     local rev = await(
-      jobs.run(
-        rev_cmd,
-        { cwd = plugin.install_path, options = { env = git.job_env }, capture_output = true }
-      ))
-    :map_ok(function (ok)
+      jobs.run(rev_cmd, { cwd = plugin.install_path, options = { env = git.job_env }, capture_output = true })
+    )
+      :map_ok(function(ok)
         local _, r = next(ok.output.data.stdout)
         return r
       end)
-    :map_err(function(err)
-        local _, msg = fmt("%s: %s",plugin_name,next(err.output.data.stderr))
+      :map_err(function(err)
+        local _, msg = fmt('%s: %s', plugin_name, next(err.output.data.stderr))
         return msg
       end)
 
@@ -520,9 +518,9 @@ git.setup = function(plugin)
 
   ---Reset the plugin to `commit`
   ---@param commit string
-  plugin.revert_to = function (commit)
-    assert(type(commit)=="string", fmt("commit: string expected but '%s' provided", type(commit)))
-    return async(function ()
+  plugin.revert_to = function(commit)
+    assert(type(commit) == 'string', fmt("commit: string expected but '%s' provided", type(commit)))
+    return async(function()
       require('packer.log').debug(fmt("Reverting '%s' to commit '%s'", plugin.name, commit))
       return await(reset(install_to, commit))
     end)
