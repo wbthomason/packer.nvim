@@ -134,7 +134,7 @@ a.describe('Packer testing ', function()
 
   a.describe('packer.delete()', function()
     a.it(fmt("delete '%s' snapshot", snapshot_name), function()
-      await(snapshot.delete(snapshot_name))
+      snapshot.delete(snapshot_name)
       local stat = vim.loop.fs_stat(test_path)
       assert.falsy(stat)
     end)

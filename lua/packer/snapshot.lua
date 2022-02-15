@@ -135,50 +135,57 @@ snapshot.create = function(snapshot_path, plugins)
   end)
 end
 
+local function fetch(plugin)
+  local git = require 'packer.plugin_types.git'
+  local opts = { capture_output = true, cwd = plugin.install_path, options = { env = git.job_env } }
+
+  return async(function ()
+    return await(require('packer.jobs').run('git ' .. config.git.subcommands.fetch, opts))
+  end)
+end
+
 ---Rollbacks `plugins` to the hash specified in `snapshot_path` if exists.
 ---It automatically runs `git fetch --depth 999999 --progress` to retrieve the history
----@param snapshot_path string realpath to the snapshot file
----@param plugins table<string, any>[] list of `plugin_utils.git_plugin_type` type of plugins
----@return Array of jobs to wait on (wait_all)
+---@param snapshot_path string @ realpath to the snapshot file
+---@param plugins list @ of `plugin_utils.git_plugin_type` type of plugins
+---@return {ok: {completed: table<string, string>, failed: table<string, string[]>}}
 snapshot.rollback = function(snapshot_path, plugins)
+  assert(type(snapshot_path) == "string", "snapshot_path: expected string but got " .. type(snapshot_path))
+  assert(type(plugins) == "table", "plugins: expected table but got " .. type(snapshot_path))
   log.debug('Rolling back to ' .. snapshot_path)
   local content = vim.fn.readfile(snapshot_path)
   ---@type string
-  local snap_plugins = vim.fn.json_decode(content)
-  if snap_plugins == nil then -- not valid snapshot file
-    local err = fmt("Couldn't load '%s' file", snapshot_path)
-    log.warn(err)
-    vim.notify(err, vim.log.levels.ERROR, { title = 'packer.nvim' })
-  else
-    local jobs = {}
+  local plugins_snapshot = vim.fn.json_decode(content)
+  if plugins_snapshot == nil then -- not valid snapshot file
+    return result.err(fmt("Couldn't load '%s' file", snapshot_path))
+  end
+
+  local completed = {}
+  local failed = {}
+
+  return async(function ()
     for _, plugin in pairs(plugins) do
-      if snap_plugins[plugin.short_name] then
-        local commit = snap_plugins[plugin.short_name].commit
+      local function err_handler(err)
+        failed[plugin.short_name] = failed[plugin.short_name] or {}
+        failed[plugin.short_name][#failed[plugin.short_name]+1] = err
+      end
+
+      if plugins_snapshot[plugin.short_name] then
+        local commit = plugins_snapshot[plugin.short_name].commit
         if commit ~= nil then
-          jobs[#jobs + 1] = async(function()
-            local git = require 'packer.plugin_types.git'
-
-            local opts = { capture_output = true, cwd = plugin.install_path, options = { env = git.job_env } }
-            local res = await(require('packer.jobs').run('git ' .. config.git.subcommands.fetch, opts))
-            if res.err then
-              log.warn(res.err)
-              await(a.main)
-              vim.notify(res.err, vim.log.levels.WARN, { title = 'packer.nvim' })
-            end
-
-            res = await(plugin.revert_to(commit))
-
-            if res.err then
-              log.warn(res.err)
-              vim.notify(res.err, vim.log.levels.WARN, { title = 'packer.nvim' })
-            end
+          await(fetch(plugin))
+          :map_err(err_handler)
+          :and_then(await, plugin.revert_to(commit))
+          :map_ok(function (ok)
+            completed[plugin.short_name] = ok
           end)
+          :map_err(err_handler)
         end
       end
     end
 
-    return jobs
-  end
+    return result.ok {completed = completed, failed = failed}
+  end)
 end
 
 ---Deletes the snapshot provided

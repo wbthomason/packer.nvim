@@ -894,7 +894,6 @@ packer.rollback = function(snapshot_name, ...)
   async(function()
     manage_all_plugins()
 
-    ---@type string
     local snapshot_path = vim.loop.fs_realpath(util.join_paths(config.snapshot_path, snapshot_name))
       or vim.loop.fs_realpath(snapshot_name)
 
@@ -908,9 +907,9 @@ packer.rollback = function(snapshot_name, ...)
     local target_plugins = plugins
 
     if next(args) ~= nil then -- provided extra args
-      target_plugins = vim.tbl_filter(function(x)
+      target_plugins = vim.tbl_filter(function(plugin)
         for _, plugin_sname in pairs(args) do
-          if plugin_sname == x.short_name then
+          if plugin_sname == plugin.short_name then
             return true
           end
         end
@@ -918,13 +917,22 @@ packer.rollback = function(snapshot_name, ...)
       end, plugins)
     end
 
-    local jobs = snapshot.rollback(snapshot_path, target_plugins)
-    wait_all(unpack(jobs))
-    local msg = 'Rolling back to ' .. snapshot_path .. ' completed'
-    log.debug(msg)
+    await(snapshot.rollback(snapshot_path, target_plugins))
+    :map_ok(function (ok)
+      await(a.main)
+      vim.notify('Rollback to "' .. snapshot_path .. '" completed', vim.log.levels.INFO, { title = 'packer.nvim' })
+      if next(ok.failed) then
+        vim.notify(
+          "Couldn't rollback " .. vim.inspect(ok.failed),
+          vim.log.levels.INFO, { title = 'packer.nvim' }
+        )
+      end
+    end)
+    :map_err(function (err)
+      await(a.main)
+      vim.notify(err, vim.log.levels.ERROR, { title = 'packer.nvim' })
+    end)
 
-    await(a.main)
-    vim.notify(msg, vim.log.levels.INFO, { title = 'packer.nvim' })
     packer.on_complete()
   end)()
 end
