@@ -72,9 +72,8 @@ end
 
 --- Creates a with with `completed` and `failed` keys, each containing a map with plugin name as key and commit hash/error as value
 --- @param plugins
---- @return table
+--- @return table { ok { failed = list, completed = list }}
 local function generate_snapshot(plugins)
-  return async(function()
     local completed = {}
     local failed = {}
     local opt, start = plugin_utils.list_installed_plugins()
@@ -85,7 +84,7 @@ local function generate_snapshot(plugins)
         return plugin
       end
     end, plugins)
-
+  return async(function()
     for _, plugin in pairs(plugins) do
       local rev = await(plugin.get_rev())
 
@@ -114,20 +113,25 @@ end
 snapshot.create = function(snapshot_path, plugins)
   assert(type(snapshot_path) == 'string', fmt("filename needs to be a string but '%s' provided", type(snapshot_path)))
   assert(type(plugins) == 'table', fmt("plugins needs to be an array but '%s' provided", type(plugins)))
-
   return async(function()
-    -- local res = await(generate_snapshot(plugins)):and_then(function (this)
-    return await(generate_snapshot(plugins)):map_ok(function(ok)
-      await(a.main)
-      local snapshot_content = vim.fn.json_encode(ok.completed)
-      if vim.fn.writefile({ snapshot_content }, snapshot_path) == 0 then
-        local msg = fmt("Snapshot '%s' complete", snapshot_path)
-        return { message = msg, completed = ok.completed, failed = ok.failed }
-      else
-        local warn = fmt("Error on creation of snapshot '%s'", snapshot_path)
-        return warn
-      end
-    end)
+    local commits = await(generate_snapshot(plugins))
+
+    await(a.main)
+    local snapshot_content = vim.fn.json_encode(commits.completed)
+
+    local status, res = pcall(function ()
+        return vim.fn.writefile({ snapshot_content }, snapshot_path) == 0
+      end)
+
+    if status and res then
+      return result.ok({
+        message = fmt("Snapshot '%s' complete", snapshot_path),
+        completed = commits.ok.completed,
+        failed = commits.ok.failed
+      })
+    else
+      return result.err({ message = fmt("Error on creation of snapshot '%s': '%s'", snapshot_path, res) })
+    end
   end)
 end
 
