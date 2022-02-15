@@ -71,8 +71,8 @@ snapshot.completion.rollback = function(lead, cmdline, pos)
 end
 
 --- Creates a with with `completed` and `failed` keys, each containing a map with plugin name as key and commit hash/error as value
---- @param plugins
---- @return table { ok { failed = list, completed = list }}
+--- @param plugins list
+--- @return { ok: { failed : table<string, string>, completed : table<string, string>}}
 local function generate_snapshot(plugins)
   local completed = {}
   local failed = {}
@@ -117,7 +117,7 @@ snapshot.create = function(snapshot_path, plugins)
     local commits = await(generate_snapshot(plugins))
 
     await(a.main)
-    local snapshot_content = vim.fn.json_encode(commits.completed)
+    local snapshot_content = vim.fn.json_encode(commits.ok.completed)
 
     local status, res = pcall(function()
       return vim.fn.writefile({ snapshot_content }, snapshot_path) == 0
