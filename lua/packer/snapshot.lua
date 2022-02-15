@@ -74,16 +74,16 @@ end
 --- @param plugins
 --- @return table { ok { failed = list, completed = list }}
 local function generate_snapshot(plugins)
-    local completed = {}
-    local failed = {}
-    local opt, start = plugin_utils.list_installed_plugins()
-    local installed = vim.tbl_extend('error', start, opt)
+  local completed = {}
+  local failed = {}
+  local opt, start = plugin_utils.list_installed_plugins()
+  local installed = vim.tbl_extend('error', start, opt)
 
-    plugins = vim.tbl_filter(function(plugin)
-      if installed[plugin.install_path] and plugin.type == plugin_utils.git_plugin_type then -- this plugin is installed
-        return plugin
-      end
-    end, plugins)
+  plugins = vim.tbl_filter(function(plugin)
+    if installed[plugin.install_path] and plugin.type == plugin_utils.git_plugin_type then -- this plugin is installed
+      return plugin
+    end
+  end, plugins)
   return async(function()
     for _, plugin in pairs(plugins) do
       local rev = await(plugin.get_rev())
@@ -119,18 +119,18 @@ snapshot.create = function(snapshot_path, plugins)
     await(a.main)
     local snapshot_content = vim.fn.json_encode(commits.completed)
 
-    local status, res = pcall(function ()
-        return vim.fn.writefile({ snapshot_content }, snapshot_path) == 0
-      end)
+    local status, res = pcall(function()
+      return vim.fn.writefile({ snapshot_content }, snapshot_path) == 0
+    end)
 
     if status and res then
-      return result.ok({
+      return result.ok {
         message = fmt("Snapshot '%s' complete", snapshot_path),
         completed = commits.ok.completed,
-        failed = commits.ok.failed
-      })
+        failed = commits.ok.failed,
+      }
     else
-      return result.err({ message = fmt("Error on creation of snapshot '%s': '%s'", snapshot_path, res) })
+      return result.err { message = fmt("Error on creation of snapshot '%s': '%s'", snapshot_path, res) }
     end
   end)
 end

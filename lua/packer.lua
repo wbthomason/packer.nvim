@@ -814,15 +814,15 @@ packer.snapshot = function(snapshot_name, ...)
   local await = require('packer.async').wait
   local snapshot = require 'packer.snapshot'
   local log = require_and_configure 'log'
-  local args = {...}
-  snapshot_name = snapshot_name or require('os').date("%Y-%m-%d")
+  local args = { ... }
+  snapshot_name = snapshot_name or require('os').date '%Y-%m-%d'
   local snapshot_path = vim.fn.expand(snapshot_name)
 
   local fmt = string.format
   log.debug(fmt('Taking snapshots of currently installed plugins to %s...', snapshot_name))
-  if vim.fn.fnamemodify(snapshot_name, ":p") ~= snapshot_path then -- is not absolute path
+  if vim.fn.fnamemodify(snapshot_name, ':p') ~= snapshot_path then -- is not absolute path
     if config.snapshot_path == nil then
-      vim.notify("config.snapshot_path is not set", vim.log.levels.WARN)
+      vim.notify('config.snapshot_path is not set', vim.log.levels.WARN)
       return
     else
       snapshot_path = util.join_paths(config.snapshot_path, snapshot_path) -- set to default path
@@ -833,44 +833,45 @@ packer.snapshot = function(snapshot_name, ...)
 
   local target_plugins = plugins
   if next(args) ~= nil then -- provided extra args
-  target_plugins = vim.tbl_filter( -- filter plugins
-    function (plugin)
-  for k, plugin_shortname in pairs(args) do
-  if plugin_shortname == plugin.short_name then
-  args[k] = nil
-  return true
-  end
-  end
-  return false
-  end, plugins)
+    target_plugins = vim.tbl_filter( -- filter plugins
+      function(plugin)
+        for k, plugin_shortname in pairs(args) do
+          if plugin_shortname == plugin.short_name then
+            args[k] = nil
+            return true
+          end
+        end
+        return false
+      end,
+      plugins
+    )
   end
 
   local write_snapshot = true
 
   if vim.fn.filereadable(snapshot_path) == 1 then
     vim.ui.select(
-      { "Replace", "Cancel" },
+      { 'Replace', 'Cancel' },
       { prompt = fmt("Do you want to replace '%s'?", snapshot_path) },
-      function (_, idx)
+      function(_, idx)
         write_snapshot = idx == 1
       end
     )
   end
 
   async(function()
-
     if write_snapshot then
-      await(snapshot.create(snapshot_path,target_plugins))
-      :map_ok(function (ok)
-        vim.notify(ok.message, vim.log.levels.INFO, { title = 'packer.nvim' })
+      await(snapshot.create(snapshot_path, target_plugins))
+        :map_ok(function(ok)
+          vim.notify(ok.message, vim.log.levels.INFO, { title = 'packer.nvim' })
 
-        if next(ok.failed) then
-          vim.notify("Couldn't snapshot " .. vim.inspect(ok.failed), vim.log.levels.WARN, { title = 'packer.nvim' })
-        end
-      end)
-      :map_err(function (err)
-        vim.notify(err.message, vim.log.levels.WARN, { title = 'packer.nvim' })
-      end)
+          if next(ok.failed) then
+            vim.notify("Couldn't snapshot " .. vim.inspect(ok.failed), vim.log.levels.WARN, { title = 'packer.nvim' })
+          end
+        end)
+        :map_err(function(err)
+          vim.notify(err.message, vim.log.levels.WARN, { title = 'packer.nvim' })
+        end)
     end
   end)()
 end
