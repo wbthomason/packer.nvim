@@ -184,30 +184,28 @@ end
 ---Deletes the snapshot provided
 ---@param snapshot_name string absolute path or just a snapshot name
 snapshot.delete = function(snapshot_name)
-  return async(function()
-    assert(type(snapshot_name) == 'string', fmt('Expected string, got %s', type(snapshot_name)))
-    ---@type string
-    local snapshot_path = vim.loop.fs_realpath(snapshot_name)
-      or vim.loop.fs_realpath(util.join_paths(config.snapshot_path, snapshot_name))
+  assert(type(snapshot_name) == 'string', fmt('Expected string, got %s', type(snapshot_name)))
+  ---@type string
+  local snapshot_path = vim.loop.fs_realpath(snapshot_name)
+  or vim.loop.fs_realpath(util.join_paths(config.snapshot_path, snapshot_name))
 
-    if snapshot_path == nil then
-      local warn = fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name)
-      log.warn(warn)
-      vim.notify(warn, vim.log.levels.WARN, { title = 'packer.nvim' })
-      return
-    end
+  if snapshot_path == nil then
+    local warn = fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name)
+    log.warn(warn)
+    vim.notify(warn, vim.log.levels.WARN, { title = 'packer.nvim' })
+    return
+  end
 
-    log.debug('Deleting ' .. snapshot_path)
-    if vim.loop.fs_unlink(snapshot_path) then
-      local info = 'Deleted ' .. snapshot_path
-      log.info(info)
-      vim.notify(info, vim.log.levels.INFO, { title = 'packer.nvim' })
-    else
-      local warn = "Couldn't delete " .. snapshot_path
-      log.warn(warn)
-      vim.notify(warn, vim.log.levels.WARN, { title = 'packer.nvim' })
-    end
-  end)
+  log.debug('Deleting ' .. snapshot_path)
+  if vim.loop.fs_unlink(snapshot_path) then
+    local info = 'Deleted ' .. snapshot_path
+    log.info(info)
+    vim.notify(info, vim.log.levels.INFO, { title = 'packer.nvim' })
+  else
+    local warn = "Couldn't delete " .. snapshot_path
+    log.warn(warn)
+    vim.notify(warn, vim.log.levels.WARN, { title = 'packer.nvim' })
+  end
 end
 
 return snapshot
