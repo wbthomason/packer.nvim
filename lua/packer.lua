@@ -920,20 +920,17 @@ packer.rollback = function(snapshot_name, ...)
     end
 
     await(snapshot.rollback(snapshot_path, target_plugins))
-    :map_ok(function (ok)
-      await(a.main)
-      vim.notify('Rollback to "' .. snapshot_path .. '" completed', vim.log.levels.INFO, { title = 'packer.nvim' })
-      if next(ok.failed) then
-        vim.notify(
-          "Couldn't rollback " .. vim.inspect(ok.failed),
-          vim.log.levels.INFO, { title = 'packer.nvim' }
-        )
-      end
-    end)
-    :map_err(function (err)
-      await(a.main)
-      vim.notify(err, vim.log.levels.ERROR, { title = 'packer.nvim' })
-    end)
+      :map_ok(function(ok)
+        await(a.main)
+        vim.notify('Rollback to "' .. snapshot_path .. '" completed', vim.log.levels.INFO, { title = 'packer.nvim' })
+        if next(ok.failed) then
+          vim.notify("Couldn't rollback " .. vim.inspect(ok.failed), vim.log.levels.INFO, { title = 'packer.nvim' })
+        end
+      end)
+      :map_err(function(err)
+        await(a.main)
+        vim.notify(err, vim.log.levels.ERROR, { title = 'packer.nvim' })
+      end)
 
     packer.on_complete()
   end)()
