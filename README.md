@@ -287,6 +287,8 @@ default configuration values (and structure of the configuration table) are:
 ```lua
 {
   ensure_dependencies   = true, -- Should packer install plugin dependencies?
+  snapshot = nil, -- Name of the snapshot you would like to load at startup
+  snapshot_path = join_paths(stdpath 'cache', 'packer.nvim'), -- Default save directory for snapshots
   package_root   = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
   compile_path = util.join_paths(vim.fn.stdpath('config'), 'plugin', 'packer_compiled.lua'),
   plugin_package = 'packer', -- The default package for plugins
@@ -518,6 +520,9 @@ plugins":
 - `packer.clean()`: Remove any disabled or no longer managed plugins
 - `packer.sync(plugins)`: Perform a `clean` followed by an `update`
 - `packer.compile(path)`: Compile lazy-loader code and save to `path`.
+- `packer.snapshot(snapshot_name, ...)`: Creates a snapshot file that will live under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be taken. Optionally, a list of plugins name can be provided to selectively choose the plugins to snapshot.
+- `packer.rollback(snapshot_name, ...)`: Rollback plugins status a snapshot file that will live under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be taken. Optionally, a list of plugins name can be provided to selectively choose which plugins to revert.
+- `packer.delete(snapshot_name)`: Deletes a snapshot file under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be deleted.
 
 ### Extending `packer`
 You can add custom key handlers to `packer` by calling `packer.set_handler(name, func)` where `name`

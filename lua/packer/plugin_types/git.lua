@@ -65,6 +65,18 @@ git.cfg = function(_config)
   ensure_git_env()
 end
 
+---Resets a git repo `dest` to `commit`
+---@param dest string @ path to the local git repo
+---@param commit string @ commit hash
+---@return function @ async function
+local function reset(dest, commit)
+  local reset_cmd = fmt(config.exec_cmd .. config.subcommands.revert_to, commit)
+  local opts = { capture_output = true, cwd = dest, options = { env = git.job_env } }
+  return async(function()
+    return await(jobs.run(reset_cmd, opts))
+  end)
+end
+
 local handle_checkouts = function(plugin, dest, disp)
   local plugin_name = util.get_plugin_full_name(plugin)
   return async(function()
@@ -148,6 +160,28 @@ local handle_checkouts = function(plugin, dest, disp)
         err.output = output
         return err
       end)
+  end)
+end
+
+local get_rev = function(plugin)
+  local plugin_name = util.get_plugin_full_name(plugin)
+
+  local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
+
+  return async(function()
+    local rev = await(
+      jobs.run(rev_cmd, { cwd = plugin.install_path, options = { env = git.job_env }, capture_output = true })
+    )
+      :map_ok(function(ok)
+        local _, r = next(ok.output.data.stdout)
+        return r
+      end)
+      :map_err(function(err)
+        local _, msg = fmt('%s: %s', plugin_name, next(err.output.data.stderr))
+        return msg
+      end)
+
+    return rev
   end)
 end
 
@@ -480,6 +514,22 @@ git.setup = function(plugin)
       return r
     end)()
     return r
+  end
+
+  ---Reset the plugin to `commit`
+  ---@param commit string
+  plugin.revert_to = function(commit)
+    assert(type(commit) == 'string', fmt("commit: string expected but '%s' provided", type(commit)))
+    return async(function()
+      require('packer.log').debug(fmt("Reverting '%s' to commit '%s'", plugin.name, commit))
+      return await(reset(install_to, commit))
+    end)
+  end
+
+  ---Returns HEAD's short hash
+  ---@return string
+  plugin.get_rev = function()
+    return get_rev(plugin)
   end
 end
 

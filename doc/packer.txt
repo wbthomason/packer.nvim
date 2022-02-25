@@ -44,6 +44,7 @@ FEATURES                                         *packer-intro-features*
 - Uses jobs for async installation
 - Support for `git` tags, branches, revisions, submodules
 - Support for local plugins
+- Support for saving/restoring snapshots for plugin versions (`git` only)
 
 ==============================================================================
 QUICKSTART                                       *packer-intro-quickstart*
@@ -126,6 +127,14 @@ Perform `PackerUpdate` and then `PackerCompile`.
 `PackerLoad`                                    *packer-commands-load*
 Loads opt plugin immediately
 
+`PackerSnapshot`                                    *packer-commands-snapshot*
+Snapshots your plugins to a file
+
+`PackerSnapshotDelete`                                    *packer-commands-delete*
+Deletes a snapshot
+
+`PackerSnapshotRollback`                                    *packer-commands-rollback*
+Rolls back plugins' commit specified by the snapshot
 ==============================================================================
 USAGE                                          *packer-usage*
 
@@ -533,6 +542,18 @@ post-update hooks, and updates rplugins (|remote-plugin|) and helptags.
 It can be invoked with no arguments or with a list of plugin names to update.
 These plugin names must already be managed by `packer` via a call to
 |packer.use()|.
+
+snapshot(snapshot_name, ...)		                                *packer.snapshot()*
+`snapshot` takes the rev of all the installed plugins and serializes them into a Lua table which will be saved under `config.snapshot_path` (which is the directory that will hold all the snapshots files) as `config.snapshot_path/<snapshot_name>` or an absolute path provided by the users.
+Optionally plugins name can be specified so that only those plugins will be
+snapshotted.
+Snapshot files can be loaded manually via `dofile` which will return a table with the plugins name as keys the commit short hash as value.
+
+delete(snapshot_name)		                                *packer.delete()*
+`delete` deletes a snapshot given the name or the absolute path.
+
+rollback(snapshot_name, ...)		                                *packer.rollback()*
+`rollback` reverts all plugins or only the specified as extra arguments to the commit specified in the snapshot file
 
 use()		                                       *packer.use()*
 `use` allows you to add one or more plugins to the managed set. It can be

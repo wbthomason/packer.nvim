@@ -9,6 +9,8 @@ local stdpath = vim.fn.stdpath
 local packer = {}
 local config_defaults = {
   ensure_dependencies = true,
+  snapshot = nil,
+  snapshot_path = join_paths(stdpath 'cache', 'packer.nvim'),
   package_root = join_paths(stdpath 'data', 'site', 'pack'),
   compile_path = join_paths(stdpath 'config', 'plugin', 'packer_compiled.lua'),
   plugin_package = 'packer',
@@ -38,6 +40,7 @@ local config_defaults = {
       get_bodies = 'log --color=never --pretty=format:"===COMMIT_START===%h%n%s===BODY_START===%b" --no-show-signature HEAD@{1}...HEAD',
       submodules = 'submodule update --init --recursive --progress',
       revert = 'reset --hard HEAD@{1}',
+      revert_to = 'reset --hard %s --',
       tags_expand_fmt = 'tag -l %s --sort -version:refname',
     },
     depth = 1,
@@ -86,6 +89,7 @@ local configurable_modules = {
   update = false,
   luarocks = false,
   log = false,
+  snapshot = false,
 }
 
 local function require_and_configure(module_name)
@@ -122,9 +126,16 @@ packer.init = function(user_config)
   if not config.disable_commands then
     packer.make_commands()
   end
+
+  if vim.fn.mkdir(config.snapshot_path, 'p') ~= 1 then
+    vim.notify("Couldn't create " .. config.snapshot_path, vim.log.levels.WARN)
+  end
 end
 
 packer.make_commands = function()
+  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.create PackerSnapshot  lua require('packer').snapshot(<f-args>)]]
+  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.rollback PackerSnapshotRollback  lua require('packer').rollback(<f-args>)]]
+  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.snapshot PackerSnapshotDelete lua require('packer.snapshot').delete(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete  PackerInstall lua require('packer').install(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)]]
@@ -798,6 +809,136 @@ packer.plugin_complete = function(lead, _, _)
   return completion_list
 end
 
+---Snapshots installed plugins
+---@param snapshot_name string absolute path or just a snapshot name
+packer.snapshot = function(snapshot_name, ...)
+  local async = require('packer.async').sync
+  local await = require('packer.async').wait
+  local snapshot = require 'packer.snapshot'
+  local log = require_and_configure 'log'
+  local args = { ... }
+  snapshot_name = snapshot_name or require('os').date '%Y-%m-%d'
+  local snapshot_path = vim.fn.expand(snapshot_name)
+
+  local fmt = string.format
+  log.debug(fmt('Taking snapshots of currently installed plugins to %s...', snapshot_name))
+  if vim.fn.fnamemodify(snapshot_name, ':p') ~= snapshot_path then -- is not absolute path
+    if config.snapshot_path == nil then
+      vim.notify('config.snapshot_path is not set', vim.log.levels.WARN)
+      return
+    else
+      snapshot_path = util.join_paths(config.snapshot_path, snapshot_path) -- set to default path
+    end
+  end
+
+  manage_all_plugins()
+
+  local target_plugins = plugins
+  if next(args) ~= nil then -- provided extra args
+    target_plugins = vim.tbl_filter( -- filter plugins
+      function(plugin)
+        for k, plugin_shortname in pairs(args) do
+          if plugin_shortname == plugin.short_name then
+            args[k] = nil
+            return true
+          end
+        end
+        return false
+      end,
+      plugins
+    )
+  end
+
+  local write_snapshot = true
+
+  if vim.fn.filereadable(snapshot_path) == 1 then
+    vim.ui.select(
+      { 'Replace', 'Cancel' },
+      { prompt = fmt("Do you want to replace '%s'?", snapshot_path) },
+      function(_, idx)
+        write_snapshot = idx == 1
+      end
+    )
+  end
+
+  async(function()
+    if write_snapshot then
+      await(snapshot.create(snapshot_path, target_plugins))
+        :map_ok(function(ok)
+          vim.notify(ok.message, vim.log.levels.INFO, { title = 'packer.nvim' })
+
+          if next(ok.failed) then
+            vim.notify("Couldn't snapshot " .. vim.inspect(ok.failed), vim.log.levels.WARN, { title = 'packer.nvim' })
+          end
+        end)
+        :map_err(function(err)
+          vim.notify(err.message, vim.log.levels.WARN, { title = 'packer.nvim' })
+        end)
+    end
+  end)()
+end
+
+---Instantly rolls back plugins to a previous state specified by `snapshot_name`
+---If `snapshot_name` doesn't exist an error will be displayed
+---@param snapshot_name string @name of the snapshot or the absolute path to the snapshot
+---@vararg string @ if provided, the only plugins to be rolled back,
+---otherwise all the plugins will be rolled back
+packer.rollback = function(snapshot_name, ...)
+  local args = { ... }
+  local a = require 'packer.async'
+  local async = a.sync
+  local await = a.wait
+  local wait_all = a.wait_all
+  local snapshot = require 'packer.snapshot'
+  local log = require_and_configure 'log'
+  local fmt = string.format
+
+  async(function()
+    manage_all_plugins()
+
+    local snapshot_path = vim.loop.fs_realpath(util.join_paths(config.snapshot_path, snapshot_name))
+      or vim.loop.fs_realpath(snapshot_name)
+
+    if snapshot_path == nil then
+      local warn = fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name)
+      log.warn(warn)
+      vim.notify(warn, vim.log.levels.WARN)
+      return
+    end
+
+    local target_plugins = plugins
+
+    if next(args) ~= nil then -- provided extra args
+      target_plugins = vim.tbl_filter(function(plugin)
+        for _, plugin_sname in pairs(args) do
+          if plugin_sname == plugin.short_name then
+            return true
+          end
+        end
+        return false
+      end, plugins)
+    end
+
+    await(snapshot.rollback(snapshot_path, target_plugins))
+    :map_ok(function (ok)
+      await(a.main)
+      vim.notify('Rollback to "' .. snapshot_path .. '" completed', vim.log.levels.INFO, { title = 'packer.nvim' })
+      if next(ok.failed) then
+        vim.notify(
+          "Couldn't rollback " .. vim.inspect(ok.failed),
+          vim.log.levels.INFO, { title = 'packer.nvim' }
+        )
+      end
+    end)
+    :map_err(function (err)
+      await(a.main)
+      vim.notify(err, vim.log.levels.ERROR, { title = 'packer.nvim' })
+    end)
+
+    packer.on_complete()
+  end)()
+end
+
 packer.config = config
 
 --- Convenience function for simple setup
@@ -852,6 +993,11 @@ packer.startup = function(spec)
     if user_rocks then
       packer.use_rocks(user_rocks)
     end
+  end
+
+  require_and_configure 'snapshot' -- initialize snapshot config
+  if config.snapshot ~= nil then
+    packer.rollback(config.snapshot)
   end
 
   return packer
