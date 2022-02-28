@@ -396,8 +396,8 @@ use {
   cond = string, function, or list of strings/functions,   -- Specifies a conditional test to load this plugin
   module = string or list      -- Specifies Lua module names for require. When requiring a string which starts
                                -- with one of these module names, the plugin will be loaded.
-  module_pattern = string/list -- Specifies Lua pattern of Lua module names for require. When
-  requiring a string which matches one of these patterns, the plugin will be loaded.
+  module_pattern = string/list -- Specifies Lua pattern of Lua module names for require. When requiring
+  			       -- a string which matches one of these patterns, the plugin will be loaded.
 }
 ```
 
