@@ -129,7 +129,7 @@ local handle_checkouts = function(plugin, dest, disp)
         end)
     end
 
-    if plugin.commit then
+    if plugin.commit and not plugin.snapshot then
       if disp ~= nil then
         disp:task_update(plugin_name, fmt('checking out %s...', plugin.commit))
       end
@@ -196,7 +196,7 @@ git.setup = function(plugin)
   local submodule_cmd = config.exec_cmd .. config.subcommands.submodules
   local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
   local update_cmd = config.exec_cmd
-  if plugin.commit or plugin.tag then
+  if (not plugin.snapshot and plugin.commit) or plugin.tag then
     update_cmd = update_cmd .. config.subcommands.fetch
   else
     update_cmd = update_cmd .. config.subcommands.update
@@ -223,7 +223,7 @@ git.setup = function(plugin)
   install_cmd[#install_cmd + 1] = plugin.url
   install_cmd[#install_cmd + 1] = install_to
 
-  local needs_checkout = plugin.tag ~= nil or plugin.commit ~= nil or plugin.branch ~= nil
+  local needs_checkout = plugin.tag ~= nil or (not plugin.snapshot and plugin.commit ~= nil) or plugin.branch ~= nil
 
   plugin.installer = function(disp)
     local output = jobs.output_table()
