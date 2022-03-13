@@ -345,7 +345,8 @@ default configuration values (and structure of the configuration table) are:
   profile = {
     enable = false,
     threshold = 1, -- integer in milliseconds, plugins which load faster than this won't be shown in profile output
-  }
+  },
+  autoremove = false, -- Remove disabled or unused plugins without prompting the user
 }
 ```
 
