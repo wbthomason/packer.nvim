@@ -3,7 +3,7 @@ local M = {}
 
 -- TODO: Investigate whether using FFI structs for the elements of these tables would be useful
 -- and/or faster for operations
-local plugins, plugin_specifications, rocks, profile_output
+local plugins, plugin_specifications, rocks, profile_output, runtime_handlers
 
 --- Configure and reset packer
 function M.init(user_config)
@@ -19,9 +19,11 @@ end
 
 --- Reset packer's internal state
 function M.reset()
-  plugins = {}
   plugin_specifications = {}
+  plugins = {}
+  profile_output = {}
   rocks = {}
+  runtime_handlers = {}
 end
 
 --- packer's predefined commands
@@ -73,7 +75,7 @@ for i = 1, #commands do
 end
 
 --- Utility function to ensure that an object is a table
---- Redefined here from packer.util to avoid an unnecessary require
+-- Redefined here from packer.util to avoid an unnecessary require
 local function ensure_table(obj)
   if type(obj) ~= 'table' then
     obj = { obj }
@@ -108,31 +110,6 @@ function M.add_handler(handler)
   require('packer.handlers').add(handler)
 end
 
---- Utility iterator for flatten_specification
---- NOTE: This special-cases the `requires` key, as it can nest specifications
-local function flatten_iterator(specifications, index_stack)
-  local plugin = nil
-  for i = 1, #index_stack do
-    local idx = index_stack[i]
-    if plugin == nil and idx <= #specifications then
-      plugin = specifications[idx]
-    elseif plugin.requires ~= nil and idx <= #plugin.requires then
-      plugin = plugin.requires[idx]
-    else
-      assert(i == #index_stack, 'Stack length not as expected!')
-      index_stack[i] = nil
-      index_stack[i - 1] = index_stack[i - 1] + 1
-      break
-    end
-  end
-
-  if plugin.requires ~= nil then
-    index_stack[#index_stack + 1] = 1
-  end
-
-  return plugin, index_stack
-end
-
 --- Recursively flatten a potentially nested list of plugin specifications
 ---@param plugin_specification string or full plugin specification or list of plugin specifications
 local function flatten_specification(plugin_specification)
@@ -160,6 +137,10 @@ local function flatten_specification(plugin_specification)
 
   flatten(plugin_specification)
   return result
+end
+
+local function process_runtime_handlers(plugin)
+  error 'Not implemented!'
 end
 
 --- Add one or more plugin specifications to the managed set
