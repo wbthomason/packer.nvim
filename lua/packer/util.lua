@@ -53,6 +53,18 @@ util.join_paths = function(...)
   return table.concat({ ... }, separator)
 end
 
+util.get_plugin_short_name = function(plugin)
+  local path = vim.fn.expand(plugin[1])
+  local name_segments = vim.split(path, util.get_separator())
+  local segment_idx = #name_segments
+  local name = plugin.as or name_segments[segment_idx]
+  while name == '' and segment_idx > 0 do
+    name = name_segments[segment_idx]
+    segment_idx = segment_idx - 1
+  end
+  return name, path
+end
+
 util.get_plugin_full_name = function(plugin)
   local plugin_name = plugin.name
   if plugin.branch and plugin.branch ~= 'master' then
