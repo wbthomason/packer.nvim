@@ -245,6 +245,7 @@ default values: >
         prompt_revert = 'r',
       }
     }
+    autoremove = false, -- Remove disabled or unused plugins without prompting the user
   }
 
 SPECIFYING PLUGINS                             *packer-specifying-plugins*
