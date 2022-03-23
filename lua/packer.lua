@@ -67,7 +67,7 @@ local config_defaults = {
   luarocks = { python_cmd = 'python' },
   log = { level = 'warn' },
   profile = { enable = false },
-  autoremove = false
+  autoremove = false,
 }
 
 --- Initialize global namespace for use for callbacks and other data generated whilst packer is
