@@ -209,7 +209,7 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 })
 ```
 
-This autocommand can be placed in your `init.vim`, in `plugins.lua`, or any other startup file as per your setup.
+This autocommand can be placed in your `plugins.lua`, or any other Lua startup file as per your setup.
 
 ## Bootstrapping
 
