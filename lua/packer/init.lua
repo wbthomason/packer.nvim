@@ -5,16 +5,33 @@ local M = {}
 -- and/or faster for operations
 local plugins, plugin_specifications, rocks, profile_output, runtime_handlers
 
+local function is_runtime(handler)
+  return handler.runtime
+end
+
+local function register_default_runtime_handlers()
+  runtime_handlers = vim.tbl_filter(is_runtime, require('packer.handlers').default_handlers)
+end
+
+local function ensure_dir(path)
+  local path_info = vim.loop.fs_stat(path)
+  if path_info == nil or path_info.type ~= 'directory' then
+    vim.fn.mkdir(path, 'p')
+  end
+end
+
 --- Configure and reset packer
 function M.init(user_config)
   local config = require('packer.config').configure(user_config)
   M.reset()
-  local plugin_utils = require 'packer.plugin_utils'
-  plugin_utils.ensure_dirs()
+  ensure_dir(config.opt_dir)
+  ensure_dir(config.start_dir)
   -- TODO: Maybe this should not go in init, but rather be separately called in startup?
   if not config.disable_commands then
     M.make_commands()
   end
+
+  register_default_runtime_handlers()
 end
 
 --- Reset packer's internal state
@@ -26,62 +43,10 @@ function M.reset()
   runtime_handlers = {}
 end
 
---- packer's predefined commands
-local commands = {
-  {
-    nargs = [[*]],
-    complete = [[customlist,v:lua.require'packer'._complete_plugin_names]],
-    cmd = [[PackerInstall]],
-    operation = [[lua require'packer'.install(<f-args>)]],
-  },
-  {
-    nargs = [[*]],
-    complete = [[customlist,v:lua.require'packer'._complete_plugin_names]],
-    cmd = [[PackerUpdate]],
-    operation = [[lua require'packer'.update(<f-args>)]],
-  },
-  {
-    nargs = [[*]],
-    complete = [[customlist,v:lua.require'packer'._complete_plugin_names]],
-    cmd = [[PackerSync]],
-    operation = [[lua require'packer'.sync(<f-args>)]],
-  },
-  { cmd = [[PackerClean]], operation = [[lua require'packer'.clean()]] },
-  { cmd = [[PackerStatus]], operation = [[lua require'packer'.status()]] },
-  { cmd = [[PackerProfileOutput]], operation = [[lua require'packer'.profile_output()]] },
-  {
-    bang = true,
-    nargs = [[+]],
-    complete = [[customlist,v:lua.require'packer'._complete_loadable_plugin_names]],
-    cmd = [[PackerLoad]],
-    operation = [[lua require'packer'.activate_plugins(<f-args>, '<bang>' == '!')]],
-  },
-}
-
---- Ensure the existence of packer's standard commands
-function M.make_commands() end
-for i = 1, #commands do
-  local cmd = commands[i]
-  local cmd_def = string.format(
-    [[command! %s %s %s %s %s]],
-    cmd.bang and '-bang' or '',
-    cmd.nargs and ('-nargs=' .. cmd.nargs) or '',
-    cmd.complete and ('-complete=' .. cmd.complete) or '',
-    cmd.cmd,
-    cmd.operation
-  )
-
-  vim.cmd(cmd_def)
-end
-
 --- Utility function to ensure that an object is a table
 -- Redefined here from packer.util to avoid an unnecessary require
 local function ensure_table(obj)
-  if type(obj) ~= 'table' then
-    obj = { obj }
-  end
-
-  return obj
+  return (type(obj) == 'table' and obj) or { obj }
 end
 
 --- Add one or more Luarocks packages to the managed set
@@ -97,7 +62,7 @@ function M.use_rocks(rock_specifications)
     -- If not, handle each specified rock
     for i = 1, #rock_specifications do
       local rock = rock_specifications[i]
-      local rock_name = (type(rock) == 'table') and rock[1] or rock
+      local rock_name = (type(rock) == 'string' and rock) or rock[1]
       rocks[rock_name] = rock
     end
   end
@@ -108,6 +73,27 @@ end
 --- See packer.handlers for examples
 function M.add_handler(handler)
   require('packer.handlers').add(handler)
+  -- TODO: What about checking for duplicate handlers?
+  if handler.runtime then
+    runtime_handlers[#runtime_handlers + 1] = handler
+  end
+end
+
+--- Utility function to recursively flatten a potentially nested list of plugin specifications. Used by flatten_specification
+---@param specs table of (potentially nested) plugin specifications
+---@param from_requires boolean describing whether the current value of specs originated as a -requires key
+---@param result table modified in place with the flattened list of specs
+local function flatten(specs, from_requires, result)
+  local num_specs = #specs
+  for i = 1, num_specs do
+    local spec = specs[i]
+    spec.from_requires = from_requires
+    result[#result + 1] = spec
+    if spec.requires then
+      ensure_table(spec.requires)
+      flatten(spec.requires, true)
+    end
+  end
 end
 
 --- Recursively flatten a potentially nested list of plugin specifications
@@ -117,37 +103,28 @@ local function flatten_specification(plugin_specification)
     return nil
   end
 
-  if type(plugin_specification) == 'string' then
-    plugin_specification = { plugin_specification }
-  end
-
+  plugin_specification = ensure_table(plugin_specification)
   local result = {}
-  local function flatten(specs, from_requires)
-    local num_specs = #specs
-    for i = 1, num_specs do
-      local spec = specs[i]
-      spec.from_requires = from_requires
-      result[#result + 1] = spec
-      if spec.requires then
-        ensure_table(spec.requires)
-        flatten(spec.requires, true)
-      end
-    end
-  end
-
-  flatten(plugin_specification)
+  flatten(plugin_specification, false, result)
   return result
 end
 
 local function process_runtime_handlers(plugin)
-  error 'Not implemented!'
+  for i = 1, #runtime_handlers do
+    runtime_handlers[i].process(plugin)
+  end
 end
 
+--- Utility function responsible for consistently setting plugin metadata that may be used by
+--- handlers
+local function set_plugin_metadata(plugin) end
+
+local getinfo = debug.getinfo
 --- Add one or more plugin specifications to the managed set
 ---@param plugin_specification string, full plugin specification, or list of plugin specifications
 --- See main packer documentation for expected format
 function M.use(plugin_specification)
-  local current_line = debug.getinfo(2, 'l').currentline
+  local current_line = getinfo(2, 'l').currentline
   local flattened_specification = flatten_specification(plugin_specification)
   local num_specs = #flattened_specification
   for i = 1, num_specs do
@@ -158,6 +135,7 @@ function M.use(plugin_specification)
       plugin_index = i,
     }
 
+    set_plugin_metadata(plugin)
     process_runtime_handlers(plugin)
   end
 end
