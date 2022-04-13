@@ -289,7 +289,7 @@ end
 
 --- Completion for not-yet-loaded plugin names
 --- Used by PackerLoad command
-function M._complete_loadable_plugin_names(lead, _, _)
+local function complete_loadable_plugin_names(lead, _, _)
   ensure_all_plugins_managed()
   local completion_list = {}
   for name, plugin in pairs(plugins) do
@@ -303,13 +303,70 @@ end
 
 --- Completion for managed plugin names
 --- Used by PackerInstall/Update/Sync commands
-function M._complete_plugin_names(lead, _, _)
+local function complete_plugin_names(lead, _, _)
   ensure_all_plugins_managed()
   local completion_list = vim.tbl_filter(function(name)
     return vim.startswith(name, lead)
   end, vim.tbl_keys(plugins))
   table.sort(completion_list)
   return completion_list
+end
+
+--- packer's predefined commands
+local commands = {
+  {
+    name = [[PackerInstall]],
+    command = function(args)
+      M.install(unpack(args.fargs))
+    end,
+    opts = {
+      nargs = [[*]],
+      complete = complete_plugin_names,
+    },
+  },
+  {
+    name = [[PackerUpdate]],
+    command = function(args)
+      M.update(unpack(args.fargs))
+    end,
+    opts = {
+      nargs = [[*]],
+      complete = complete_plugin_names,
+    },
+  },
+  {
+    name = [[PackerSync]],
+    command = function(args)
+      M.sync(unpack(args.fargs))
+    end,
+    opts = {
+      nargs = [[*]],
+      complete = complete_plugin_names,
+    },
+  },
+  { name = [[PackerClean]], command = M.clean },
+  { name = [[PackerStatus]], command = M.status },
+  { name = [[PackerProfileOutput]], command = M.profile_output },
+  {
+    name = [[PackerLoad]],
+    command = function(args)
+      M.activate_plugins(unpack(args.fargs), args.bang)
+    end,
+    opts = {
+      bang = true,
+      nargs = [[+]],
+      complete = complete_loadable_plugin_names,
+    },
+  },
+}
+
+--- Ensure the existence of packer's standard commands
+function M.make_commands()
+  local create_command = vim.api.nvim_create_user_command
+  for i = 1, #commands do
+    local cmd = commands[i]
+    create_command(cmd.name, cmd.command, cmd.opts)
+  end
 end
 
 return M
