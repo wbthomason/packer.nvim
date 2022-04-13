@@ -219,7 +219,7 @@ end
 
 --- Hook to fire events after completion of packer operations
 M.on_complete = vim.schedule_wrap(function()
-  vim.cmd [[doautocmd User PackerComplete]]
+  vim.api.nvim_exec_autocmds('User', { pattern = 'PackerComplete' })
 end)
 
 --- Clean operation
