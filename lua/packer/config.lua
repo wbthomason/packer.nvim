@@ -58,7 +58,7 @@ local defaults = {
   },
   luarocks = { python_cmd = 'python' },
   log = { level = 'warn' },
-  profile = { enable = false },
+  profile = { enable = false, threshold = nil },
 }
 
 local M = {}
