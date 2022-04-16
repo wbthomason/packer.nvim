@@ -61,18 +61,26 @@ local defaults = {
   profile = { enable = false, threshold = nil },
 }
 
-local M = {}
+local M = { _hooks = {} }
 M.config = {}
 function M.configure(user_config)
   user_config = user_config or {}
   local config = M.config
   vim.tbl_deep_extend('force', defaults, user_config)
-  config.package_root = string.gsub(vim.fn.fnamemodify(config.package_root, ':p'), util.get_separator() .. '$', '', 1)
+  config.package_root = string.gsub(vim.fn.fnamemodify(config.package_root, ':p'), path_separator .. '$', '', 1)
   config.pack_dir = join_paths(config.package_root, config.plugin_package)
   config.opt_dir = join_paths(config.pack_dir, 'opt')
   config.start_dir = join_paths(config.pack_dir, 'start')
   config.display.non_interactive = #vim.api.nvim_list_uis() == 0
+  for i = 1, #M._hooks do
+    M._hooks[i](config)
+  end
+
   return M.config
+end
+
+function M.register_hook(hook)
+  M._hooks[#M._hooks + 1] = hook
 end
 
 return M
