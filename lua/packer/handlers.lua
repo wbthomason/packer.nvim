@@ -99,12 +99,11 @@ local function lazy_load_module(module_name)
   module_handler.lazy_load_called[module_name] = true
   for module_pat, plugin in pairs(module_handler.modules) do
     if not plugin.loaded and module_name:match(module_pat) then
-      to_load[#to_load + 1] = plugin
+      to_load[#to_load + 1] = plugin.short_name
     end
   end
 
   if #to_load > 0 then
-    -- TODO: Need to update packer.load to take plugin specs, not just names
     require 'packer.load'(to_load, { module = module_name }, _G.packer_plugins)
     local loaded_mod = package.loaded[module_name]
     if loaded_mod then
