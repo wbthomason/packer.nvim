@@ -5,7 +5,6 @@ local join_paths = util.join_paths
 local stdpath = vim.fn.stdpath
 
 local defaults = {
-  ensure_dependencies = true,
   package_root = join_paths(stdpath 'data', 'site', 'pack'),
   compile_path = join_paths(stdpath 'config', 'plugin', 'packer_compiled.lua'),
   plugin_package = 'packer',
