@@ -1,8 +1,9 @@
 --- Configuration
 
-local util = require 'packer.util'
-local join_paths = util.join_paths
+local path_utils = require 'packer.path'
 local stdpath = vim.fn.stdpath
+local join_paths = path_utils.join_paths
+local path_separator = path_utils.path_separator
 
 local defaults = {
   package_root = join_paths(stdpath 'data', 'site', 'pack'),
