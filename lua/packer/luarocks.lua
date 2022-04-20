@@ -14,36 +14,17 @@ local config = nil
 local function cfg(_config)
   config = _config.luarocks
 end
-local function warn_need_luajit()
-  log.error 'LuaJIT is required for Luarocks functionality!'
-end
 
-local lua_version = nil
+local jit_version
 if jit then
-  local jit_version = string.gsub(jit.version, 'LuaJIT ', '')
-  lua_version = { lua = string.gsub(_VERSION, 'Lua ', ''), jit = jit_version, dir = jit_version }
-else
-  return {
-    handle_command = warn_need_luajit,
-    install_commands = warn_need_luajit,
-    list = warn_need_luajit,
-    install_hererocks = warn_need_luajit,
-    setup_paths = warn_need_luajit,
-    uninstall = warn_need_luajit,
-    clean = warn_need_luajit,
-    install = warn_need_luajit,
-    ensure = warn_need_luajit,
-    generate_path_setup = function()
-      return ''
-    end,
-    cfg = cfg,
-  }
+  jit_version = string.gsub(jit.version, 'LuaJIT ', '')
 end
+local lua_version = { lua = string.gsub(_VERSION, 'Lua ', ''), jit = jit_version }
 
 local cache_path = vim.fn.stdpath 'cache'
 local rocks_path = util.join_paths(cache_path, 'packer_hererocks')
 local hererocks_file = util.join_paths(rocks_path, 'hererocks.py')
-local hererocks_install_dir = util.join_paths(rocks_path, lua_version.dir)
+local hererocks_install_dir = util.join_paths(rocks_path, lua_version.jit or lua_version.lua)
 local shell_hererocks_dir = vim.fn.shellescape(hererocks_install_dir)
 local _hererocks_setup_done = false
 local function hererocks_is_setup()
@@ -86,8 +67,8 @@ local function hererocks_installer(disp)
     local luarocks_cmd = config.python_cmd
       .. ' '
       .. hererocks_file
-      .. ' --verbose -j '
-      .. lua_version.jit
+      .. ' --verbose '
+      .. (lua_version.jit and ('-j ' .. lua_version.jit) or ('-l ' .. lua_version.lua))
       .. ' -r latest '
       .. hererocks_install_dir
     r
