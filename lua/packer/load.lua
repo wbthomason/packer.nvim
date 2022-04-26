@@ -90,8 +90,7 @@ local function loader_denops(plugin, name)
     if not to_load[denops_plugin] then
       local ok, is_loaded = pcall(vim.fn['denops#plugin#is_loaded'], denops_plugin)
       if not ok then
-        local msg = fmt('%s needs denops.vim to be loaded before itself.', name)
-        vim.api.nvim_echo({{msg, 'WarningMsg'}}, true, {})
+        vim.notify(fmt('%s needs denops.vim to be loaded before itself.', name), vim.log.levels.WARN)
         return
       end
       if is_loaded == 0 then
