@@ -98,9 +98,11 @@ local function loader_denops(plugin, name)
       end
     end
   end
-  -- Note: denops#plugin#register() may fail
   for _, denops_plugin in ipairs(to_load) do
-    pcall(vim.fn['denops#plugin#register'], denops_plugin, { mode = 'skip' })
+    if vim.fn['denops#server#status']() == 'running' then
+      -- Note: denops#plugin#register() may fail
+      pcall(vim.fn['denops#plugin#register'], denops_plugin, { mode = 'skip' })
+    end
     vim.fn['denops#plugin#wait'](denops_plugin)
   end
 end
