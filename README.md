@@ -562,6 +562,7 @@ require knowing when the operations are complete, you can use the following `Use
 
 - `PackerComplete`: Fires after install, update, clean, and sync asynchronous operations finish.
 - `PackerCompileDone`: Fires after compiling (see [the section on compilation](#compiling-lazy-loaders))
+- `PackerSnapshotDone`: Fires after snapshot done
 
 ### Using a floating window
 You can configure Packer to use a floating window for command outputs by passing a utility
