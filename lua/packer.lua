@@ -449,6 +449,29 @@ end
 -- Fixes plugin types, installs missing plugins, then updates installed plugins and updates helptags
 -- and rplugins
 packer.update = function(...)
+  --[[
+    What this function does
+    1. Require a bunch of modules
+    2. Run `manage_all_plugins`
+    3. Get target plugin set (either the contents of vararg or all plugins if empty)
+    4. Run asynchronously the following:
+        1. Log start time (presumably for profiling)
+        2. Get `fs_state` (presumably which plugins are present/absent on disk)
+        3. Partitions target plugins into installed ones and missing ones
+        4. Try to find missing plugins in the other dir (start/opt) and fix it to follow the spec
+        5. Clean plugins (delete unused ones from disk)
+        6. Filter out plugins fixed by moving from `missing_plugins`
+        7. Make async tasks to install missing plugins, if any, displaying the results in a new window
+        8. Make tasks to update plugins if any
+        9. Make tasks for luarocks stuff, didn't bother looking into it much
+        10. Collect install paths for to-install/to-update plugins
+        11. Update helptags for collected paths
+        12. Update remote plugins (those communicating via RPC)
+        13. Log end time, get time delta, display operation results
+        14. Run `on_complete` event
+  --]]
+
+  -- same start (same as packer.install)
   local log = require_and_configure 'log'
   log.debug 'packer.update: requiring modules'
   local plugin_utils = require_and_configure 'plugin_utils'
@@ -463,18 +486,28 @@ packer.update = function(...)
 
   manage_all_plugins()
 
+  -- different variable name
   local update_plugins = args_or_all(...)
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
     local fs_state = await(plugin_utils.get_fs_state(plugins))
     local missing_plugins, installed_plugins = util.partition(vim.tbl_keys(fs_state.missing), update_plugins)
+    -- same end
+
+    -- missing await(a.main)
     update.fix_plugin_types(plugins, missing_plugins, results, fs_state)
+
+    -- slight reordering, lacking `if config.auto_clean`
     await(clean(plugins, fs_state, results))
     local _
     _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)
+
+    -- slight reordering again
     log.debug 'Gathering install tasks'
     await(a.main)
+
+    -- same start
     local tasks, display_win = install(plugins, missing_plugins, results)
     local update_tasks
     log.debug 'Gathering update tasks'
@@ -482,6 +515,11 @@ packer.update = function(...)
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
     log.debug 'Gathering luarocks tasks'
+    -- same end
+
+    -- missing luarocks_clean_task
+
+    -- same start
     local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
     if luarocks_ensure_task ~= nil then
       table.insert(tasks, luarocks_ensure_task)
@@ -490,8 +528,13 @@ packer.update = function(...)
       return not display.status.running
     end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
+    -- same end
+
+    -- slight reordering yet again
     display_win:update_headline_message('updating ' .. #tasks - 2 .. ' / ' .. #tasks - 2 .. ' plugins')
     log.debug 'Running tasks'
+
+    -- same start
     a.interruptible_wait_pool(unpack(tasks))
     local install_paths = {}
     for plugin_name, r in pairs(results.installs) do
@@ -507,12 +550,18 @@ packer.update = function(...)
     end
 
     await(a.main)
+    -- same end
+
+    -- missing `if compile_on_sync`
+
+    -- same start
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta)
     packer.on_complete()
   end)()
+  -- same end
 end
 
 --- Sync operation:
@@ -545,16 +594,24 @@ packer.sync = function(...)
     local fs_state = await(plugin_utils.get_fs_state(plugins))
     local missing_plugins, installed_plugins = util.partition(vim.tbl_keys(fs_state.missing), sync_plugins)
 
+    -- +++
     await(a.main)
+    -- +++
+
     update.fix_plugin_types(plugins, missing_plugins, results, fs_state)
     local _
     _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)
+
+    -- +++
     if config.auto_clean then
+    -- +++
       await(clean(plugins, fs_state, results))
       _, installed_plugins = util.partition(vim.tbl_keys(results.removals), installed_plugins)
+    -- +++
     end
-
+    -- +++
     await(a.main)
+
     log.debug 'Gathering install tasks'
     local tasks, display_win = install(plugins, missing_plugins, results)
     local update_tasks
@@ -563,10 +620,14 @@ packer.sync = function(...)
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
     vim.list_extend(tasks, update_tasks)
     log.debug 'Gathering luarocks tasks'
+
+    -- +++
     local luarocks_clean_task = luarocks.clean(rocks, results, display_win)
     if luarocks_clean_task ~= nil then
       table.insert(tasks, luarocks_clean_task)
     end
+    -- +++
+
     local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
     if luarocks_ensure_task ~= nil then
       table.insert(tasks, luarocks_ensure_task)
@@ -575,8 +636,10 @@ packer.sync = function(...)
       return not display.status.running
     end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
+
     log.debug 'Running tasks'
     display_win:update_headline_message('syncing ' .. #tasks - 2 .. ' / ' .. #tasks - 2 .. ' plugins')
+
     a.interruptible_wait_pool(unpack(tasks))
     local install_paths = {}
     for plugin_name, r in pairs(results.installs) do
@@ -592,9 +655,13 @@ packer.sync = function(...)
     end
 
     await(a.main)
+
+    -- +++
     if config.compile_on_sync then
       packer.compile(nil, false)
     end
+    -- +++
+
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
