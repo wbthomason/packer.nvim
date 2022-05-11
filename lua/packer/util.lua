@@ -42,7 +42,7 @@ else
 end
 
 util.get_separator = function()
-  if util.is_windows then
+  if util.is_windows and not vim.o.shellslash then
     return '\\'
   end
   return '/'
