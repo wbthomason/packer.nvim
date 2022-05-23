@@ -595,7 +595,9 @@ local function make_loaders(_, plugins, output_lua, should_profile)
     if plugins[pre].opt then
       loaders[pre].after = posts
     elseif plugins[pre].only_config then
-      loaders[pre] = { after = posts, only_sequence = true, only_config = true }
+      loaders[pre].after = posts
+      loaders[pre].only_sequence = true
+      loaders[pre].only_config = true
     end
 
     if plugins[pre].simple_load or plugins[pre].opt or plugins[pre].only_config then
