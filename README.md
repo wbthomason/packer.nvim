@@ -641,20 +641,20 @@ Many thanks to those who have contributed to the project! PRs and issues are alw
 list is infrequently updated; please feel free to bug me if you're not listed here and you would
 like to be.
 
-- @akinsho
-- @nanotee
-- @weilbith
-- @Iron-E
-- @tjdevries
-- @numToStr
-- @fsouza
-- @gbrlsnchs
-- @lewis6991
-- @TimUntersberger
-- @bfredl
-- @sunjon
-- @gwerbin
-- @shadmansaleh
-- @ur4ltz
-- @EdenEast
-- @khuedoan
+- [@akinsho](https://github.com/akinsho)
+- [@nanotee](https://github.com/nanotee)
+- [@weilbith](https://github.com/weilbith)
+- [@Iron-E](https://github.com/Iron-E)
+- [@tjdevries](https://github.com/tjdevries)
+- [@numToStr](https://github.com/numToStr)
+- [@fsouza](https://github.com/fsouza)
+- [@gbrlsnchs](https://github.com/gbrlsnchs)
+- [@lewis6991](https://github.com/lewis6991)
+- [@TimUntersberger](https://github.com/TimUntersberger)
+- [@bfredl](https://github.com/bfredl)
+- [@sunjon](https://github.com/sunjon)
+- [@gwerbin](https://github.com/gwerbin)
+- [@shadmansaleh](https://github.com/shadmansaleh)
+- [@ur4ltz](https://github.com/ur4ltz)
+- [@EdenEast](https://github.com/EdenEast)
+- [@khuedoan](https://github.com/khuedoan)
