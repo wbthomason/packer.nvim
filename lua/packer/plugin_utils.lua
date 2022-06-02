@@ -186,12 +186,10 @@ plugin_utils.load_plugin = function(plugin)
     vim.cmd('packadd ' .. plugin.short_name)
   else
     vim.o.runtimepath = vim.o.runtimepath .. ',' .. plugin.install_path
-    for _, pat in
-      ipairs {
-        table.concat({ 'plugin', '**/*.vim' }, util.get_separator()),
-        table.concat({ 'after', 'plugin', '**/*.vim' }, util.get_separator()),
-      }
-    do
+    for _, pat in ipairs {
+      table.concat({ 'plugin', '**/*.vim' }, util.get_separator()),
+      table.concat({ 'after', 'plugin', '**/*.vim' }, util.get_separator()),
+    } do
       local path = util.join_paths(plugin.install_path, pat)
       local glob_ok, files = pcall(vim.fn.glob, path, false, true)
       if not glob_ok then
