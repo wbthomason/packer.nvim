@@ -124,6 +124,9 @@ packer.init = function(user_config)
 
   local plugin_utils = require_and_configure 'plugin_utils'
   plugin_utils.ensure_dirs()
+
+  require_and_configure 'snapshot'
+
   if not config.disable_commands then
     packer.make_commands()
   end
@@ -986,7 +989,6 @@ packer.startup = function(spec)
     end
   end
 
-  require_and_configure 'snapshot' -- initialize snapshot config
   if config.snapshot ~= nil then
     packer.rollback(config.snapshot)
   end
