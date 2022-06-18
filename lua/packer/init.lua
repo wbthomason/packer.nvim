@@ -223,8 +223,7 @@ function M.startup(spec)
     elseif type(spec[1]) == 'table' then
       user_plugins = spec[1]
     else
-      local log = require 'packer.log'
-      log.error 'You must provide a function or table of specifications as the first element of the argument to startup!'
+      require('packer.log').error 'You must provide a function or table of specifications as the first element of the argument to startup!'
       return
     end
 
@@ -237,8 +236,7 @@ function M.startup(spec)
       setfenv(user_func, vim.tbl_extend('force', getfenv(), { use = M.use, use_rocks = M.use_rocks }))
       local status, err = pcall(user_func, M.use, M.use_rocks)
       if not status then
-        local log = require 'packer.log'
-        log.error('Failure running setup function: ' .. vim.inspect(err))
+        require('packer.log').error('Failure running setup function: ' .. vim.inspect(err))
         error(err)
       end
     else
