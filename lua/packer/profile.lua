@@ -58,11 +58,19 @@ function M.timed_run(fn, name, ...)
   return result
 end
 
-function M.timed_load(name)
+function M.timed_packadd(name)
   local packadd_cmd = 'packadd ' .. name
   time(packadd_cmd, true)
   vim.cmd(packadd_cmd)
   time(packadd_cmd, false)
+end
+
+function M.timed_load(plugins, args)
+  local load = require 'packer.load'
+  local load_name = 'Loading ' .. vim.inspect(plugins)
+  time(load_name, true)
+  load(plugins, args)
+  time(load_name, false)
 end
 
 return M
