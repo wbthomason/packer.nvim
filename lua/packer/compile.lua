@@ -575,8 +575,8 @@ local function make_loaders(_, plugins, output_lua, should_profile)
     local escaped_map_lt = string.gsub(keymap[2], '<', '<lt>')
     local escaped_map = string.gsub(escaped_map_lt, '([\\"])', '\\%1')
     local nested = ''
-    while string.find(keymap[2], '[' .. nested .. ']') do
-      nested = ''
+    while string.find(keymap[2], ']' .. nested .. ']') do
+      nested = nested .. '='
     end
     local keymap_line = fmt(
       'vim.cmd [%s[%snoremap <silent> %s <cmd>lua require("packer.load")({%s}, { keys = "%s"%s }, _G.packer_plugins)<cr>]%s]',
