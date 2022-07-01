@@ -41,6 +41,7 @@ local function has_wildcard(tag)
   return string.match(tag, '*') ~= nil
 end
 
+local break_tag_pattern = [=[[bB][rR][eE][aA][kK]:]=]
 local breaking_change_pattern = [=[[bB][rR][eE][aA][kK][iI][nN][gG][ _][cC][hH][aA][nN][gG][eE]]=]
 local function mark_breaking_commits(plugin, commit_bodies)
   local commits = vim.gsplit(table.concat(commit_bodies, '\n'), '===COMMIT_START===', true)
@@ -48,8 +49,16 @@ local function mark_breaking_commits(plugin, commit_bodies)
     local commit_parts = vim.split(commit, '===BODY_START===')
     local body = commit_parts[2]
     local lines = vim.split(commit_parts[1], '\n')
-    local is_breaking = (body ~= nil and string.match(body, breaking_change_pattern) ~= nil)
-      or (lines[2] ~= nil and string.match(lines[2], breaking_change_pattern) ~= nil)
+    local is_breaking = (
+      body ~= nil
+      and ((string.match(body, breaking_change_pattern) ~= nil) or (string.match(body, break_tag_pattern) ~= nil))
+    )
+      or (
+        lines[2] ~= nil
+        and (
+          (string.match(lines[2], breaking_change_pattern) ~= nil) or (string.match(lines[2], break_tag_pattern) ~= nil)
+        )
+      )
     if is_breaking then
       plugin.breaking_commits[#plugin.breaking_commits + 1] = lines[1]
     end
@@ -169,17 +178,16 @@ local get_rev = function(plugin)
   local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
 
   return async(function()
-    local rev = await(
-      jobs.run(rev_cmd, { cwd = plugin.install_path, options = { env = git.job_env }, capture_output = true })
-    )
-      :map_ok(function(ok)
-        local _, r = next(ok.output.data.stdout)
-        return r
-      end)
-      :map_err(function(err)
-        local _, msg = fmt('%s: %s', plugin_name, next(err.output.data.stderr))
-        return msg
-      end)
+    local rev =
+      await(jobs.run(rev_cmd, { cwd = plugin.install_path, options = { env = git.job_env }, capture_output = true }))
+        :map_ok(function(ok)
+          local _, r = next(ok.output.data.stdout)
+          return r
+        end)
+        :map_err(function(err)
+          local _, msg = fmt('%s: %s', plugin_name, next(err.output.data.stderr))
+          return msg
+        end)
 
     return rev
   end)
@@ -188,10 +196,8 @@ end
 git.setup = function(plugin)
   local plugin_name = util.get_plugin_full_name(plugin)
   local install_to = plugin.install_path
-  local install_cmd = vim.split(
-    config.exec_cmd .. fmt(config.subcommands.install, plugin.commit and 999999 or config.depth),
-    '%s+'
-  )
+  local install_cmd =
+    vim.split(config.exec_cmd .. fmt(config.subcommands.install, plugin.commit and 999999 or config.depth), '%s+')
 
   local submodule_cmd = config.exec_cmd .. config.subcommands.submodules
   local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
