@@ -41,7 +41,7 @@ else
 end
 
 local cache_path = vim.fn.stdpath 'cache'
-local rocks_path = util.join_paths(cache_path, 'packer_hererocks')
+local rocks_path = config.rocks_path or util.join_paths(cache_path, 'packer_hererocks')
 local hererocks_file = util.join_paths(rocks_path, 'hererocks.py')
 local hererocks_install_dir = util.join_paths(rocks_path, lua_version.dir)
 local shell_hererocks_dir = vim.fn.shellescape(hererocks_install_dir)
