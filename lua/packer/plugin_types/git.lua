@@ -41,7 +41,7 @@ local function has_wildcard(tag)
   return string.match(tag, '*') ~= nil
 end
 
-local break_tag_pattern = [=[[bB][rR][eE][aA][kK]:]=]
+local break_tag_pattern = [=[[bB][rR][eE][aA][kK]!?:]=]
 local breaking_change_pattern = [=[[bB][rR][eE][aA][kK][iI][nN][gG][ _][cC][hH][aA][nN][gG][eE]]=]
 local function mark_breaking_commits(plugin, commit_bodies)
   local commits = vim.gsplit(table.concat(commit_bodies, '\n'), '===COMMIT_START===', true)
