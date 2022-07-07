@@ -50,9 +50,9 @@ local function mark_breaking_commits(plugin, commit_bodies)
     local body = commit_parts[2]
     local lines = vim.split(commit_parts[1], '\n')
     local is_breaking = (
-        body ~= nil
-        and ((string.match(body, breaking_change_pattern) ~= nil) or (string.match(body, break_tag_pattern) ~= nil))
-      )
+      body ~= nil
+      and ((string.match(body, breaking_change_pattern) ~= nil) or (string.match(body, break_tag_pattern) ~= nil))
+    )
       or (
         lines[2] ~= nil
         and (
@@ -153,22 +153,20 @@ local handle_checkouts = function(plugin, dest, disp)
         end)
     end
 
-    return r
-      :map_ok(function(ok)
-        return { status = ok, output = output }
-      end)
-      :map_err(function(err)
-        if not err.msg then
-          return {
-            msg = fmt('Error updating %s: %s', plugin_name, table.concat(err, '\n')),
-            data = err,
-            output = output,
-          }
-        end
+    return r:map_ok(function(ok)
+      return { status = ok, output = output }
+    end):map_err(function(err)
+      if not err.msg then
+        return {
+          msg = fmt('Error updating %s: %s', plugin_name, table.concat(err, '\n')),
+          data = err,
+          output = output,
+        }
+      end
 
-        err.output = output
-        return err
-      end)
+      err.output = output
+      return err
+    end)
   end)
 end
 
@@ -178,9 +176,7 @@ local get_rev = function(plugin)
   local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
 
   return async(function()
-    local rev = await(
-      jobs.run(rev_cmd, { cwd = plugin.install_path, options = { env = git.job_env }, capture_output = true })
-    )
+    local rev = await(jobs.run(rev_cmd, { cwd = plugin.install_path, options = { env = git.job_env }, capture_output = true }))
       :map_ok(function(ok)
         local _, r = next(ok.output.data.stdout)
         return r
@@ -197,10 +193,8 @@ end
 git.setup = function(plugin)
   local plugin_name = util.get_plugin_full_name(plugin)
   local install_to = plugin.install_path
-  local install_cmd = vim.split(
-    config.exec_cmd .. fmt(config.subcommands.install, plugin.commit and 999999 or config.depth),
-    '%s+'
-  )
+  local install_cmd =
+    vim.split(config.exec_cmd .. fmt(config.subcommands.install, plugin.commit and 999999 or config.depth), '%s+')
 
   local submodule_cmd = config.exec_cmd .. config.subcommands.submodules
   local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
@@ -497,9 +491,7 @@ git.setup = function(plugin)
       local diff_info = { err = {}, output = {}, messages = {} }
       local diff_onread = jobs.logging_callback(diff_info.err, diff_info.messages)
       local diff_callbacks = { stdout = diff_onread, stderr = diff_onread }
-      return await(
-        jobs.run(diff_cmd, { capture_output = diff_callbacks, cwd = install_to, options = { env = git.job_env } })
-      )
+      return await(jobs.run(diff_cmd, { capture_output = diff_callbacks, cwd = install_to, options = { env = git.job_env } }))
         :map_ok(function(_)
           return callback(diff_info.messages)
         end)

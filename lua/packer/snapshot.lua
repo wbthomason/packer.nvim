@@ -89,11 +89,8 @@ local function generate_snapshot(plugins)
       local rev = await(plugin.get_rev())
 
       if rev.err then
-        failed[plugin.short_name] = fmt(
-          "Snapshotting %s failed because of error '%s'",
-          plugin.short_name,
-          vim.inspect(rev.err)
-        )
+        failed[plugin.short_name] =
+          fmt("Snapshotting %s failed because of error '%s'", plugin.short_name, vim.inspect(rev.err))
       else
         completed[plugin.short_name] = { commit = rev.ok }
       end
