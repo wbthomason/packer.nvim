@@ -111,6 +111,7 @@ local function do_update(_, plugins, update_plugins, display_win, results)
   results = results or {}
   results.updates = results.updates or {}
   results.plugins = results.plugins or {}
+  P(plugins['packer.nvim'])
   local tasks = {}
   for _, v in ipairs(update_plugins) do
     local plugin = plugins[v]

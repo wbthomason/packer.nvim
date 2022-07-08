@@ -290,17 +290,16 @@ local display_mt = {
     set_extmark(self.buf, self.ns, self.marks[plugin], line[1], 0)
   end),
 
-  open_preview = function(_, commit, lines)
+  open_preview = function(_, name, lines)
     if not lines or #lines < 1 then
       return log.warn 'No diff available'
     end
-    vim.cmd('pedit ' .. commit)
+    vim.cmd('pedit ' .. name)
     vim.cmd [[wincmd P]]
     vim.wo.previewwindow = true
     vim.bo.buftype = 'nofile'
     vim.bo.buflisted = false
     vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
-    vim.api.nvim_buf_set_keymap(0, 'n', 'q', '<cmd>close!<CR>', { silent = true, noremap = true, nowait = true })
     vim.bo.filetype = 'git'
   end,
 
@@ -674,6 +673,7 @@ local display_mt = {
       local lines = vim.split(diff[1], '\n')
       vim.schedule(function()
         self:open_preview(commit_hash, lines)
+        vim.api.nvim_buf_set_keymap(0, 'n', 'q', '<cmd>close!<CR>', { silent = true, noremap = true, nowait = true })
       end)
     end)
   end,
