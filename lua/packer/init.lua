@@ -1,6 +1,8 @@
 --- Main packer module
 local M = {}
 
+-- TODO: Add design for hooks after operations finish
+
 -- TODO: Investigate whether using FFI structs for the elements of these tables would be useful
 -- and/or faster for operations
 local plugins, plugin_specifications, rocks, config
