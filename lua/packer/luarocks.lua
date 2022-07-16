@@ -486,9 +486,10 @@ local function ensure_rocks(rocks, results, disp)
     local to_install = {}
     for _, rock in pairs(rocks) do
       if type(rock) == 'table' then
-        rock = rock[1]
+        to_install[rock[1]:lower()] = rock
+      else
+        to_install[rock:lower()] = true
       end
-      to_install[string.lower(rock)] = true
     end
 
     local r = result.ok()
