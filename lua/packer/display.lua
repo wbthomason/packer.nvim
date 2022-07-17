@@ -112,6 +112,9 @@ local config = nil
 local keymaps = {
   quit = { rhs = '<cmd>lua require"packer.display".quit()<cr>', action = 'quit' },
   diff = { rhs = '<cmd>lua require"packer.display".diff()<cr>', action = 'show the diff' },
+  diff_fetch_head = { rhs = '<cmd>lua require"packer.display".diff_fetch_head()<cr>', action = 'diff fetch head' },
+  toggle_select = { rhs = '<cmd>lua require"packer.display".toggle_select()<cr>', action = 'toggle select' },
+  update_selected = { rhs = '<cmd>lua require"packer.display".update_selected()<cr>', action = 'update selected' },
   toggle_info = {
     rhs = '<cmd>lua require"packer.display".toggle_info()<cr>',
     action = 'show more info',
@@ -200,6 +203,18 @@ local function prompt_user(headline, body, callback)
   )
 end
 
+--- Update a task
+local task_status = vim.schedule_wrap(function(self, symbol, plugin, message)
+  if not self:valid_display() then
+    return
+  end
+  local line, _ = get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
+  self:set_lines(line[1], line[1] + 1, { fmt(' %s %s: %s', config[symbol], plugin, message) })
+  api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin])
+  self.marks[plugin] = nil
+  self:decrement_headline_count()
+end)
+
 local display = {}
 local display_mt = {
   --- Check if we have a valid display window
@@ -253,29 +268,18 @@ local display_mt = {
     api.nvim_buf_set_option(self.buf, 'modifiable', false)
   end),
 
+  --- Update a task
+  task_status = task_status,
+
   --- Update a task as having successfully completed
-  task_succeeded = vim.schedule_wrap(function(self, plugin, message)
-    if not self:valid_display() then
-      return
-    end
-    local line, _ = get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
-    self:set_lines(line[1], line[1] + 1, { fmt(' %s %s: %s', config.done_sym, plugin, message) })
-    api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin])
-    self.marks[plugin] = nil
-    self:decrement_headline_count()
-  end),
+  task_succeeded = function(self, plugin, message)
+    task_status(self, 'done_sym', plugin, message)
+  end,
 
   --- Update a task as having unsuccessfully failed
-  task_failed = vim.schedule_wrap(function(self, plugin, message)
-    if not self:valid_display() then
-      return
-    end
-    local line, _ = get_extmark_by_id(self.buf, self.ns, self.marks[plugin])
-    self:set_lines(line[1], line[1] + 1, { fmt(' %s %s: %s', config.error_sym, plugin, message) })
-    api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin])
-    self.marks[plugin] = nil
-    self:decrement_headline_count()
-  end),
+  task_failed = function(self, plugin, message)
+    task_status(self, 'error_sym', plugin, message)
+  end,
 
   --- Update the status message of a task in progress
   task_update = vim.schedule_wrap(function(self, plugin, message)
@@ -384,8 +388,21 @@ local display_mt = {
     self:set_lines(config.header_lines, -1, lines)
   end),
 
+  --- Redraw final results
+  update_final_results = function(self)
+    self:final_results(self.results, self.time)
+  end,
+
   --- Display the final results of an operation
   final_results = vim.schedule_wrap(function(self, results, time)
+
+    -- TODO how to update the final results in a good way? For now just cache these to allow to call it again
+    self.results = results
+    self.time = time
+
+    local current_keymap_display_order = {}
+    vim.list_extend(current_keymap_display_order, keymap_display_order)
+
     if not self:valid_display() then
       return
     end
@@ -472,6 +489,45 @@ local display_mt = {
       end
     end
 
+    if results.fetches then
+      if self.selected == nil then
+        self.selected = {}
+      end
+      -- TODO adding these keys only in this case but they are actually always there.
+      -- How to handle keys for different situations/final results?
+      vim.list_extend(current_keymap_display_order, {'diff_fetch_head', 'toggle_select', 'update_selected'})
+      for plugin_name, result in pairs(results.fetches) do
+        local plugin = results.plugins[plugin_name]
+        local with_diffs = {}
+        local up_to_date = {}
+        local failures = {}
+        if result.ok then
+          if plugin.type == plugin_utils.git_plugin_type and result.diff then
+            plugin.fetch_diff = result.diff
+            table.insert(item_order, plugin_name)
+            local symbol
+            if self.selected[plugin.short_name] then
+              symbol = config.done_sym
+            else
+              symbol = config.item_sym
+            end
+            table.insert(with_diffs, fmt(' %s %s: changes to fetch', symbol, plugin_name))
+          else
+            table.insert(up_to_date, fmt(' %s %s: up to date', ' ', plugin_name))
+          end
+        else
+          table.insert(item_order, plugin_name)
+          table.insert(display.status.failed_update_list, plugin.short_name)
+          table.insert(failures, fmt(' %s Failed to update %s', config.error_sym, plugin_name))
+        end
+
+        -- TODO why doesn't this dictate the order? Ie show the ones with diffs first
+        vim.list_extend(raw_lines, with_diffs)
+        vim.list_extend(raw_lines, up_to_date)
+        vim.list_extend(raw_lines, failures)
+      end
+    end
+
     if results.luarocks then
       if results.luarocks.installs then
         for package, result in pairs(results.luarocks.installs) do
@@ -517,7 +573,7 @@ local display_mt = {
 
     table.insert(raw_lines, '')
     local show_retry = display.status.any_failed_install or #display.status.failed_update_list > 0
-    for _, keymap in ipairs(keymap_display_order) do
+    for _, keymap in ipairs(current_keymap_display_order) do
       if keymaps[keymap].lhs then
         if not (keymap == 'retry') or show_retry then
           table.insert(raw_lines, fmt(" Press '%s' to %s", keymaps[keymap].lhs, keymaps[keymap].action))
@@ -566,6 +622,11 @@ local display_mt = {
           vim.cmd('syntax match packerBreakingChange "' .. commit_hash .. '" containedin=packerHash')
         end
       end
+
+      -- TODO these are needed later, better way to handle them?
+      plugin_data.short_name = plugin.short_name
+      plugin_data.fetch_diff = plugin.fetch_diff
+      plugin_data.selected = plugin.selected
 
       plugins[plugin_name] = plugin_data
     end
@@ -676,6 +737,48 @@ local display_mt = {
         vim.api.nvim_buf_set_keymap(0, 'n', 'q', '<cmd>close!<CR>', { silent = true, noremap = true, nowait = true })
       end)
     end)
+  end,
+
+  diff_fetch_head = function(self)
+    local plugin_name, _ = self:find_nearest_plugin()
+    local plugin = self.items[plugin_name]
+    if not plugin then
+      log.warn 'Plugin not available!'
+      return
+    end
+    if not plugin.fetch_diff then
+      log.warn ('No diff for ' .. plugin_name)
+      return
+    end
+    vim.schedule(function()
+      self:open_preview('diff', vim.split(plugin.fetch_diff, '\n'))
+      vim.api.nvim_buf_set_keymap(0, 'n', 'q', '<cmd>close!<CR>', { silent = true, noremap = true, nowait = true })
+    end)
+  end,
+
+  toggle_select = function(self)
+    local plugin_name, _ = self:find_nearest_plugin()
+    local plugin = self.items[plugin_name]
+    self.selected[plugin.short_name] = not self.selected[plugin.short_name]
+    if not plugin then
+      log.warn 'Plugin not available!'
+      return
+    end
+    self:update_final_results()
+  end,
+
+  update_selected = function(self)
+    local plugins = {}
+    for plugin_name, selected in pairs(self.selected) do
+      if selected then
+        table.insert(plugins, plugin_name)
+      end
+    end
+    if #plugins > 0 then
+      require('packer').update(unpack(plugins))
+    else
+      log.warn 'No plugins selected!'
+    end
   end,
 
   --- Prompt a user to revert the latest update for a plugin
@@ -879,23 +982,42 @@ display.quit = function()
   vim.fn.execute('q!', 'silent')
 end
 
-display.toggle_info = function()
-  if display.status.disp then
-    display.status.disp:toggle_info()
+local get_wrapped_method = function(method)
+  return function()
+    if display.status.disp then
+      display.status.disp[method](display.status.disp)
+    end
   end
 end
 
-display.diff = function()
-  if display.status.disp then
-    display.status.disp:diff()
-  end
+for _, method in ipairs({
+  'toggle_info',
+  'diff',
+  'prompt_revert',
+  'diff_fetch_head',
+  'toggle_select',
+  'update_selected',
+}) do
+  display[method] = get_wrapped_method(method)
 end
 
-display.prompt_revert = function()
-  if display.status.disp then
-    display.status.disp:prompt_revert()
-  end
-end
+-- display.toggle_info = function()
+--   if display.status.disp then
+--     display.status.disp:toggle_info()
+--   end
+-- end
+--
+-- display.diff = function()
+--   if display.status.disp then
+--     display.status.disp:diff()
+--   end
+-- end
+--
+-- display.prompt_revert = function()
+--   if display.status.disp then
+--     display.status.disp:prompt_revert()
+--   end
+-- end
 
 display.retry = function()
   if display.status.any_failed_install then
