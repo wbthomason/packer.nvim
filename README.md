@@ -92,7 +92,7 @@ Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lu
 -- Only required if you have packer configured as `opt`
 vim.cmd [[packadd packer.nvim]]
 
-return require('packer').startup(function()
+return require('packer').startup(function(use)
   -- Packer can manage itself
   use 'wbthomason/packer.nvim'
 
