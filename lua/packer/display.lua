@@ -113,8 +113,8 @@ local keymaps = {
   quit = { rhs = '<cmd>lua require"packer.display".quit()<cr>', action = 'quit' },
   diff = { rhs = '<cmd>lua require"packer.display".diff()<cr>', action = 'show the diff' },
   diff_fetch_head = { rhs = '<cmd>lua require"packer.display".diff_fetch_head()<cr>', action = 'diff fetch head' },
-  toggle_select = { rhs = '<cmd>lua require"packer.display".toggle_select()<cr>', action = 'toggle select' },
-  update_selected = { rhs = '<cmd>lua require"packer.display".update_selected()<cr>', action = 'update selected' },
+  remove_update = { rhs = '<cmd>lua require"packer.display".remove_update()<cr>', action = 'do not update' },
+  continue_updating = { rhs = '<cmd>lua require"packer.display".continue_updating()<cr>', action = 'continue with updates' },
   toggle_info = {
     rhs = '<cmd>lua require"packer.display".toggle_info()<cr>',
     action = 'show more info',
@@ -132,11 +132,13 @@ local keymaps = {
 --- The order of the keys in a dict-like table isn't guaranteed, meaning the display window can
 --- potentially show the keybindings in a different order every time
 local keymap_display_order = {
-  [1] = 'quit',
-  [2] = 'toggle_info',
-  [3] = 'diff',
-  [4] = 'prompt_revert',
-  [5] = 'retry',
+  [1] = 'continue_updating',
+  [2] = 'remove_update',
+  [3] = 'quit',
+  [4] = 'toggle_info',
+  [5] = 'diff',
+  [6] = 'prompt_revert',
+  [7] = 'retry',
 }
 
 --- Utility function to prompt a user with a question in a floating window
@@ -458,12 +460,18 @@ local display_mt = {
     end
 
     if results.updates then
+      -- vim.list_extend(raw_lines, {
+      --   'Do you want to continue with the below updates?',
+      --   [[Delete the ones you don't want and then press 'c' to proceed]],
+      --   '',
+      -- })
       for plugin_name, result in pairs(results.updates) do
         local plugin = results.plugins[plugin_name]
         local message = {}
         local actual_update = true
         local failed_update = false
         if result.ok then
+          P(plugin)
           if plugin.type ~= plugin_utils.git_plugin_type or plugin.revs[1] == plugin.revs[2] then
             actual_update = false
             table.insert(message, fmt(' %s %s is already up to date', config.done_sym, plugin_name))
@@ -471,7 +479,7 @@ local display_mt = {
             table.insert(item_order, plugin_name)
             table.insert(
               message,
-              fmt(' %s Updated %s: %s..%s', config.done_sym, plugin_name, plugin.revs[1], plugin.revs[2])
+              fmt(' %s Can update %s: %s..%s', config.done_sym, plugin_name, plugin.revs[1], plugin.revs[2])
             )
           end
         else
@@ -573,6 +581,8 @@ local display_mt = {
 
     table.insert(raw_lines, '')
     local show_retry = display.status.any_failed_install or #display.status.failed_update_list > 0
+    P(current_keymap_display_order)
+    P(keymaps)
     for _, keymap in ipairs(current_keymap_display_order) do
       if keymaps[keymap].lhs then
         if not (keymap == 'retry') or show_retry then
@@ -756,26 +766,27 @@ local display_mt = {
     end)
   end,
 
-  toggle_select = function(self)
+  remove_update = function(self)
     local plugin_name, _ = self:find_nearest_plugin()
     local plugin = self.items[plugin_name]
-    self.selected[plugin.short_name] = not self.selected[plugin.short_name]
     if not plugin then
       log.warn 'Plugin not available!'
       return
     end
+    -- self.selected[plugin.short_name] = not self.selected[plugin.short_name]
+    self.results.updates[plugin_name] = nil
     self:update_final_results()
   end,
 
-  update_selected = function(self)
+  continue_updating = function(self)
     local plugins = {}
-    for plugin_name, selected in pairs(self.selected) do
-      if selected then
-        table.insert(plugins, plugin_name)
-      end
+    for plugin_name, _ in pairs(self.results.updates) do
+      table.insert(plugins, plugin_name)
     end
     if #plugins > 0 then
-      require('packer').update(unpack(plugins))
+      P('will update', plugins)
+      -- TODO
+      -- require('packer').update(unpack(plugins))
     else
       log.warn 'No plugins selected!'
     end
@@ -994,9 +1005,9 @@ for _, method in ipairs({
   'toggle_info',
   'diff',
   'prompt_revert',
-  'diff_fetch_head',
-  'toggle_select',
-  'update_selected',
+  -- 'diff_fetch_head',
+  'remove_update',
+  'continue_updating',
 }) do
   display[method] = get_wrapped_method(method)
 end

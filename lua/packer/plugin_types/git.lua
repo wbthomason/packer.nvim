@@ -209,6 +209,7 @@ git.setup = function(plugin)
 
   local submodule_cmd = config.exec_cmd .. config.subcommands.submodules
   local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
+  local fetch_rev_cmd = config.exec_cmd .. string.gsub(config.subcommands.get_rev, 'HEAD', 'FETCH_HEAD')
   local update_cmd = config.exec_cmd
   if plugin.commit or plugin.tag then
     update_cmd = update_cmd .. config.subcommands.fetch
@@ -320,7 +321,7 @@ git.setup = function(plugin)
     disp:task_update(plugin_name, 'checking current commit...')
     local r = await(
       jobs.run(
-        rev_cmd,
+        fetch_rev_cmd,
         {
           success_test = exit_ok,
           capture_output = rev_callbacks,
@@ -431,19 +432,19 @@ git.setup = function(plugin)
 
       local r = prepare_pull(disp, update_info, update_opts)
 
-      disp:task_update(plugin_name, 'pulling updates...')
-
-      r
-        :and_then(await, jobs.run(update_cmd, update_opts))
-        :and_then(await, jobs.run(submodule_cmd, update_opts))
-        :map_err(function(err)
-          plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
-
-          return {
-            msg = fmt('Error pulling updates for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
-            data = err,
-          }
-        end)
+      -- disp:task_update(plugin_name, 'pulling updates...')
+      --
+      -- r
+      --   :and_then(await, jobs.run(update_cmd, update_opts))
+      --   :and_then(await, jobs.run(submodule_cmd, update_opts))
+      --   :map_err(function(err)
+      --     plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
+      --
+      --     return {
+      --       msg = fmt('Error pulling updates for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
+      --       data = err,
+      --     }
+      --   end)
 
       disp:task_update(plugin_name, 'checking updated commit...')
       local rev_onread = jobs.logging_callback(update_info.err, update_info.revs)
