@@ -41,7 +41,7 @@ local function has_wildcard(tag)
   return string.match(tag, '*') ~= nil
 end
 
-local break_tag_pattern = [=[[bB][rR][eE][aA][kK]:]=]
+local break_tag_pattern = [=[[bB][rR][eE][aA][kK]!?:]=]
 local breaking_change_pattern = [=[[bB][rR][eE][aA][kK][iI][nN][gG][ _][cC][hH][aA][nN][gG][eE]]=]
 local type_exclam_pattern = [=[[a-zA-Z]+!:]=]
 local type_scope_exclam_pattern = [=[[a-zA-Z]+%([^)]+%)!:]=]
@@ -200,7 +200,6 @@ local get_rev = function(plugin)
   end)
 end
 
-
 git.setup = function(plugin)
   local plugin_name = util.get_plugin_full_name(plugin)
   local install_to = plugin.install_path
@@ -210,11 +209,11 @@ git.setup = function(plugin)
   local submodule_cmd = config.exec_cmd .. config.subcommands.submodules
   local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
   local fetch_rev_cmd = config.exec_cmd .. string.gsub(config.subcommands.get_rev, 'HEAD', 'FETCH_HEAD')
-  local update_cmd = config.exec_cmd
+  local update_cmd = config.exec_cmd .. config.subcommands.update
+  local update_head_cmd = config.exec_cmd .. config.subcommands.update_head
+  local fetch_cmd = config.exec_cmd .. config.subcommands.fetch
   if plugin.commit or plugin.tag then
-    update_cmd = update_cmd .. config.subcommands.fetch
-  else
-    update_cmd = update_cmd .. config.subcommands.update
+    update_cmd = fetch_cmd
   end
 
   local branch_cmd = config.exec_cmd .. config.subcommands.current_branch
@@ -222,13 +221,6 @@ git.setup = function(plugin)
   for i, arg in ipairs(current_commit_cmd) do
     current_commit_cmd[i] = string.gsub(arg, 'FMT', config.subcommands.diff_fmt)
   end
-
-  local commit_headers_cmd = vim.split(config.exec_cmd .. config.subcommands.diff, '%s+')
-  for i, arg in ipairs(commit_headers_cmd) do
-    commit_headers_cmd[i] = string.gsub(arg, 'FMT', config.subcommands.diff_fmt)
-  end
-
-  local commit_bodies_cmd = config.exec_cmd .. config.subcommands.get_bodies
 
   if plugin.branch or (plugin.tag and not has_wildcard(plugin.tag)) then
     install_cmd[#install_cmd + 1] = '--branch'
@@ -304,125 +296,80 @@ git.setup = function(plugin)
     end)
   end
 
-  local make_exit_ok = function(update_info)
-    return function(r)
-      if #update_info.err > 0 or r.exit_code ~= 0 then
-        return result.err(r)
+  plugin.updater = function(disp, opts)
+    return async(function()
+      local update_info = { err = {}, revs = {}, output = {}, messages = {} }
+      local function exit_ok(r)
+        if #update_info.err > 0 or r.exit_code ~= 0 then
+          return result.err(r)
+        end
+        return result.ok(r)
       end
-      return result.ok(r)
-    end
-  end
 
-  local prepare_pull = function(disp, update_info, update_opts)
-
-    local exit_ok = make_exit_ok(update_info)
-    local rev_onread = jobs.logging_callback(update_info.err, update_info.revs)
-    local rev_callbacks = { stdout = rev_onread, stderr = rev_onread }
-    disp:task_update(plugin_name, 'checking current commit...')
-    local r = await(
-      jobs.run(
-        fetch_rev_cmd,
-        {
-          success_test = exit_ok,
-          capture_output = rev_callbacks,
-          cwd = install_to,
-          options = { env = git.job_env },
-        }
-      )
-    ):map_err(function(err)
-      plugin.output = { err = vim.list_extend(update_info.err, update_info.revs), data = {} }
-
-      return {
-        msg = fmt('Error getting current commit for %s: %s', plugin_name, table.concat(update_info.revs, '\n')),
-        data = err,
-      }
-    end)
-
-    local current_branch
-    disp:task_update(plugin_name, 'checking current branch...')
-    r
-      :and_then(
-        await,
+      local rev_onread = jobs.logging_callback(update_info.err, update_info.revs)
+      local rev_callbacks = { stdout = rev_onread, stderr = rev_onread }
+      disp:task_update(plugin_name, 'checking current commit...')
+      local r = await(
         jobs.run(
-          branch_cmd,
-          {
-            success_test = exit_ok,
-            capture_output = true,
-            cwd = install_to,
-            options = { env = git.job_env },
-          }
+          rev_cmd,
+          { success_test = exit_ok, capture_output = rev_callbacks, cwd = install_to, options = { env = git.job_env } }
         )
-      )
-      :map_ok(function(ok)
-        current_branch = ok.output.data.stdout[1]
-      end)
-      :map_err(function(err)
+      ):map_err(function(err)
         plugin.output = { err = vim.list_extend(update_info.err, update_info.revs), data = {} }
 
         return {
-          msg = fmt('Error checking current branch for %s: %s', plugin_name, table.concat(update_info.revs, '\n')),
+          msg = fmt('Error getting current commit for %s: %s', plugin_name, table.concat(update_info.revs, '\n')),
           data = err,
         }
       end)
 
-    if not needs_checkout then
-      local origin_branch = ''
-      disp:task_update(plugin_name, 'checking origin branch...')
-      local origin_refs_path = util.join_paths(install_to, '.git', 'refs', 'remotes', 'origin', 'HEAD')
-      local origin_refs_file = vim.loop.fs_open(origin_refs_path, 'r', 438)
-      if origin_refs_file ~= nil then
-        local origin_refs_stat = vim.loop.fs_fstat(origin_refs_file)
-        -- NOTE: This should check for errors
-        local origin_refs = vim.split(vim.loop.fs_read(origin_refs_file, origin_refs_stat.size, 0), '\n')
-        vim.loop.fs_close(origin_refs_file)
-        if #origin_refs > 0 then
-          origin_branch = string.match(origin_refs[1], [[^ref: refs/remotes/origin/(.*)]])
+      local current_branch
+      disp:task_update(plugin_name, 'checking current branch...')
+      r
+        :and_then(
+          await,
+          jobs.run(
+            branch_cmd,
+            { success_test = exit_ok, capture_output = true, cwd = install_to, options = { env = git.job_env } }
+          )
+        )
+        :map_ok(function(ok)
+          current_branch = ok.output.data.stdout[1]
+        end)
+        :map_err(function(err)
+          plugin.output = { err = vim.list_extend(update_info.err, update_info.revs), data = {} }
+
+          return {
+            msg = fmt('Error checking current branch for %s: %s', plugin_name, table.concat(update_info.revs, '\n')),
+            data = err,
+          }
+        end)
+
+      if not needs_checkout then
+        local origin_branch = ''
+        disp:task_update(plugin_name, 'checking origin branch...')
+        local origin_refs_path = util.join_paths(install_to, '.git', 'refs', 'remotes', 'origin', 'HEAD')
+        local origin_refs_file = vim.loop.fs_open(origin_refs_path, 'r', 438)
+        if origin_refs_file ~= nil then
+          local origin_refs_stat = vim.loop.fs_fstat(origin_refs_file)
+          -- NOTE: This should check for errors
+          local origin_refs = vim.split(vim.loop.fs_read(origin_refs_file, origin_refs_stat.size, 0), '\n')
+          vim.loop.fs_close(origin_refs_file)
+          if #origin_refs > 0 then
+            origin_branch = string.match(origin_refs[1], [[^ref: refs/remotes/origin/(.*)]])
+          end
+        end
+
+        if current_branch ~= origin_branch then
+          needs_checkout = true
+          plugin.branch = origin_branch
         end
       end
-
-      if current_branch ~= origin_branch then
-        needs_checkout = true
-        plugin.branch = origin_branch
-      end
-    end
-
-    if needs_checkout then
-      r:and_then(await, jobs.run(config.exec_cmd .. config.subcommands.fetch, update_opts))
-      r:and_then(await, handle_checkouts(plugin, install_to, disp))
-      local function merge_output(res)
-        if res.output ~= nil then
-          vim.list_extend(update_info.err, res.output.err.stderr)
-          vim.list_extend(update_info.err, res.output.err.stdout)
-          vim.list_extend(update_info.output, res.output.data.stdout)
-          vim.list_extend(update_info.output, res.output.data.stderr)
-        end
-      end
-
-      r:map_ok(merge_output)
-      r:map_err(function(err)
-        merge_output(err)
-        plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
-        local errmsg = '<unknown error>'
-        if err ~= nil and err.msg ~= nil then
-          errmsg = err.msg
-        end
-        return { msg = errmsg .. ' ' .. table.concat(update_info.output, '\n'), data = err.data }
-      end)
-    end
-    return r
-  end
-
-  plugin.updater = function(disp)
-    return async(function()
-      local update_info = { err = {}, revs = {}, output = {}, messages = {} }
 
       local update_callbacks = {
         stdout = jobs.logging_callback(update_info.err, update_info.output),
         stderr = jobs.logging_callback(update_info.err, update_info.output, nil, disp, plugin_name),
       }
-
-      local exit_ok = make_exit_ok(update_info)
-
       local update_opts = {
         success_test = exit_ok,
         capture_output = update_callbacks,
@@ -430,29 +377,64 @@ git.setup = function(plugin)
         options = { env = git.job_env },
       }
 
-      local r = prepare_pull(disp, update_info, update_opts)
+      if needs_checkout then
+        r:and_then(await, jobs.run(config.exec_cmd .. config.subcommands.fetch, update_opts))
+        r:and_then(await, handle_checkouts(plugin, install_to, disp))
+        local function merge_output(res)
+          if res.output ~= nil then
+            vim.list_extend(update_info.err, res.output.err.stderr)
+            vim.list_extend(update_info.err, res.output.err.stdout)
+            vim.list_extend(update_info.output, res.output.data.stdout)
+            vim.list_extend(update_info.output, res.output.data.stderr)
+          end
+        end
 
-      -- disp:task_update(plugin_name, 'pulling updates...')
-      --
-      -- r
-      --   :and_then(await, jobs.run(update_cmd, update_opts))
-      --   :and_then(await, jobs.run(submodule_cmd, update_opts))
-      --   :map_err(function(err)
-      --     plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
-      --
-      --     return {
-      --       msg = fmt('Error pulling updates for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
-      --       data = err,
-      --     }
-      --   end)
+        r:map_ok(merge_output)
+        r:map_err(function(err)
+          merge_output(err)
+          plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
+          local errmsg = '<unknown error>'
+          if err ~= nil and err.msg ~= nil then
+            errmsg = err.msg
+          end
+          return { msg = errmsg .. ' ' .. table.concat(update_info.output, '\n'), data = err.data }
+        end)
+      end
 
+      disp:task_update(plugin_name, 'fetching updates...')
+
+      if opts.diff_preview then
+        r
+          :and_then(await, jobs.run(fetch_cmd, update_opts))
+      elseif opts.pull_head then
+        r
+          :and_then(await, jobs.run(update_head_cmd, update_opts))
+      else
+        disp:task_update(plugin_name, 'pulling updates...')
+
+        r
+          :and_then(await, jobs.run(update_cmd, update_opts))
+          :and_then(await, jobs.run(submodule_cmd, update_opts))
+      end
+      r
+        :map_err(function(err)
+          plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
+
+          return {
+            msg = fmt('Error fetching updates for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
+            data = err,
+          }
+        end)
+
+      local post_rev_cmd = rev_cmd
+      if opts.diff_preview then
+        post_rev_cmd = fetch_rev_cmd
+      end
       disp:task_update(plugin_name, 'checking updated commit...')
-      local rev_onread = jobs.logging_callback(update_info.err, update_info.revs)
-      local rev_callbacks = { stdout = rev_onread, stderr = rev_onread }
       r
         :and_then(
           await,
-          jobs.run(rev_cmd, {
+          jobs.run(post_rev_cmd, {
             success_test = exit_ok,
             capture_output = rev_callbacks,
             cwd = install_to,
@@ -471,6 +453,16 @@ git.setup = function(plugin)
         if update_info.revs[1] ~= update_info.revs[2] then
           local commit_headers_onread = jobs.logging_callback(update_info.err, update_info.messages)
           local commit_headers_callbacks = { stdout = commit_headers_onread, stderr = commit_headers_onread }
+
+          local diff_cmd = config.subcommands.diff
+          if opts.diff_preview then
+            diff_cmd = config.subcommands.diff_fetch
+          end
+          local commit_headers_cmd = vim.split(config.exec_cmd .. diff_cmd, '%s+')
+          for i, arg in ipairs(commit_headers_cmd) do
+            commit_headers_cmd[i] = string.gsub(arg, 'FMT', config.subcommands.diff_fmt)
+          end
+
           disp:task_update(plugin_name, 'getting commit messages...')
           r:and_then(
             await,
@@ -492,6 +484,10 @@ git.setup = function(plugin)
             local commit_bodies = { err = {}, output = {} }
             local commit_bodies_onread = jobs.logging_callback(commit_bodies.err, commit_bodies.output)
             local commit_bodies_callbacks = { stdout = commit_bodies_onread, stderr = commit_bodies_onread }
+            local commit_bodies_cmd = config.exec_cmd .. config.subcommands.get_bodies
+            if opts.diff_preview then
+              commit_bodies_cmd = config.exec_cmd .. config.subcommands.get_bodies_fetch
+            end
             disp:task_update(plugin_name, 'checking for breaking changes...')
             r
               :and_then(
@@ -516,68 +512,8 @@ git.setup = function(plugin)
       else
         plugin.output.err = vim.list_extend(plugin.output.err, update_info.messages)
       end
+
       r.info = update_info
-
-      return r
-    end)
-  end
-
-  plugin.fetcher = function(disp)
-    return async(function()
-      local update_info = { err = {}, revs = {}, output = {}, messages = {} }
-
-      local update_callbacks = {
-        stdout = jobs.logging_callback(update_info.err, update_info.output),
-        stderr = jobs.logging_callback(update_info.err, update_info.output, nil, disp, plugin_name),
-      }
-
-      local exit_ok = make_exit_ok(update_info)
-
-      local update_opts = {
-        success_test = exit_ok,
-        capture_output = update_callbacks,
-        cwd = install_to,
-        options = { env = git.job_env },
-      }
-
-      local r = prepare_pull(disp, update_info, update_opts)
-
-      disp:task_update(plugin_name, 'fetching updates...')
-
-      r:and_then(await, jobs.run('git fetch', update_opts))
-       :map_err(function(err)
-         plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
-
-         return {
-           msg = fmt('Error fetching updates for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
-           data = err,
-         }
-       end)
-
-      local diff_err = {}
-      local diff_output = {}
-      local diff_callbacks = {
-        stdout = jobs.logging_callback(diff_err, diff_output),
-        stderr = jobs.logging_callback(diff_err, diff_output),
-      }
-      r:and_then(await, jobs.run('git --no-pager diff FETCH_HEAD', {
-        success_test = exit_ok,
-        capture_output = diff_callbacks,
-        cwd = install_to,
-        options = { env = git.job_env },
-      }))
-       :map_err(function(err)
-         plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
-
-         return {
-           msg = fmt('Error getting diff for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
-           data = err,
-         }
-       end)
-
-      disp:task_update(plugin_name, 'fetch done')
-
-      r.diff = diff_output[1]
       return r
     end)
   end
