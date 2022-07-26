@@ -41,8 +41,15 @@ else
   util.is_windows = package.config:sub(1, 1) == '\\'
 end
 
+if vim.o.shellslash then
+  util.use_shellslash = true
+else
+  util.use_shallslash = false
+end
+
+
 util.get_separator = function()
-  if util.is_windows then
+  if util.is_windows and not util.use_shellslash then
     return '\\'
   end
   return '/'
