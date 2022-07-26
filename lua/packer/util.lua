@@ -47,7 +47,6 @@ else
   util.use_shallslash = false
 end
 
-
 util.get_separator = function()
   if util.is_windows and not util.use_shellslash then
     return '\\'
