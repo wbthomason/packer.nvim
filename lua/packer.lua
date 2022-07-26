@@ -948,7 +948,7 @@ packer.config = config
 --  as another element, and an optional table of Luarocks rock specifications as another element:
 --  packer.startup({{'tjdevries/colorbuddy.vim'}, config = { ... }, rocks = { ... }})
 packer.startup = function(spec)
-  local log = require_and_configure 'log'
+  local log = require 'packer.log'
   local user_func = nil
   local user_config = nil
   local user_plugins = nil
@@ -974,6 +974,7 @@ packer.startup = function(spec)
 
   packer.init(user_config)
   packer.reset()
+  log = require_and_configure 'log'
 
   if user_func then
     setfenv(user_func, vim.tbl_extend('force', getfenv(), { use = packer.use, use_rocks = packer.use_rocks }))
