@@ -57,7 +57,7 @@ end
 
 local function hererocks_installer(disp)
   return async(function()
-    local hererocks_url = 'https://raw.githubusercontent.com/luarocks/hererocks/latest/hererocks.py'
+    local hererocks_url = 'https://raw.githubusercontent.com/luarocks/hererocks/master/hererocks.py'
     local hererocks_cmd
     await(a.main)
     vim.fn.mkdir(rocks_path, 'p')
