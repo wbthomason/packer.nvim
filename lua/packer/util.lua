@@ -42,7 +42,7 @@ else
 end
 
 local shellslash_exists, _ = pcall(function() local _ = vim.o.shellslash end)
-local use_shellslash = false
+util.use_shellslash = false
 
 if shellslash_exists then
   util.use_shellslash = vim.o.shellslash
