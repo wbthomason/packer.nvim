@@ -41,10 +41,11 @@ else
   util.is_windows = package.config:sub(1, 1) == '\\'
 end
 
-if vim.o.shellslash then
-  util.use_shellslash = true
-else
-  util.use_shallslash = false
+local shellslash_exists, _ = pcall(function() local _ = vim.o.shellslash end)
+local use_shellslash = false
+
+if shellslash_exists then
+  util.use_shellslash = vim.o.shellslash
 end
 
 
