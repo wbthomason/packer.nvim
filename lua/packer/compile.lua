@@ -93,9 +93,6 @@ local function save_profiles(threshold)
     total_time = total_time + elem[2]
   end
 
-  if threshold then
-    table.insert(results, '(Only showing plugins that took longer than ' .. threshold .. ' ms ' .. 'to load)')
-  end
   results[#results + 1] = ''
   results[#results + 1] = 'Total time: ' .. total_time .. 'ms'
 
