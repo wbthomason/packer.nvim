@@ -707,7 +707,7 @@ packer.compile = function(raw_args, move_plugins)
     refresh_configs(plugins)
     -- NOTE: we copy the plugins table so the in memory value is not mutated during compilation
     local compiled_loader = compile(vim.deepcopy(plugins), output_lua, should_profile)
-    output_path = vim.fn.expand(output_path)
+    output_path = vim.fn.expand(output_path, true)
     vim.fn.mkdir(vim.fn.fnamemodify(output_path, ':h'), 'p')
     local output_file = io.open(output_path, 'w')
     output_file:write(compiled_loader)
