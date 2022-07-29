@@ -460,7 +460,7 @@ local display_mt = {
     if results.updates then
       local change_msg = ' %s Updated %s: %s..%s'
       if opts.diff_preview then
-        -- TODO only add keys here?
+        -- TODO only add keys relevant for diff_preview (continue/remove) here?
         change_msg = ' %s Can update %s: %s..%s'
       end
       for plugin_name, result in pairs(results.updates) do
