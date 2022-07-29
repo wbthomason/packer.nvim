@@ -390,12 +390,14 @@ local display_mt = {
   end),
 
   --- Redraw final results
-  update_final_results = function(self)
-    self:final_results(self.results, self.time)
+  update_final_results = function(self, opts)
+    self:final_results(self.results, self.time, opts)
   end,
 
   --- Display the final results of an operation
   final_results = vim.schedule_wrap(function(self, results, time, opts)
+    opts = opts or {}
+    -- TODO would be nice to have the option to not show all the commits but just the plugins, one per line
 
     -- TODO how to update the final results in a good way? For now just cache these to allow to call it again
     self.results = results
@@ -660,6 +662,7 @@ local display_mt = {
   end,
 
   diff = function(self)
+    -- TODO show full diff between range of commits <rev1>...<rev2>
     if not self:valid_display() then
       return
     end
@@ -706,18 +709,16 @@ local display_mt = {
       return
     end
     self.results.updates[plugin_name] = nil
-    self:update_final_results()
+    self:update_final_results({diff_preview = true})
   end,
 
   continue = function(self)
     local plugins = {}
     for plugin_name, _ in pairs(self.results.updates) do
-      table.insert(plugins, plugin_name)
+      table.insert(plugins, self.items[plugin_name].spec.short_name)
     end
     if #plugins > 0 then
-      P('will update', plugins)
-      -- TODO
-      -- require('packer').update_head(unpack(plugins))
+      require('packer').update_head(unpack(plugins))
     else
       log.warn 'No plugins selected!'
     end

@@ -67,9 +67,8 @@ local config_defaults = {
     prompt_border = 'double',
     keybindings = {
       quit = 'q',
-      -- diff_fetch_head = 'D',
-      remove_update = 'x',
-      continue_updating = 'c',
+      remove = 'x',
+      continue = 'c',
       toggle_info = '<CR>',
       diff = 'd',
       prompt_revert = 'r',
@@ -520,7 +519,7 @@ local _update = function(opts, ...)
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
-    display_win:final_results(results, delta)
+    display_win:final_results(results, delta, opts)
     packer.on_complete()
   end)()
 end
