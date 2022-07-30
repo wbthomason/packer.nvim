@@ -404,7 +404,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
         loaders[name].keys = {}
         for _, keymap in ipairs(plugin.keys) do
           if type(keymap) == 'string' then
-            keymap = { '', keymap }
+            keymap = { '', keymap, nil }
           end
           keymaps[keymap] = keymaps[keymap] or {}
           table.insert(loaders[name].keys, keymap)
@@ -575,12 +575,13 @@ local function make_loaders(_, plugins, output_lua, should_profile)
     local escaped_map_lt = string.gsub(keymap[2], '<', '<lt>')
     local escaped_map = string.gsub(escaped_map_lt, '([\\"])', '\\%1')
     local keymap_line = fmt(
-      'vim.cmd [[%snoremap <silent> %s <cmd>lua require("packer.load")({%s}, { keys = "%s"%s }, _G.packer_plugins)<cr>]]',
+      [[vim.api.nvim_set_keymap("%s", "%s", "<cmd>lua require('packer.load')({%s}, { keys = '%s'%s }, _G.packer_plugins)<cr>", { noremap = true, silent = true%s })]],
       keymap[1],
       keymap[2],
       table.concat(names, ', '),
       escaped_map,
-      prefix == nil and '' or (', prefix = "' .. prefix .. '"')
+      prefix == nil and '' or (", prefix = '" .. prefix .. "'"),
+      keymap[3] == nil and '' or (", desc = '" .. keymap[3] .. "'")
     )
 
     table.insert(keymap_defs, keymap_line)
