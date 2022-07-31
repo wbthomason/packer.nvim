@@ -572,14 +572,14 @@ local function make_loaders(_, plugins, output_lua, should_profile)
     if keymap[1] ~= 'i' then
       prefix = ''
     end
-    local escaped_map_lt = string.gsub(keymap[2], '<', '<lt>')
-    local escaped_map = string.gsub(escaped_map_lt, '([\\"])', '\\%1')
+    local escaped_map = string.gsub(keymap[2], '([\\"])', '\\%1')
+    local escaped_map_lt = string.gsub(escaped_map, '<', '<lt>')
     local keymap_line = fmt(
       [[vim.api.nvim_set_keymap("%s", "%s", "<cmd>lua require('packer.load')({%s}, { keys = '%s'%s }, _G.packer_plugins)<cr>", { noremap = true, silent = true%s })]],
       keymap[1],
-      keymap[2],
-      table.concat(names, ', '),
       escaped_map,
+      table.concat(names, ', '),
+      escaped_map_lt,
       prefix == nil and '' or (", prefix = '" .. prefix .. "'"),
       keymap[3] == nil and '' or (", desc = '" .. keymap[3] .. "'")
     )
