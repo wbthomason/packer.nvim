@@ -143,6 +143,7 @@ packer.init = function(user_config)
   plugin_utils.ensure_dirs()
 
   require_and_configure 'snapshot'
+  require_and_configure 'lockfile'
 
   if not config.disable_commands then
     packer.make_commands()
@@ -668,7 +669,34 @@ end
 packer.upgrade = function(...) end
 
 --- Update lockfile with current plugin status
-packer.lockfile = function() end
+packer.lockfile = function()
+  local a = require 'packer.async'
+  local async = a.sync
+  local await = a.wait
+  local lockfile = require_and_configure 'lockfile'
+
+  async(function()
+    manage_all_plugins()
+
+    await(lockfile.update(plugins))
+      :map_ok(function(ok)
+        await(a.main)
+        if next(ok.failed) then
+          vim.notify(
+            'Could not update lockfile ' .. vim.inspect(ok.failed),
+            vim.log.levels.INFO,
+            { title = 'packer.nvim' }
+          )
+        else
+          vim.notify('Lockfile updated', vim.log.levels.INFO, { title = 'packer.nvim' })
+        end
+      end)
+      :map_err(function(err)
+        await(a.main)
+        vim.notify(err, vim.log.levels.ERROR, { title = 'packer.nvim' })
+      end)
+  end)()
+end
 
 packer.status = function()
   local async = require('packer.async').sync
