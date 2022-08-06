@@ -23,8 +23,9 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
     4. [Performing plugin management operations](#performing-plugin-management-operations)
     5. [Extending packer](#extending-packer)
     6. [Compiling Lazy-Loaders](#compiling-lazy-loaders)
-	7. [User autocommands](#user-autocommands)
-	8. [Using a floating window](#using-a-floating-window)
+    7. [Lockfile](#lockfile)
+    8. [User autocommands](#user-autocommands)
+    9. [Using a floating window](#using-a-floating-window)
 6. [Profiling](#profiling)
 7. [Debugging](#debugging)
 8. [Compatibility and known issues](#compatibility-and-known-issues)
@@ -43,6 +44,7 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 - Uses jobs for async installation
 - Support for `git` tags, branches, revisions, submodules
 - Support for local plugins
+- Lockfile for for keeping plugins in sync between systems
 
 ## Requirements
 - You need to be running **Neovim v0.5.0+**
@@ -182,8 +184,14 @@ end)
 -- Show list of installed plugins
 :PackerStatus
 
+-- Perform `PackerUpdate` without lockfile.
+:PackerUpgrade
+
 -- Loads opt plugin immediately
 :PackerLoad completion-nvim ale
+
+-- Updates lockfile from installed plugins.
+:PackerLockfile
 ```
 
 You can configure Neovim to automatically run `:PackerCompile` whenever `plugins.lua` is updated with
@@ -338,6 +346,11 @@ default configuration values (and structure of the configuration table) are:
       diff = 'd',
       prompt_revert = 'r',
     }
+  },
+  lockfile = {
+    enable = false, -- Should packer apply lockfile to `installer` and `updater`
+    path = util.join_paths(stdpath 'config', 'lockfile.lua'), -- Default file location for lockfile
+    update_on_upgrade = false, -- Should packer update the lockfile after upgrading plugins
   },
   luarocks = {
     python_cmd = 'python' -- Set the python command to use for running hererocks
@@ -525,7 +538,9 @@ plugins":
 - `packer.clean()`: Remove any disabled or no longer managed plugins
 - `packer.sync(plugins)`: Perform a `clean` followed by an `update`.
 - `packer.sync(opts, plugins)`: Can take same optional options as `update`.
+- `packer.upgrade(plugins)`: Performs an `update` without applying the lockfile
 - `packer.compile(path)`: Compile lazy-loader code and save to `path`.
+- `packer.lockfile()`: Updates lockfile based on currently installed plugins
 - `packer.snapshot(snapshot_name, ...)`: Creates a snapshot file that will live under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be taken. Optionally, a list of plugins name can be provided to selectively choose the plugins to snapshot.
 - `packer.rollback(snapshot_name, ...)`: Rollback plugins status a snapshot file that will live under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be taken. Optionally, a list of plugins name can be provided to selectively choose which plugins to revert.
 - `packer.delete(snapshot_name)`: Deletes a snapshot file under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be deleted.
@@ -560,12 +575,18 @@ config/setup functions to bytecode, which has this limitation.
 Additionally, if functions are given for these keys, the functions will be passed the plugin
 name and information table as arguments.
 
+### Lockfile
+
+`packer` provides a `lockfile` to help manage plugin updates. This is useful for users that store their
+configuration in some sort of source repository. Committing packer's lockfile will ensure that packer will
+`install` and `update` plugins to known working commits for their configuration.
+
 ### User autocommands
 `packer` runs most of its operations asyncronously. If you would like to implement automations that
 require knowing when the operations are complete, you can use the following `User` autocmds (see
 `:help User` for more info on how to use):
 
-- `PackerComplete`: Fires after install, update, clean, and sync asynchronous operations finish.
+- `PackerComplete`: Fires after install, update, clean, sync, and upgrade asynchronous operations finish.
 - `PackerCompileDone`: Fires after compiling (see [the section on compilation](#compiling-lazy-loaders))
 
 ### Using a floating window
