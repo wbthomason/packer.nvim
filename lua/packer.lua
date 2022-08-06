@@ -749,6 +749,7 @@ packer.upgrade = function(...)
             )
           else
             vim.notify('Lockfile updated', vim.log.levels.INFO, { title = 'packer.nvim' })
+            lockfile.load()
           end
         end)
         :map_err(function(err)
@@ -782,6 +783,7 @@ packer.lockfile = function()
           )
         else
           vim.notify('Lockfile updated', vim.log.levels.INFO, { title = 'packer.nvim' })
+          lockfile.load()
         end
       end)
       :map_err(function(err)
