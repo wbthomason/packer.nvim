@@ -76,6 +76,11 @@ local config_defaults = {
       retry = 'R',
     },
   },
+  lockfile = {
+    enable = false,
+    path = join_paths(stdpath 'config', 'lockfile.lua'),
+    update_on_upgrade = false,
+  },
   luarocks = { python_cmd = 'python' },
   log = { level = 'warn' },
   profile = { enable = false },
@@ -155,10 +160,12 @@ packer.make_commands = function()
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerInstall lua require('packer').install(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)]]
+  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpgrade lua require('packer').upgrade(<f-args>)]]
   vim.cmd [[command! PackerClean             lua require('packer').clean()]]
   vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
   vim.cmd [[command! PackerStatus            lua require('packer').status()]]
   vim.cmd [[command! PackerProfile           lua require('packer').profile_output()]]
+  vim.cmd [[command! PackerLockfile          lua require('packer').lockfile()]]
   vim.cmd [[command! -bang -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad lua require('packer').loader(<f-args>, '<bang>' == '!')]]
 end
 
@@ -653,6 +660,15 @@ packer.sync = function(...)
     packer.on_complete()
   end)()
 end
+
+--- Upgrade operation:
+-- Takes an optional list of plugin names as an argument. If no list is given, operates on all
+-- managed plugins.
+-- Temporarly disables lockfile and then performes a `sync` operation.
+packer.upgrade = function(...) end
+
+--- Update lockfile with current plugin status
+packer.lockfile = function() end
 
 packer.status = function()
   local async = require('packer.async').sync
