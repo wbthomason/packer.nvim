@@ -670,7 +670,96 @@ end
 -- Takes an optional list of plugin names as an argument. If no list is given, operates on all
 -- managed plugins.
 -- Temporarly disables lockfile and then performes a `sync` operation.
-packer.upgrade = function(...) end
+packer.upgrade = function(...)
+  local log = require_and_configure 'log'
+  log.debug 'packer.update: requiring modules'
+  local plugin_utils = require_and_configure 'plugin_utils'
+  local a = require 'packer.async'
+  local async = a.sync
+  local await = a.wait
+  local luarocks = require_and_configure 'luarocks'
+  local clean = require_and_configure 'clean'
+  local install = require_and_configure 'install'
+  local display = require_and_configure 'display'
+  local update = require_and_configure 'update'
+  local lockfile = require_and_configure 'lockfile'
+
+  manage_all_plugins()
+
+  local update_plugins = args_or_all(...)
+  lockfile.is_updating = true
+  async(function()
+    local start_time = vim.fn.reltime()
+    local results = {}
+    local fs_state = await(plugin_utils.get_fs_state(plugins))
+    local missing_plugins, installed_plugins = util.partition(vim.tbl_keys(fs_state.missing), update_plugins)
+    update.fix_plugin_types(plugins, missing_plugins, results, fs_state)
+    await(clean(plugins, fs_state, results))
+    local _
+    _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)
+    log.debug 'Gathering install tasks'
+    await(a.main)
+    local tasks, display_win = install(plugins, missing_plugins, results)
+    local update_tasks
+    log.debug 'Gathering update tasks'
+    await(a.main)
+    update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
+    vim.list_extend(tasks, update_tasks)
+    log.debug 'Gathering luarocks tasks'
+    local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
+    if luarocks_ensure_task ~= nil then
+      table.insert(tasks, luarocks_ensure_task)
+    end
+    table.insert(tasks, 1, function()
+      return not display.status.running
+    end)
+    table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
+    display_win:update_headline_message('updating ' .. #tasks - 2 .. ' / ' .. #tasks - 2 .. ' plugins')
+    log.debug 'Running tasks'
+    a.interruptible_wait_pool(unpack(tasks))
+    local install_paths = {}
+    for plugin_name, r in pairs(results.installs) do
+      if r.ok then
+        table.insert(install_paths, results.plugins[plugin_name].install_path)
+      end
+    end
+
+    for plugin_name, r in pairs(results.updates) do
+      if r.ok then
+        table.insert(install_paths, results.plugins[plugin_name].install_path)
+      end
+    end
+
+    await(a.main)
+    plugin_utils.update_helptags(install_paths)
+    plugin_utils.update_rplugins()
+    local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
+    display_win:final_results(results, delta)
+    lockfile.is_updating = false
+
+    if config.lockfile.update_on_upgrade then
+      await(lockfile.update(plugins))
+        :map_ok(function(ok)
+          await(a.main)
+          if next(ok.failed) then
+            vim.notify(
+              'Could not update lockfile ' .. vim.inspect(ok.failed),
+              vim.log.levels.INFO,
+              { title = 'packer.nvim' }
+            )
+          else
+            vim.notify('Lockfile updated', vim.log.levels.INFO, { title = 'packer.nvim' })
+          end
+        end)
+        :map_err(function(err)
+          await(a.main)
+          vim.notify(err, vim.log.levels.ERROR, { title = 'packer.nvim' })
+        end)
+    end
+
+    packer.on_complete()
+  end)()
+end
 
 --- Update lockfile with current plugin status
 packer.lockfile = function()

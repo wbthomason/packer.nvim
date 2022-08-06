@@ -14,6 +14,7 @@ end
 
 local lockfile = {
   cfg = cfg,
+  is_updating = false,
 }
 
 local function note_warn(msg)
@@ -75,6 +76,11 @@ lockfile.load = function()
   else
     data = res
   end
+end
+
+lockfile.get = function(name)
+  local res = data[name]
+  return res and res.commit
 end
 
 lockfile.update = function(plugins)

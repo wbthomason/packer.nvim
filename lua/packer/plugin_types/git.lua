@@ -3,6 +3,7 @@ local jobs = require 'packer.jobs'
 local a = require 'packer.async'
 local result = require 'packer.result'
 local log = require 'packer.log'
+local lockfile = require 'packer.lockfile'
 local await = a.wait
 local async = a.sync
 local fmt = string.format
@@ -81,7 +82,17 @@ git.cfg = function(_config)
   config.base_dir = _config.package_root
   config.default_base_dir = util.join_paths(config.base_dir, _config.plugin_package)
   config.exec_cmd = config.cmd .. ' '
+  config.is_lockfile = _config.lockfile.enable
   ensure_git_env()
+end
+
+---Get lockfile hash if lockfile should be applied
+---@param name string
+---@return string|nil
+local function get_lockfile_hash(name)
+  if config.is_lockfile and not lockfile.is_updating then
+    return lockfile.get(name)
+  end
 end
 
 ---Resets a git repo `dest` to `commit`
@@ -147,14 +158,16 @@ local handle_checkouts = function(plugin, dest, disp, opts)
         end)
     end
 
-    if plugin.commit then
+    local commit = plugin.commit or get_lockfile_hash(plugin.short_name)
+    if commit then
       if disp ~= nil then
-        disp:task_update(plugin_name, fmt('checking out %s...', plugin.commit))
+        disp:task_update(plugin_name, fmt('checking out %s...', commit))
       end
-      r:and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, plugin.commit), job_opts))
+      r
+        :and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, commit), opts))
         :map_err(function(err)
           return {
-            msg = fmt('Error checking out commit %s for %s', plugin.commit, plugin_name),
+            msg = fmt('Error checking out commit %s for %s', commit, plugin_name),
             data = err,
             output = output,
           }
@@ -210,16 +223,27 @@ end
 git.setup = function(plugin)
   local plugin_name = util.get_plugin_full_name(plugin)
   local install_to = plugin.install_path
-  local install_cmd =
-    vim.split(config.exec_cmd .. fmt(config.subcommands.install, plugin.commit and 999999 or config.depth), '%s+')
+  local install_cmd
+  if config.is_lockfile then
+    install_cmd = vim.split(config.exec_cmd .. fmt(config.subcommands.install, 999999), '%s+')
+  else
+    install_cmd =
+      vim.split(config.exec_cmd .. fmt(config.subcommands.install, plugin.commit and 999999 or config.depth), '%s+')
+  end
 
   local submodule_cmd = config.exec_cmd .. config.subcommands.submodules
   local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
-  local update_cmd = config.exec_cmd .. config.subcommands.update
+
   local update_head_cmd = config.exec_cmd .. config.subcommands.update_head
-  local fetch_cmd = config.exec_cmd .. config.subcommands.fetch
-  if plugin.commit or plugin.tag then
-    update_cmd = fetch_cmd
+  local update_cmd = config.exec_cmd
+  if config.is_lockfile then
+    update_cmd = update_cmd .. config.subcommands.fetch
+  else
+    if plugin.commit or plugin.tag then
+      update_cmd = update_cmd .. config.subcommands.fetch
+    else
+      update_cmd = update_cmd .. config.subcommands.update
+    end
   end
 
   local branch_cmd = config.exec_cmd .. config.subcommands.current_branch
@@ -258,12 +282,14 @@ git.setup = function(plugin)
       installer_opts.cwd = install_to
       r:and_then(await, jobs.run(submodule_cmd, installer_opts))
 
-      if plugin.commit then
-        disp:task_update(plugin_name, fmt('checking out %s...', plugin.commit))
-        r:and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, plugin.commit), installer_opts))
+      local commit = plugin.commit or get_lockfile_hash(plugin.short_name)
+      if commit then
+        disp:task_update(plugin_name, fmt('checking out %s...', commit))
+        r
+          :and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, commit), installer_opts))
           :map_err(function(err)
             return {
-              msg = fmt('Error checking out commit %s for %s', plugin.commit, plugin_name),
+              msg = fmt('Error checking out commit %s for %s', commit, plugin_name),
               data = { err, output },
             }
           end)
@@ -363,7 +389,7 @@ git.setup = function(plugin)
           end
         end
 
-        if current_branch ~= origin_branch then
+        if current_branch ~= origin_branch or lockfile.is_updating then
           needs_checkout = true
           plugin.branch = origin_branch
         end
