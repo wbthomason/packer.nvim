@@ -16,6 +16,17 @@ local lockfile = {
   cfg = cfg,
 }
 
+local function note_warn(msg)
+  vim.notify(msg, vim.log.levels.WARN, { title = 'packer.nvim' })
+end
+local function note_err(msg)
+  vim.notify(msg, vim.log.levels.ERROR, { title = 'packer.nvim' })
+end
+
+local function dofile_wrap(file)
+  return dofile(file)
+end
+
 local function collect_commits(plugins)
   local completed = {}
   local failed = {}
@@ -49,6 +60,21 @@ local function collect_commits(plugins)
 
     return result.ok { failed = failed, completed = completed }
   end)
+end
+
+lockfile.load = function()
+  local file = config.lockfile.path
+  if vim.loop.fs_stat(file) == nil then
+    note_warn(fmt("Lockfile: '%s' not found. Run `PackerLockfile` to generate", file))
+    return
+  end
+
+  local ok, res = pcall(dofile_wrap, file)
+  if not ok then
+    note_err(fmt("Failed loading '%s' lockfile: '%s'", file, res))
+  else
+    data = res
+  end
 end
 
 lockfile.update = function(plugins)

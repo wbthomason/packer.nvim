@@ -143,7 +143,11 @@ packer.init = function(user_config)
   plugin_utils.ensure_dirs()
 
   require_and_configure 'snapshot'
-  require_and_configure 'lockfile'
+
+  local lockfile = require_and_configure 'lockfile'
+  if config.lockfile.enable then
+    lockfile.load()
+  end
 
   if not config.disable_commands then
     packer.make_commands()
