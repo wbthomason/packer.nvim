@@ -51,10 +51,13 @@ local function collect_commits(plugins)
         end
       else
         local rev = await(plugin.get_rev())
+        local date = await(plugin.get_date())
         if rev.err then
           failed[name] = fmt("Getting rev for '%s' failed because of error '%s'", name, vim.inspect(rev.err))
+        elseif date.err then
+          failed[name] = fmt("Getting date for '%s' failed because of error '%s'", name, vim.inspect(date.err))
         else
-          completed[name] = { commit = rev.ok }
+          completed[name] = { commit = rev.ok, date = date.ok }
         end
       end
     end
@@ -79,8 +82,7 @@ lockfile.load = function()
 end
 
 lockfile.get = function(name)
-  local res = data[name]
-  return res and res.commit
+  return data[name] or {}
 end
 
 lockfile.update = function(plugins)
@@ -89,7 +91,7 @@ lockfile.update = function(plugins)
     local commits = await(collect_commits(plugins))
 
     for name, commit in pairs(commits.ok.completed) do
-      lines[#lines + 1] = fmt([[  ["%s"] = { commit = "%s" },]], name, commit.commit)
+      lines[#lines + 1] = fmt([[  ["%s"] = { commit = "%s", date = %s },]], name, commit.commit, commit.date)
     end
 
     -- Lines are sorted so that the diff will only contain changes not random re-ordering

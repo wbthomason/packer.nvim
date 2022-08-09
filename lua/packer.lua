@@ -29,8 +29,8 @@ local config_defaults = {
     subcommands = {
       update = 'pull --ff-only --progress --rebase=false',
       update_head = 'merge FETCH_HEAD',
-      install = 'clone --depth %i --no-single-branch --progress',
-      fetch = 'fetch --depth 999999 --progress',
+      install = 'clone --no-single-branch --progress',
+      fetch = 'fetch --progress',
       checkout = 'checkout %s --',
       update_branch = 'merge --ff-only @{u}',
       current_branch = 'rev-parse --abbrev-ref HEAD',
@@ -40,6 +40,7 @@ local config_defaults = {
       get_rev = 'rev-parse --short HEAD',
       get_header = 'log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',
       get_bodies = 'log --color=never --pretty=format:"===COMMIT_START===%h%n%s===BODY_START===%b" --no-show-signature HEAD@{1}...HEAD',
+      get_date = 'show -s --format="%ct"',
       get_fetch_bodies = 'log --color=never --pretty=format:"===COMMIT_START===%h%n%s===BODY_START===%b" --no-show-signature HEAD...FETCH_HEAD',
       submodules = 'submodule update --init --recursive --progress',
       revert = 'reset --hard HEAD@{1}',

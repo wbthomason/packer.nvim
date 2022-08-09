@@ -86,13 +86,12 @@ git.cfg = function(_config)
   ensure_git_env()
 end
 
----Get lockfile hash if lockfile should be applied
----@param name string
----@return string|nil
-local function get_lockfile_hash(name)
-  if config.is_lockfile and not lockfile.is_updating then
-    return lockfile.get(name)
-  end
+---Get lockfile info if lockfile should be applied
+---@param plugin table @ plugin being applied
+---@return table @ either table with lockfile info or an empty table
+local function get_lockfile_info(plugin)
+  local use_lockfile = config.is_lockfile and not lockfile.is_updating
+  return use_lockfile and lockfile.get(plugin.short_name) or {}
 end
 
 ---Resets a git repo `dest` to `commit`
@@ -158,7 +157,7 @@ local handle_checkouts = function(plugin, dest, disp, opts)
         end)
     end
 
-    local commit = plugin.commit or get_lockfile_hash(plugin.short_name)
+    local commit = plugin.commit or get_lockfile_info(plugin).commit
     if commit then
       if disp ~= nil then
         disp:task_update(plugin_name, fmt('checking out %s...', commit))
@@ -220,31 +219,50 @@ local split_messages = function(messages)
   return lines
 end
 
+local get_date = function(plugin)
+  local plugin_name = util.get_plugin_full_name(plugin)
+
+  local rev_cmd = config.exec_cmd .. config.subcommands.get_date
+
+  return async(function()
+    local rev = await(jobs.run(rev_cmd, { cwd = plugin.install_path, options = { env = git.job_env }, capture_output = true }))
+      :map_ok(function(ok)
+        local _, r = next(ok.output.data.stdout)
+        return r
+      end)
+      :map_err(function(err)
+        local _, msg = fmt('%s: %s', plugin_name, next(err.output.data.stderr))
+        return msg
+      end)
+
+    return rev
+  end)
+end
+
+local get_depth = function(plugin)
+  if config.is_lockfile then
+    local info = lockfile.get(plugin.short_name)
+    return info.date and fmt('--shallow-since="%s"', info.date) or '--depth=999999'
+  else
+    local depth = plugin.commit and 999999 or config.depth
+    return fmt('--depth="%s"', depth)
+  end
+end
+
 git.setup = function(plugin)
   local plugin_name = util.get_plugin_full_name(plugin)
   local install_to = plugin.install_path
-  local install_cmd
-  if config.is_lockfile then
-    install_cmd = vim.split(config.exec_cmd .. fmt(config.subcommands.install, 999999), '%s+')
-  else
-    install_cmd =
-      vim.split(config.exec_cmd .. fmt(config.subcommands.install, plugin.commit and 999999 or config.depth), '%s+')
-  end
+  local install_cmd = vim.split(config.exec_cmd .. config.subcommands.install, '%s+')
+  install_cmd[#install_cmd + 1] = get_depth(plugin)
 
   local submodule_cmd = config.exec_cmd .. config.subcommands.submodules
   local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
 
   local update_head_cmd = config.exec_cmd .. config.subcommands.update_head
-  local update_cmd = config.exec_cmd
-  if config.is_lockfile then
-    update_cmd = update_cmd .. config.subcommands.fetch
-  else
-    if plugin.commit or plugin.tag then
-      update_cmd = update_cmd .. config.subcommands.fetch
-    else
-      update_cmd = update_cmd .. config.subcommands.update
-    end
-  end
+  local use_fetch = config.is_lockfile or plugin.commit or plugin.tag
+  local update_subcmd = use_fetch and config.subcommands.fetch or config.subcommands.update
+  local update_cmd = vim.split(config.exec_cmd .. update_subcmd, '%s+')
+  update_cmd[#update_cmd + 1] = get_depth(plugin)
 
   local branch_cmd = config.exec_cmd .. config.subcommands.current_branch
   local current_commit_cmd = vim.split(config.exec_cmd .. config.subcommands.get_header, '%s+')
@@ -282,7 +300,7 @@ git.setup = function(plugin)
       installer_opts.cwd = install_to
       r:and_then(await, jobs.run(submodule_cmd, installer_opts))
 
-      local commit = plugin.commit or get_lockfile_hash(plugin.short_name)
+      local commit = plugin.commit or get_lockfile_info(plugin).commit
       if commit then
         disp:task_update(plugin_name, fmt('checking out %s...', commit))
         r
@@ -585,6 +603,12 @@ git.setup = function(plugin)
   ---@return string
   plugin.get_rev = function()
     return get_rev(plugin)
+  end
+
+  ---Returns HEAD's date
+  ---@return string
+  plugin.get_date = function()
+    return get_date(plugin)
   end
 end
 
