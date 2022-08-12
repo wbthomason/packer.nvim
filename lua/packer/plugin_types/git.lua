@@ -242,27 +242,25 @@ end
 local get_depth = function(plugin)
   if config.is_lockfile then
     local info = lockfile.get(plugin.short_name)
-    return info.date and fmt('--shallow-since="%s"', info.date) or '--depth=999999'
+    return info.date and fmt(' --shallow-since="%s"', info.date) or ' --depth=999999'
   else
     local depth = plugin.commit and 999999 or config.depth
-    return fmt('--depth="%s"', depth)
+    return fmt(' --depth="%s"', depth)
   end
 end
 
 git.setup = function(plugin)
+  local depth_opt = get_depth(plugin)
   local plugin_name = util.get_plugin_full_name(plugin)
   local install_to = plugin.install_path
-  local install_cmd = vim.split(config.exec_cmd .. config.subcommands.install, '%s+')
-  install_cmd[#install_cmd + 1] = get_depth(plugin)
+  local install_cmd = vim.split(config.exec_cmd .. config.subcommands.install .. depth_opt, '%s+')
 
   local submodule_cmd = config.exec_cmd .. config.subcommands.submodules
   local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
 
   local update_head_cmd = config.exec_cmd .. config.subcommands.update_head
-  local use_fetch = config.is_lockfile or plugin.commit or plugin.tag
-  local update_subcmd = use_fetch and config.subcommands.fetch or config.subcommands.update
-  local update_cmd = vim.split(config.exec_cmd .. update_subcmd, '%s+')
-  update_cmd[#update_cmd + 1] = get_depth(plugin)
+  local fetch_cmd = vim.split(config.exec_cmd .. config.subcommands.fetch .. depth_opt, '%s+')
+  local pull_cmd = vim.split(config.exec_cmd .. config.subcommands.update .. depth_opt, '%s+')
 
   local branch_cmd = config.exec_cmd .. config.subcommands.current_branch
   local current_commit_cmd = vim.split(config.exec_cmd .. config.subcommands.get_header, '%s+')
@@ -461,11 +459,19 @@ git.setup = function(plugin)
       r:map_err(function(err)
         plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
 
-        return {
-          msg = fmt('Error getting updates for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
-          data = err,
-        }
-      end)
+      local commit = plugin.commit or get_lockfile_info(plugin).commit
+      local update_cmd = commit and fetch_cmd or pull_cmd
+      r
+        :and_then(await, jobs.run(update_cmd, update_opts))
+        :and_then(await, jobs.run(submodule_cmd, update_opts))
+        :map_err(function(err)
+          plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
+
+          return {
+            msg = fmt('Error getting updates for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
+            data = err,
+          }
+        end)
 
       local post_rev_cmd
       if plugin.tag ~= nil then
