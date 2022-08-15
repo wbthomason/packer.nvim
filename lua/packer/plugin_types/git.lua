@@ -245,7 +245,7 @@ local get_depth = function(plugin)
     return info.date and fmt(' --shallow-since="%s"', info.date) or ' --depth=999999'
   else
     local depth = plugin.commit and 999999 or config.depth
-    return fmt(' --depth="%s"', depth)
+    return fmt(' --depth=%s', depth)
   end
 end
 
