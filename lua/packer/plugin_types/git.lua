@@ -52,14 +52,14 @@ local function mark_breaking_commits(plugin, commit_bodies)
     local body = commit_parts[2]
     local lines = vim.split(commit_parts[1], '\n')
     local is_breaking = (
-        body ~= nil
-        and (
-          (string.match(body, breaking_change_pattern) ~= nil)
-          or (string.match(body, break_tag_pattern) ~= nil)
-          or (string.match(body, type_exclam_pattern) ~= nil)
-          or (string.match(body, type_scope_exclam_pattern) ~= nil)
-        )
+      body ~= nil
+      and (
+        (string.match(body, breaking_change_pattern) ~= nil)
+        or (string.match(body, break_tag_pattern) ~= nil)
+        or (string.match(body, type_exclam_pattern) ~= nil)
+        or (string.match(body, type_scope_exclam_pattern) ~= nil)
       )
+    )
       or (
         lines[2] ~= nil
         and (
