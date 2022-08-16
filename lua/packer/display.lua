@@ -715,7 +715,10 @@ local display_mt = {
   continue = function(self)
     local plugins = {}
     for plugin_name, _ in pairs(self.results.updates) do
-      table.insert(plugins, self.items[plugin_name].spec.short_name)
+      local plugin_data = self.items[plugin_name].spec
+      if plugin_data.actual_update then
+        table.insert(plugins, plugin_data.short_name)
+      end
     end
     if #plugins > 0 then
       require('packer').update_head(unpack(plugins))
