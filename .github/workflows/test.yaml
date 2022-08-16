@@ -9,57 +9,28 @@ on:
 jobs:
   build:
     name: Run tests
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
-        neovim_branch: ['v0.5.0', 'v0.6.1', 'master']
-    runs-on: ubuntu-latest
-    env:
-      NEOVIM_BRANCH: ${{ matrix.neovim_branch }}
+        neovim_branch: ["v0.5.0", "v0.6.1", "nightly"]
 
     steps:
       # Checkout packer
       - uses: actions/checkout@v2
 
-      # Copied/adapted from lewis6991/gitsigns.nvim
-      - name: Setup build dependencies
+      # Prepare taken from telescope
+      - name: Prepare
         run: |
-          sudo apt update &&
-          sudo apt install -y \
-            autoconf \
-            automake \
-            cmake \
-            g++ \
-            gettext \
-            gperf \
-            libjemalloc-dev \
-            libluajit-5.1-dev \
-            libmsgpack-dev \
-            libtermkey-dev \
-            libtool \
-            libtool-bin \
-            libunibilium-dev \
-            libvterm-dev \
-            lua-bitop \
-            lua-lpeg \
-            lua-mpack \
-            ninja-build \
-            pkg-config \
-            unzip
-
-      # - name: Cache Neovim
-      #   uses: actions/cache@v2
-      #   with:
-      #     path: neovim
-      #     key: build-${{env.NEOVIM_BRANCH}}
-
-      - name: Build Neovim
-        run: |
-          git clone --depth 1 https://github.com/neovim/neovim --branch ${{env.NEOVIM_BRANCH}}
-          make -C neovim
+          mkdir -p _neovim
+          curl -sL https://github.com/neovim/neovim/releases/download/${{ matrix.neovim_branch }}/nvim-linux64.tar.gz | tar xzf - --strip-components=1 -C "${PWD}/_neovim"
+          mkdir -p ~/.local/share/nvim/site/pack/vendor/start
+          git clone --depth 1 https://github.com/nvim-lua/plenary.nvim ~/.local/share/nvim/site/pack/vendor/start/plenary.nvim
+          ln -s $(pwd) ~/.local/share/nvim/site/pack/vendor/start
 
       - name: Run tests
         run: |
-          export PATH="neovim/build/bin:${PATH}"
-          export VIM="neovim/runtime"
+          export PATH="${PWD}/_neovim/bin:${PATH}"
+          export VIM="${PWD}/_neovim/share/nvim/runtime"
+          nvim --version
           make test

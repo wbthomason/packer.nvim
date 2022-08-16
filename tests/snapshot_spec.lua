@@ -96,6 +96,18 @@ end
 
 local spec = { 'wbthomason/packer.nvim' }
 
+local function exec_cmd(cmd, opts)
+  return async(function()
+    local r = await(jobs.run(cmd, opts))
+    if r.err then
+      print(fmt("Failed on command '%s': %s", cmd, vim.inspect(r.err)))
+    end
+    assert.is_not_nil(r.ok)
+    local _, result = next(r.ok.output.data.stdout)
+    return result
+  end)
+end
+
 local snapshotted_plugins = {}
 a.describe('Packer testing ', function()
   local snapshot_name = 'test'
@@ -144,21 +156,20 @@ a.describe('Packer testing ', function()
     local rollback_snapshot_name = 'rollback_test'
     local rollback_test_path = join_paths(config.snapshot_path, rollback_snapshot_name)
     local prev_commit_cmd = 'git rev-parse --short HEAD~5'
+    local get_rev_cmd = 'git rev-parse --short HEAD'
 
     local opts = { capture_output = true, cwd = spec.install_path, options = { env = git.job_env } }
 
     a.it("restore 'packer' to the commit hash HEAD~5", function()
       async(function()
-        local r = await(jobs.run(prev_commit_cmd, opts))
-        _, snapshotted_plugins['packer.nvim'].commit = next(r.ok.output.data.stdout)
+        local commit = await(exec_cmd(prev_commit_cmd, opts))
+        snapshotted_plugins['packer.nvim'] = { commit = commit }
         await(main)
         local encoded_json = vim.fn.json_encode(snapshotted_plugins)
         vim.fn.writefile({ encoded_json }, rollback_test_path)
-        -- wait_all(snapshot.rollback(rollback_test_path, {spec}))
-        local job = snapshot.rollback(rollback_test_path, { spec })
-        await(job[1])
-        local rev = await(spec.get_rev())
-        assert.are.equals(snapshotted_plugins['packer.nvim'].commit, rev.ok)
+        await(snapshot.rollback(rollback_test_path, { spec }))
+        local rev = await(exec_cmd(get_rev_cmd, opts))
+        assert.are.equals(snapshotted_plugins['packer.nvim'].commit, rev)
       end)()
     end)
   end)
