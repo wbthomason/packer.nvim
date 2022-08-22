@@ -86,7 +86,7 @@ util.get_plugin_full_name = function(plugin)
 end
 
 util.remove_ending_git_url = function(url)
-  return url:find '%s.git$' and url:sub(1, -4) or url
+  return url:find '%.git$' and url:sub(1, -4) or url
 end
 
 util.deep_extend = function(policy, ...)
