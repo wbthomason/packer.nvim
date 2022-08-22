@@ -264,7 +264,7 @@ manage = function(plugin_data)
   end
 
   -- Add the git URL for displaying in PackerStatus and PackerSync.
-  plugins[plugin_spec.short_name].url = plugin_spec.url:gsub('%.git', '')
+  plugins[plugin_spec.short_name].url = util.remove_ending_git_url(plugin_spec.url)
 
   if plugin_spec.requires and config.ensure_dependencies then
     if type(plugin_spec.requires) == 'string' then
