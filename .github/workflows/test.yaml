@@ -1,0 +1,36 @@
+---
+name: CI
+on:
+  pull_request: ~
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Run tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        neovim_branch: ["v0.5.0", "v0.6.1", "nightly"]
+
+    steps:
+      # Checkout packer
+      - uses: actions/checkout@v2
+
+      # Prepare taken from telescope
+      - name: Prepare
+        run: |
+          mkdir -p _neovim
+          curl -sL https://github.com/neovim/neovim/releases/download/${{ matrix.neovim_branch }}/nvim-linux64.tar.gz | tar xzf - --strip-components=1 -C "${PWD}/_neovim"
+          mkdir -p ~/.local/share/nvim/site/pack/vendor/start
+          git clone --depth 1 https://github.com/nvim-lua/plenary.nvim ~/.local/share/nvim/site/pack/vendor/start/plenary.nvim
+          ln -s $(pwd) ~/.local/share/nvim/site/pack/vendor/start
+
+      - name: Run tests
+        run: |
+          export PATH="${PWD}/_neovim/bin:${PATH}"
+          export VIM="${PWD}/_neovim/share/nvim/runtime"
+          nvim --version
+          make test
