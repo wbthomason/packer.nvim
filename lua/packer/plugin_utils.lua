@@ -188,20 +188,23 @@ plugin_utils.load_plugin = function(plugin)
     vim.o.runtimepath = vim.o.runtimepath .. ',' .. plugin.install_path
     for _, pat in ipairs {
       table.concat({ 'plugin', '**/*.vim' }, util.get_separator()),
+      table.concat({ 'plugin', '**/*.lua' }, util.get_separator()),
       table.concat({ 'after', 'plugin', '**/*.vim' }, util.get_separator()),
+      table.concat({ 'after', 'plugin', '**/*.lua' }, util.get_separator()),
     } do
+      local cmd = vim.endswith(pat, 'lua') and 'luafile' or 'source'
       local path = util.join_paths(plugin.install_path, pat)
       local glob_ok, files = pcall(vim.fn.glob, path, false, true)
       if not glob_ok then
         if string.find(files, 'E77') then
-          vim.cmd('silent exe "source ' .. path .. '"')
+          vim.cmd('silent exe "' .. cmd .. ' ' .. path .. '"')
         else
           error(files)
         end
       elseif #files > 0 then
         for _, file in ipairs(files) do
           file = file:gsub('\\', '/')
-          vim.cmd('silent exe "source ' .. file .. '"')
+          vim.cmd('silent exe "' .. cmd .. ' ' .. file .. '"')
         end
       end
     end
