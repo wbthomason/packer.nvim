@@ -130,14 +130,12 @@ local keymaps = {
 
 --- The order of the keys in a dict-like table isn't guaranteed, meaning the display window can
 --- potentially show the keybindings in a different order every time
-local keymap_display_order = {
-  [1] = 'continue',
-  [2] = 'remove',
-  [3] = 'quit',
-  [4] = 'toggle_info',
-  [5] = 'diff',
-  [6] = 'prompt_revert',
-  [7] = 'retry',
+local default_keymap_display_order = {
+  'quit',
+  'toggle_info',
+  'diff',
+  'prompt_revert',
+  'retry',
 }
 
 --- Utility function to prompt a user with a question in a floating window
@@ -389,23 +387,16 @@ local display_mt = {
     self:set_lines(config.header_lines, -1, lines)
   end),
 
-  --- Redraw final results
-  update_final_results = function(self, opts)
-    self:final_results(self.results, self.time, opts)
-  end,
-
   --- Display the final results of an operation
+  -- TODO would be nice to have the option to not show all the commits but just the plugins, one per line
   final_results = vim.schedule_wrap(function(self, results, time, opts)
     opts = opts or {}
-    -- TODO would be nice to have the option to not show all the commits but just the plugins, one per line
-
-    -- TODO how to update the final results in a good way? For now just cache these to allow to call it again
-    self.results = results
-    self.time = time
-
     if not self:valid_display() then
       return
     end
+    local keymap_display_order = {}
+    vim.list_extend(keymap_display_order, default_keymap_display_order)
+    self.results = results
     self:setup_status_syntax()
     display.status.running = false
     time = tonumber(time)
@@ -460,8 +451,9 @@ local display_mt = {
     if results.updates then
       local change_msg = ' %s Updated %s: %s..%s'
       if opts.diff_preview then
-        -- TODO only add keys relevant for diff_preview (continue/remove) here?
         change_msg = ' %s Can update %s: %s..%s'
+        table.insert(keymap_display_order, 1, 'continue')
+        table.insert(keymap_display_order, 2, 'remove')
       end
       for plugin_name, result in pairs(results.updates) do
         local plugin = results.plugins[plugin_name]
@@ -614,7 +606,12 @@ local display_mt = {
       local plugin_data = self.items[plugin_name]
       if plugin_data and plugin_data.spec.actual_update and #plugin_data.lines > 0 then
         self:set_lines(line, line, plugin_data.lines)
-        line = line + #plugin_data.lines + 1
+        local next_line = line + #plugin_data.lines + 1
+        self.marks[plugin_name] = {
+          start = set_extmark(self.buf, self.ns, nil, line - 1, 0),
+          end_ = set_extmark(self.buf, self.ns, nil, next_line - 1, 0),
+        }
+        line = next_line
         plugin_data.displayed = true
       else
         line = line + 1
@@ -709,7 +706,16 @@ local display_mt = {
       return
     end
     self.results.updates[plugin_name] = nil
-    self:update_final_results({diff_preview = true})
+    self:clear_plugin_text(plugin_name)
+  end,
+
+  clear_plugin_text = function(self, plugin_name)
+    local mark_ids = self.marks[plugin_name]
+    local lines = {
+      start = get_extmark_by_id(self.buf, self.ns, mark_ids.start)[1],
+      end_ = get_extmark_by_id(self.buf, self.ns, mark_ids.end_)[1],
+    }
+    self:set_lines(lines.start, lines.end_, {})
   end,
 
   continue = function(self)
