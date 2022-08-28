@@ -584,7 +584,7 @@ packer.sync = function(...)
     local update_tasks
     log.debug 'Gathering update tasks'
     await(a.main)
-    update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
+    update_tasks, display_win = update(plugins, installed_plugins, display_win, results, {})
     vim.list_extend(tasks, update_tasks)
     log.debug 'Gathering luarocks tasks'
     local luarocks_clean_task = luarocks.clean(rocks, results, display_win)
