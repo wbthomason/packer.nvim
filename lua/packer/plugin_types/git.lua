@@ -96,7 +96,7 @@ local function reset(dest, commit)
   end)
 end
 
-local handle_checkouts = function(plugin, dest, disp)
+local handle_checkouts = function(plugin, dest, disp, opts)
   local plugin_name = util.get_plugin_full_name(plugin)
   return async(function()
     if disp ~= nil then
@@ -108,14 +108,14 @@ local handle_checkouts = function(plugin, dest, disp)
       stderr = jobs.logging_callback(output.err.stderr, output.data.stderr),
     }
 
-    local opts = { capture_output = callbacks, cwd = dest, options = { env = git.job_env } }
+    local job_opts = { capture_output = callbacks, cwd = dest, options = { env = git.job_env } }
 
     local r = result.ok()
 
     if plugin.tag and has_wildcard(plugin.tag) then
       disp:task_update(plugin_name, fmt('getting tag for wildcard %s...', plugin.tag))
       local fetch_tags = config.exec_cmd .. fmt(config.subcommands.tags_expand_fmt, plugin.tag)
-      r:and_then(await, jobs.run(fetch_tags, opts))
+      r:and_then(await, jobs.run(fetch_tags, job_opts))
       local data = output.data.stdout[1]
       if data then
         plugin.tag = vim.split(data, '\n')[1]
@@ -127,13 +127,13 @@ local handle_checkouts = function(plugin, dest, disp)
       end
     end
 
-    if plugin.branch or plugin.tag then
+    if plugin.branch or (plugin.tag and not opts.diff_preview) then
       local branch_or_tag = plugin.branch and plugin.branch or plugin.tag
       if disp ~= nil then
         disp:task_update(plugin_name, fmt('checking out %s %s...', plugin.branch and 'branch' or 'tag', branch_or_tag))
       end
       r
-        :and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, branch_or_tag), opts))
+        :and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, branch_or_tag), job_opts))
         :map_err(function(err)
           return {
             msg = fmt(
@@ -153,7 +153,7 @@ local handle_checkouts = function(plugin, dest, disp)
         disp:task_update(plugin_name, fmt('checking out %s...', plugin.commit))
       end
       r
-        :and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, plugin.commit), opts))
+        :and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, plugin.commit), job_opts))
         :map_err(function(err)
           return {
             msg = fmt('Error checking out commit %s for %s', plugin.commit, plugin_name),
@@ -208,7 +208,6 @@ git.setup = function(plugin)
 
   local submodule_cmd = config.exec_cmd .. config.subcommands.submodules
   local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
-  local fetch_rev_cmd = config.exec_cmd .. string.gsub(config.subcommands.get_rev, 'HEAD', 'FETCH_HEAD')
   local update_cmd = config.exec_cmd .. config.subcommands.update
   local update_head_cmd = config.exec_cmd .. config.subcommands.update_head
   local fetch_cmd = config.exec_cmd .. config.subcommands.fetch
@@ -379,7 +378,7 @@ git.setup = function(plugin)
 
       if needs_checkout then
         r:and_then(await, jobs.run(config.exec_cmd .. config.subcommands.fetch, update_opts))
-        r:and_then(await, handle_checkouts(plugin, install_to, disp))
+        r:and_then(await, handle_checkouts(plugin, install_to, disp, opts))
         local function merge_output(res)
           if res.output ~= nil then
             vim.list_extend(update_info.err, res.output.err.stderr)
@@ -426,9 +425,14 @@ git.setup = function(plugin)
           }
         end)
 
-      local post_rev_cmd = rev_cmd
-      if opts.diff_preview then
-        post_rev_cmd = fetch_rev_cmd
+      local post_rev_cmd
+      if plugin.tag ~= nil then
+        -- NOTE that any tag wildcard should already been expanded to a specific commit at this point
+        post_rev_cmd = string.gsub(rev_cmd, 'HEAD', string.format('%s^{}', plugin.tag))
+      elseif opts.diff_preview then
+        post_rev_cmd = string.gsub(rev_cmd, 'HEAD', 'FETCH_HEAD')
+      else
+        post_rev_cmd = rev_cmd
       end
       disp:task_update(plugin_name, 'checking updated commit...')
       r
@@ -454,10 +458,7 @@ git.setup = function(plugin)
           local commit_headers_onread = jobs.logging_callback(update_info.err, update_info.messages)
           local commit_headers_callbacks = { stdout = commit_headers_onread, stderr = commit_headers_onread }
 
-          local diff_cmd = config.subcommands.diff
-          if opts.diff_preview then
-            diff_cmd = config.subcommands.diff_fetch
-          end
+          local diff_cmd = string.format(config.subcommands.diff, update_info.revs[1], update_info.revs[2])
           local commit_headers_cmd = vim.split(config.exec_cmd .. diff_cmd, '%s+')
           for i, arg in ipairs(commit_headers_cmd) do
             commit_headers_cmd[i] = string.gsub(arg, 'FMT', config.subcommands.diff_fmt)
@@ -543,7 +544,7 @@ git.setup = function(plugin)
         jobs.run(revert_cmd, { capture_output = true, cwd = install_to, options = { env = git.job_env } })
       )
       if needs_checkout then
-        r:and_then(await, handle_checkouts(plugin, install_to, nil))
+        r:and_then(await, handle_checkouts(plugin, install_to, nil, {}))
       end
       return r
     end)()

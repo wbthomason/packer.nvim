@@ -76,7 +76,7 @@ local has_changes = function(plugin, opts)
   if plugin.type ~= plugin_utils.git_plugin_type or plugin.revs[1] == plugin.revs[2] then
     return false
   end
-  if opts.diff_preview and (plugin.tag ~= nil or plugin.commit ~= nil) then
+  if opts.diff_preview and plugin.commit ~= nil then
     return false
   end
   return true
