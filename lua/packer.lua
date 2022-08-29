@@ -153,7 +153,9 @@ packer.make_commands = function()
   vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.snapshot PackerSnapshotDelete lua require('packer.snapshot').delete(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete  PackerInstall lua require('packer').install(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)]]
+  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdatePreview lua require('packer').update_preview(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)]]
+  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSyncPreview lua require('packer').sync_preview(<f-args>)]]
   vim.cmd [[command! PackerClean             lua require('packer').clean()]]
   vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
   vim.cmd [[command! PackerStatus            lua require('packer').status()]]
@@ -532,6 +534,8 @@ end
 packer.update = function(...)
   _update({diff_preview = false}, ...)
 end
+--- Update preview operation:
+-- Same as update but preview changes before updating.
 packer.update_preview = function(...)
   _update({diff_preview = true}, ...)
 end
@@ -539,15 +543,7 @@ packer.update_head = function(...)
   _update({pull_head = true}, ...)
 end
 
---- Sync operation:
--- Takes an optional list of plugin names as an argument. If no list is given, operates on all
--- managed plugins.
--- Runs (in sequence):
---  - Update plugin types
---  - Clean stale plugins
---  - Install missing plugins and update installed plugins
---  - Update helptags and rplugins
-packer.sync = function(...)
+local _sync = function(opts, ...)
   local log = require_and_configure 'log'
   log.debug 'packer.sync: requiring modules'
   local plugin_utils = require_and_configure 'plugin_utils'
@@ -584,7 +580,7 @@ packer.sync = function(...)
     local update_tasks
     log.debug 'Gathering update tasks'
     await(a.main)
-    update_tasks, display_win = update(plugins, installed_plugins, display_win, results, {})
+    update_tasks, display_win = update(plugins, installed_plugins, display_win, results, opts)
     vim.list_extend(tasks, update_tasks)
     log.debug 'Gathering luarocks tasks'
     local luarocks_clean_task = luarocks.clean(rocks, results, display_win)
@@ -622,9 +618,26 @@ packer.sync = function(...)
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
-    display_win:final_results(results, delta)
+    display_win:final_results(results, delta, opts)
     packer.on_complete()
   end)()
+end
+
+--- Sync operation:
+-- Takes an optional list of plugin names as an argument. If no list is given, operates on all
+-- managed plugins.
+-- Runs (in sequence):
+--  - Update plugin types
+--  - Clean stale plugins
+--  - Install missing plugins and update installed plugins
+--  - Update helptags and rplugins
+packer.sync = function(...)
+  _sync({diff_preview = false}, ...)
+end
+--- Update preview operation:
+-- Same as update but preview changes before updating.
+packer.sync_preview = function(...)
+  _sync({diff_preview = true}, ...)
 end
 
 packer.status = function()

@@ -72,6 +72,16 @@ local function format_cmd(value)
   return fmt('"%s"', value)
 end
 
+local has_changes = function(plugin, opts)
+  if plugin.type ~= plugin_utils.git_plugin_type or plugin.revs[1] == plugin.revs[2] then
+    return false
+  end
+  if opts.diff_preview and (plugin.tag ~= nil or plugin.commit ~= nil) then
+    return false
+  end
+  return true
+end
+
 ---format a configuration value of unknown type into a string or list of strings
 ---@param key string
 ---@param value any
@@ -461,15 +471,15 @@ local display_mt = {
         local actual_update = true
         local failed_update = false
         if result.ok then
-          if plugin.type ~= plugin_utils.git_plugin_type or plugin.revs[1] == plugin.revs[2] then
-            actual_update = false
-            table.insert(message, fmt(' %s %s is already up to date', config.done_sym, plugin_name))
-          else
+          if has_changes(plugin, opts) then
             table.insert(item_order, plugin_name)
             table.insert(
               message,
               fmt(change_msg, config.done_sym, plugin_name, plugin.revs[1], plugin.revs[2])
             )
+          else
+            actual_update = false
+            table.insert(message, fmt(' %s %s is already up to date', config.done_sym, plugin_name))
           end
         else
           failed_update = true
