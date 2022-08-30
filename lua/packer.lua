@@ -22,6 +22,7 @@ local config_defaults = {
   transitive_opt = true,
   transitive_disable = true,
   auto_reload_compiled = true,
+  rplugin_load_event = 'BufReadPre',
   git = {
     mark_breaking_changes = true,
     cmd = 'git',
