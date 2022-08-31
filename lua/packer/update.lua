@@ -84,7 +84,7 @@ local function update_plugin(plugin, display_win, results, opts)
         local info = r.info
         local actual_update = info.revs[1] ~= info.revs[2]
         msg = actual_update and ('updated: ' .. info.revs[1] .. '...' .. info.revs[2]) or 'already up to date'
-        if actual_update and not opts.diff_preview then
+        if actual_update and not opts.preview_updates then
           log.debug(fmt('Updated %s: %s', plugin_name, vim.inspect(info)))
           r = r:and_then(await, plugin_utils.post_update_hook(plugin, display_win))
         end

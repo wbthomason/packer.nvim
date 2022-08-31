@@ -127,7 +127,7 @@ local handle_checkouts = function(plugin, dest, disp, opts)
       end
     end
 
-    if plugin.branch or (plugin.tag and not opts.diff_preview) then
+    if plugin.branch or (plugin.tag and not opts.preview_updates) then
       local branch_or_tag = plugin.branch and plugin.branch or plugin.tag
       if disp ~= nil then
         disp:task_update(plugin_name, fmt('checking out %s %s...', plugin.branch and 'branch' or 'tag', branch_or_tag))
@@ -402,7 +402,7 @@ git.setup = function(plugin)
 
       disp:task_update(plugin_name, 'fetching updates...')
 
-      if opts.diff_preview then
+      if opts.preview_updates then
         r
           :and_then(await, jobs.run(fetch_cmd, update_opts))
       elseif opts.pull_head then
@@ -429,7 +429,7 @@ git.setup = function(plugin)
       if plugin.tag ~= nil then
         -- NOTE that any tag wildcard should already been expanded to a specific commit at this point
         post_rev_cmd = string.gsub(rev_cmd, 'HEAD', string.format('%s^{}', plugin.tag))
-      elseif opts.diff_preview then
+      elseif opts.preview_updates then
         post_rev_cmd = string.gsub(rev_cmd, 'HEAD', 'FETCH_HEAD')
       else
         post_rev_cmd = rev_cmd
@@ -486,7 +486,7 @@ git.setup = function(plugin)
             local commit_bodies_onread = jobs.logging_callback(commit_bodies.err, commit_bodies.output)
             local commit_bodies_callbacks = { stdout = commit_bodies_onread, stderr = commit_bodies_onread }
             local commit_bodies_cmd = config.exec_cmd .. config.subcommands.get_bodies
-            if opts.diff_preview then
+            if opts.preview_updates then
               commit_bodies_cmd = config.exec_cmd .. config.subcommands.get_bodies_fetch
             end
             disp:task_update(plugin_name, 'checking for breaking changes...')

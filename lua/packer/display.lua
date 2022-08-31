@@ -76,7 +76,7 @@ local has_changes = function(plugin, opts)
   if plugin.type ~= plugin_utils.git_plugin_type or plugin.revs[1] == plugin.revs[2] then
     return false
   end
-  if opts.diff_preview and plugin.commit ~= nil then
+  if opts.preview_updates and plugin.commit ~= nil then
     return false
   end
   return true
@@ -460,7 +460,7 @@ local display_mt = {
 
     if results.updates then
       local change_msg = ' %s Updated %s: %s..%s'
-      if opts.diff_preview then
+      if opts.preview_updates then
         change_msg = ' %s Can update %s: %s..%s'
         table.insert(keymap_display_order, 1, 'continue')
         table.insert(keymap_display_order, 2, 'remove')
@@ -737,7 +737,7 @@ local display_mt = {
       end
     end
     if #plugins > 0 then
-      require('packer').update_head(unpack(plugins))
+      require('packer').update({pull_head = true, preview_updates = false}, unpack(plugins))
     else
       log.warn 'No plugins selected!'
     end

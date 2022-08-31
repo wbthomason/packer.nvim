@@ -188,9 +188,11 @@ end)
 :PackerInstall
 
 -- Clean, then update and install plugins
+-- supports the `--preview` flag as an optional first argument to preview updates
 :PackerUpdate
 
 -- Perform `PackerUpdate` and then `PackerCompile`
+-- supports the `--preview` flag as an optional first argument to preview updates
 :PackerSync
 
 -- Loads opt plugin immediately
@@ -301,6 +303,7 @@ default configuration values (and structure of the configuration table) are:
   transitive_opt = true, -- Make dependencies of opt plugins also opt by default
   transitive_disable = true, -- Automatically disable dependencies of disabled plugins
   auto_reload_compiled = true, -- Automatically reload the compiled file after creating it.
+  preview_updates = true, -- Always preview updates before choosing which plugins to update, same as `PackerUpdate --preview`.
   git = {
     cmd = 'git', -- The base command for git operations
     subcommands = { -- Format strings for git subcommands
@@ -519,8 +522,10 @@ plugins":
 
 - `packer.install(plugins)`: Install the specified plugins if they are not already installed
 - `packer.update(plugins)`: Update the specified plugins, installing any that are missing
+  First argument can be a table specifying options, such as for example `{preview_updates = true}` to preview potential changes before updating (same as `PackerUpdate --preview`).
 - `packer.clean()`: Remove any disabled or no longer managed plugins
-- `packer.sync(plugins)`: Perform a `clean` followed by an `update`
+- `packer.sync(plugins)`: Perform a `clean` followed by an `update`.
+  Can take same optional options as `update`.
 - `packer.compile(path)`: Compile lazy-loader code and save to `path`.
 - `packer.snapshot(snapshot_name, ...)`: Creates a snapshot file that will live under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be taken. Optionally, a list of plugins name can be provided to selectively choose the plugins to snapshot.
 - `packer.rollback(snapshot_name, ...)`: Rollback plugins status a snapshot file that will live under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be taken. Optionally, a list of plugins name can be provided to selectively choose which plugins to revert.

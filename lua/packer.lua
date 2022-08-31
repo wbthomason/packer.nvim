@@ -22,6 +22,7 @@ local config_defaults = {
   transitive_opt = true,
   transitive_disable = true,
   auto_reload_compiled = true,
+  preview_updates = true,
   git = {
     mark_breaking_changes = true,
     cmd = 'git',
@@ -150,11 +151,9 @@ packer.make_commands = function()
   vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.create PackerSnapshot  lua require('packer').snapshot(<f-args>)]]
   vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.rollback PackerSnapshotRollback  lua require('packer').rollback(<f-args>)]]
   vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.snapshot PackerSnapshotDelete lua require('packer.snapshot').delete(<f-args>)]]
-  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete  PackerInstall lua require('packer').install(<f-args>)]]
+  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerInstall lua require('packer').install(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)]]
-  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdatePreview lua require('packer').update_preview(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)]]
-  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSyncPreview lua require('packer').sync_preview(<f-args>)]]
   vim.cmd [[command! PackerClean             lua require('packer').clean()]]
   vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
   vim.cmd [[command! PackerStatus            lua require('packer').status()]]
@@ -382,10 +381,6 @@ packer.clean = function(results)
   end)()
 end
 
-local function args_or_all(...)
-  return util.nonempty_or({ ... }, vim.tbl_keys(plugins))
-end
-
 --- Install operation:
 -- Takes an optional list of plugin names as an argument. If no list is given, operates on all
 -- managed plugins.
@@ -458,7 +453,34 @@ packer.install = function(...)
   end)()
 end
 
-local _update = function(opts, ...)
+-- Filter out options specified as the first argument to update or sync
+-- returns the options table and the plugin names
+local filter_opts_from_plugins = function(...)
+  local args = {...}
+  local opts = {}
+  if not vim.tbl_isempty(args) then
+    local first = args[1]
+    if type(first) == 'table' then
+      table.remove(args, 1)
+      opts = first
+    elseif first == '--preview' then
+      table.remove(args, 1)
+      opts = {preview_updates = true}
+    end
+  end
+  if opts.preview_updates == nil and config.preview_updates then
+    opts.preview_updates = true
+  end
+  return opts, util.nonempty_or(args, vim.tbl_keys(plugins))
+end
+
+--- Update operation:
+-- Takes an optional list of plugin names as an argument. If no list is given, operates on all
+-- managed plugins.
+-- Fixes plugin types, installs missing plugins, then updates installed plugins and updates helptags
+-- and rplugins
+-- Options can be specified in the first argument as either a table or explicit `'--preview'`.
+packer.update = function(...)
   local log = require_and_configure 'log'
   log.debug 'packer.update: requiring modules'
   local plugin_utils = require_and_configure 'plugin_utils'
@@ -473,7 +495,7 @@ local _update = function(opts, ...)
 
   manage_all_plugins()
 
-  local update_plugins = args_or_all(...)
+  local opts, update_plugins = filter_opts_from_plugins(...)
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
@@ -525,24 +547,15 @@ local _update = function(opts, ...)
   end)()
 end
 
---- Update operation:
+--- Sync operation:
 -- Takes an optional list of plugin names as an argument. If no list is given, operates on all
 -- managed plugins.
--- Fixes plugin types, installs missing plugins, then updates installed plugins and updates helptags
--- and rplugins
-packer.update = function(...)
-  _update({diff_preview = false}, ...)
-end
---- Update preview operation:
--- Same as update but preview changes before updating.
-packer.update_preview = function(...)
-  _update({diff_preview = true}, ...)
-end
-packer.update_head = function(...)
-  _update({pull_head = true}, ...)
-end
-
-local _sync = function(opts, ...)
+-- Runs (in sequence):
+--  - Update plugin types
+--  - Clean stale plugins
+--  - Install missing plugins and update installed plugins
+--  - Update helptags and rplugins
+packer.sync = function(...)
   local log = require_and_configure 'log'
   log.debug 'packer.sync: requiring modules'
   local plugin_utils = require_and_configure 'plugin_utils'
@@ -557,7 +570,7 @@ local _sync = function(opts, ...)
 
   manage_all_plugins()
 
-  local sync_plugins = args_or_all(...)
+  local opts, sync_plugins = filter_opts_from_plugins(...)
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
@@ -620,23 +633,6 @@ local _sync = function(opts, ...)
     display_win:final_results(results, delta, opts)
     packer.on_complete()
   end)()
-end
-
---- Sync operation:
--- Takes an optional list of plugin names as an argument. If no list is given, operates on all
--- managed plugins.
--- Runs (in sequence):
---  - Update plugin types
---  - Clean stale plugins
---  - Install missing plugins and update installed plugins
---  - Update helptags and rplugins
-packer.sync = function(...)
-  _sync({diff_preview = false}, ...)
-end
---- Update preview operation:
--- Same as update but preview changes before updating.
-packer.sync_preview = function(...)
-  _sync({diff_preview = true}, ...)
 end
 
 packer.status = function()
