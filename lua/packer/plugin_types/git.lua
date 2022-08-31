@@ -132,8 +132,7 @@ local handle_checkouts = function(plugin, dest, disp)
       if disp ~= nil then
         disp:task_update(plugin_name, fmt('checking out %s %s...', plugin.branch and 'branch' or 'tag', branch_or_tag))
       end
-      r
-        :and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, branch_or_tag), opts))
+      r:and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, branch_or_tag), opts))
         :map_err(function(err)
           return {
             msg = fmt(
@@ -152,8 +151,7 @@ local handle_checkouts = function(plugin, dest, disp)
       if disp ~= nil then
         disp:task_update(plugin_name, fmt('checking out %s...', plugin.commit))
       end
-      r
-        :and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, plugin.commit), opts))
+      r:and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, plugin.commit), opts))
         :map_err(function(err)
           return {
             msg = fmt('Error checking out commit %s for %s', plugin.commit, plugin_name),
@@ -268,8 +266,7 @@ git.setup = function(plugin)
 
       if plugin.commit then
         disp:task_update(plugin_name, fmt('checking out %s...', plugin.commit))
-        r
-          :and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, plugin.commit), installer_opts))
+        r:and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, plugin.commit), installer_opts))
           :map_err(function(err)
             return {
               msg = fmt('Error checking out commit %s for %s', plugin.commit, plugin_name),
@@ -278,8 +275,7 @@ git.setup = function(plugin)
           end)
       end
 
-      r
-        :and_then(await, jobs.run(current_commit_cmd, installer_opts))
+      r:and_then(await, jobs.run(current_commit_cmd, installer_opts))
         :map_ok(function(_)
           plugin.messages = output.data.stdout
         end)
@@ -339,14 +335,13 @@ git.setup = function(plugin)
 
       local current_branch
       disp:task_update(plugin_name, 'checking current branch...')
-      r
-        :and_then(
-          await,
-          jobs.run(
-            branch_cmd,
-            { success_test = exit_ok, capture_output = true, cwd = install_to, options = { env = git.job_env } }
-          )
+      r:and_then(
+        await,
+        jobs.run(
+          branch_cmd,
+          { success_test = exit_ok, capture_output = true, cwd = install_to, options = { env = git.job_env } }
         )
+      )
         :map_ok(function(ok)
           current_branch = ok.output.data.stdout[1]
         end)
@@ -417,8 +412,7 @@ git.setup = function(plugin)
 
       disp:task_update(plugin_name, 'pulling updates...')
 
-      r
-        :and_then(await, jobs.run(update_cmd, update_opts))
+      r:and_then(await, jobs.run(update_cmd, update_opts))
         :and_then(await, jobs.run(submodule_cmd, update_opts))
         :map_err(function(err)
           plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
@@ -430,23 +424,21 @@ git.setup = function(plugin)
         end)
 
       disp:task_update(plugin_name, 'checking updated commit...')
-      r
-        :and_then(
-          await,
-          jobs.run(rev_cmd, {
-            success_test = exit_ok,
-            capture_output = rev_callbacks,
-            cwd = install_to,
-            options = { env = git.job_env },
-          })
-        )
-        :map_err(function(err)
-          plugin.output = { err = vim.list_extend(update_info.err, update_info.revs), data = {} }
-          return {
-            msg = fmt('Error checking updated commit for %s: %s', plugin_name, table.concat(update_info.revs, '\n')),
-            data = err,
-          }
-        end)
+      r:and_then(
+        await,
+        jobs.run(rev_cmd, {
+          success_test = exit_ok,
+          capture_output = rev_callbacks,
+          cwd = install_to,
+          options = { env = git.job_env },
+        })
+      ):map_err(function(err)
+        plugin.output = { err = vim.list_extend(update_info.err, update_info.revs), data = {} }
+        return {
+          msg = fmt('Error checking updated commit for %s: %s', plugin_name, table.concat(update_info.revs, '\n')),
+          data = err,
+        }
+      end)
 
       if r.ok then
         if update_info.revs[1] ~= update_info.revs[2] then
@@ -474,21 +466,19 @@ git.setup = function(plugin)
             local commit_bodies_onread = jobs.logging_callback(commit_bodies.err, commit_bodies.output)
             local commit_bodies_callbacks = { stdout = commit_bodies_onread, stderr = commit_bodies_onread }
             disp:task_update(plugin_name, 'checking for breaking changes...')
-            r
-              :and_then(
-                await,
-                jobs.run(commit_bodies_cmd, {
-                  success_test = exit_ok,
-                  capture_output = commit_bodies_callbacks,
-                  cwd = install_to,
-                  options = { env = git.job_env },
-                })
-              )
-              :map_ok(function(ok)
-                plugin.breaking_commits = {}
-                mark_breaking_commits(plugin, commit_bodies.output)
-                return ok
-              end)
+            r:and_then(
+              await,
+              jobs.run(commit_bodies_cmd, {
+                success_test = exit_ok,
+                capture_output = commit_bodies_callbacks,
+                cwd = install_to,
+                options = { env = git.job_env },
+              })
+            ):map_ok(function(ok)
+              plugin.breaking_commits = {}
+              mark_breaking_commits(plugin, commit_bodies.output)
+              return ok
+            end)
           end
         else
           plugin.revs = update_info.revs

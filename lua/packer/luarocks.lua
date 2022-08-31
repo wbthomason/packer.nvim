@@ -90,8 +90,7 @@ local function hererocks_installer(disp)
       .. lua_version.jit
       .. ' -r latest '
       .. hererocks_install_dir
-    r
-      :and_then(await, jobs.run(luarocks_cmd, opts))
+    r:and_then(await, jobs.run(luarocks_cmd, opts))
       :map_ok(function()
         if disp then
           disp:task_succeeded('luarocks-hererocks', 'installed hererocks!')
@@ -258,17 +257,15 @@ local function install_packages(packages, results, disp)
     for _, package in ipairs(packages) do
       r:and_then(await, luarocks_install(package, results, disp))
     end
-    r
-      :map_ok(function()
-        if disp then
-          disp:task_succeeded('luarocks-install', 'rocks installed!')
-        end
-      end)
-      :map_err(function()
-        if disp then
-          disp:task_failed('luarocks-install', 'installing rocks failed!')
-        end
-      end)
+    r:map_ok(function()
+      if disp then
+        disp:task_succeeded('luarocks-install', 'rocks installed!')
+      end
+    end):map_err(function()
+      if disp then
+        disp:task_failed('luarocks-install', 'installing rocks failed!')
+      end
+    end)
     return r
   end)
 end
@@ -368,17 +365,15 @@ local function uninstall_packages(packages, results, disp)
       local name = type(package) == 'table' and package[1] or package
       r:and_then(await, luarocks_remove(name, results, disp))
     end
-    r
-      :map_ok(function()
-        if disp then
-          disp:task_succeeded('luarocks-remove', 'rocks cleaned!')
-        end
-      end)
-      :map_err(function()
-        if disp then
-          disp:task_failed('luarocks-remove', 'cleaning rocks failed!')
-        end
-      end)
+    r:map_ok(function()
+      if disp then
+        disp:task_succeeded('luarocks-remove', 'rocks cleaned!')
+      end
+    end):map_err(function()
+      if disp then
+        disp:task_failed('luarocks-remove', 'cleaning rocks failed!')
+      end
+    end)
     return r
   end)
 end
