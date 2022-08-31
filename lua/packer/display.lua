@@ -662,18 +662,23 @@ local display_mt = {
 
     local plugin_data = self.items[plugin_name].spec
     local current_line = self:get_current_line()
-    local commit_hash = vim.fn.matchstr(current_line, [[\X*\zs[0-9a-f]\{7,9}]])
-    if not commit_hash then
+    local commit_pattern = [[[0-9a-f]\{7,9}]]
+    local commit_single_pattern = string.format([[\<%s\>]], commit_pattern)
+    local commit_range_pattern = string.format([[\<%s\.\.%s\>]], commit_pattern, commit_pattern)
+    local commit = vim.fn.matchstr(current_line, commit_range_pattern)
+    if commit == '' then
+      commit = vim.fn.matchstr(current_line, commit_single_pattern)
+    end
+    if commit == '' then
       log.warn 'Unable to find the diff for this line'
       return
     end
-    plugin_data.diff(commit_hash, function(diff, err)
+    plugin_data.diff(commit, function(lines, err)
       if err then
         return log.warn 'Unable to get diff!'
       end
-      local lines = vim.split(diff[1], '\n')
       vim.schedule(function()
-        self:open_preview(commit_hash, lines)
+        self:open_preview(commit, lines)
       end)
     end)
   end,
