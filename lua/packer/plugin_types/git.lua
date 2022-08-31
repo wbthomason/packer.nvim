@@ -198,6 +198,14 @@ local get_rev = function(plugin)
   end)
 end
 
+local split_messages = function(messages)
+  local lines = {}
+  for _, message in ipairs(messages) do
+    vim.list_extend(lines, vim.split(message, '\n'))
+  end
+  return lines
+end
+
 git.setup = function(plugin)
   local plugin_name = util.get_plugin_full_name(plugin)
   local install_to = plugin.install_path
@@ -403,7 +411,6 @@ git.setup = function(plugin)
         r:and_then(await, jobs.run(update_head_cmd, update_opts))
       else
         disp:task_update(plugin_name, 'pulling updates...')
-
         r:and_then(await, jobs.run(update_cmd, update_opts)):and_then(await, jobs.run(submodule_cmd, update_opts))
       end
       r:map_err(function(err)
@@ -513,7 +520,7 @@ git.setup = function(plugin)
       local diff_callbacks = { stdout = diff_onread, stderr = diff_onread }
       return await(jobs.run(diff_cmd, { capture_output = diff_callbacks, cwd = install_to, options = { env = git.job_env } }))
         :map_ok(function(_)
-          return callback(diff_info.messages)
+          return callback(split_messages(diff_info.messages))
         end)
         :map_err(function(err)
           return callback(nil, err)
