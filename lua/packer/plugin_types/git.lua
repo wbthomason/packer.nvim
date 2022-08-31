@@ -403,11 +403,11 @@ git.setup = function(plugin)
         end)
       end
 
-      disp:task_update(plugin_name, 'fetching updates...')
-
       if opts.preview_updates then
+        disp:task_update(plugin_name, 'fetching updates...')
         r:and_then(await, jobs.run(fetch_cmd, update_opts))
       elseif opts.pull_head then
+        disp:task_update(plugin_name, 'pulling updates from head...')
         r:and_then(await, jobs.run(update_head_cmd, update_opts))
       else
         disp:task_update(plugin_name, 'pulling updates...')
@@ -417,7 +417,7 @@ git.setup = function(plugin)
         plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
 
         return {
-          msg = fmt('Error fetching updates for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
+          msg = fmt('Error getting updates for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
           data = err,
         }
       end)
