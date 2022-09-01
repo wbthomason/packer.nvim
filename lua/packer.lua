@@ -270,7 +270,7 @@ manage = function(plugin_data)
     -- Handle single plugins given as strings or single plugin specs given as tables
     if
       type(plugin_spec.requires) == 'string'
-      or (type(plugin_spec.requires) == 'table' and #plugin_spec.requires == 1)
+      or (type(plugin_spec.requires) == 'table' and not vim.tbl_islist(plugin_spec.requires) and #plugin_spec.requires == 1)
     then
       plugin_spec.requires = { plugin_spec.requires }
     end
