@@ -85,11 +85,16 @@ local function save_profiles(threshold)
   end
   table.sort(sorted_times, function(a, b) return a[2] > b[2] end)
   local results = {}
+  local total_time = 0
   for i, elem in ipairs(sorted_times) do
     if not threshold or threshold and elem[2] > threshold then
       results[i] = elem[1] .. ' took ' .. elem[2] .. 'ms'
     end
+    total_time = total_time + elem[2]
   end
+
+  results[#results + 1] = ''
+  results[#results + 1] = 'Total time: ' .. total_time .. 'ms'
 
   _G._packer = _G._packer or {}
   _G._packer.profile_output = results
