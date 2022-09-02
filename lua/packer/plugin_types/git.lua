@@ -202,6 +202,7 @@ local split_messages = function(messages)
   local lines = {}
   for _, message in ipairs(messages) do
     vim.list_extend(lines, vim.split(message, '\n'))
+    table.insert(lines, '')
   end
   return lines
 end

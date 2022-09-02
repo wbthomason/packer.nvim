@@ -615,14 +615,20 @@ local display_mt = {
     for _, plugin_name in pairs(self.item_order) do
       local plugin_data = self.items[plugin_name]
       if plugin_data and plugin_data.spec.actual_update and #plugin_data.lines > 0 then
-        self:set_lines(line, line, plugin_data.lines)
-        local next_line = line + #plugin_data.lines + 1
+        local next_line
+        if config.compact then
+          next_line = line + 1
+          plugin_data.displayed = false
+        else
+          self:set_lines(line, line, plugin_data.lines)
+          next_line = line + #plugin_data.lines + 1
+          plugin_data.displayed = true
+        end
         self.marks[plugin_name] = {
           start = set_extmark(self.buf, self.ns, nil, line - 1, 0),
           end_ = set_extmark(self.buf, self.ns, nil, next_line - 1, 0),
         }
         line = next_line
-        plugin_data.displayed = true
       else
         line = line + 1
       end

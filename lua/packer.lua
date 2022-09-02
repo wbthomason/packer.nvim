@@ -52,6 +52,7 @@ local config_defaults = {
   },
   display = {
     non_interactive = false,
+    compact = false,
     open_fn = nil,
     open_cmd = '65vnew',
     working_sym = '⟳',
@@ -278,7 +279,15 @@ manage = function(plugin_data)
   plugins[plugin_spec.short_name].url = util.remove_ending_git_url(plugin_spec.url)
 
   if plugin_spec.requires and config.ensure_dependencies then
-    if type(plugin_spec.requires) == 'string' then
+    -- Handle single plugins given as strings or single plugin specs given as tables
+    if
+      type(plugin_spec.requires) == 'string'
+      or (
+        type(plugin_spec.requires) == 'table'
+        and not vim.tbl_islist(plugin_spec.requires)
+        and #plugin_spec.requires == 1
+      )
+    then
       plugin_spec.requires = { plugin_spec.requires }
     end
     for _, req in ipairs(plugin_spec.requires) do
