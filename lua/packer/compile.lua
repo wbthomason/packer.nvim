@@ -294,7 +294,11 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       if plugin.opt then
         plugin.simple_load = false
         loaders[name].after_files = detect_after_plugin(name, loaders[name].path)
-        loaders[name].needs_bufread = detect_bufread(loaders[name].path)
+        if plugin.bufread ~= nil then
+          loaders[name].needs_bufread = plugin.bufread
+        else
+          loaders[name].needs_bufread = detect_bufread(loaders[name].path)
+        end
       end
 
       if plugin.setup then

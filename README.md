@@ -379,6 +379,7 @@ use {
   after = string or list,      -- Specifies plugins to load before this plugin. See "sequencing" below
   rtp = string,                -- Specifies a subdirectory of the plugin to add to runtimepath.
   opt = boolean,               -- Manually marks a plugin as optional.
+  bufread = boolean,           -- Manually specifying if a plugin needs BufRead after being loaded
   branch = string,             -- Specifies a git branch to use
   tag = string,                -- Specifies a git tag to use. Supports '*' for "latest tag"
   commit = string,             -- Specifies a git commit to use
