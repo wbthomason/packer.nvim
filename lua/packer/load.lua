@@ -151,10 +151,11 @@ packer_load = function(names, cause, plugins, force)
   if not some_unloaded then
     return
   end
+
   if needs_bufread then
-    if vim.g.packer_inside_compile == true then
+    if _G._packer.inside_compile == true then
       -- delaying BufRead to end of packer_compiled
-      vim.g.packer_needs_bufread = true
+      _G._packer.needs_bufread = true
     else
       cmd 'doautocmd BufRead'
     end

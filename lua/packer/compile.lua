@@ -35,16 +35,17 @@ local no_errors, error_msg = pcall(function()
 
 
 local enter_packer_compile = [[
-vim.g.packer_inside_compile = true
+_G._packer = _G._packer or {}
+_G._packer.inside_compile = true
 ]]
 
 local exit_packer_compile = [[
 
-vim.g.packer_inside_compile = false
-if vim.g.packer_needs_bufread == true then
+_G._packer.inside_compile = false
+if _G._packer.needs_bufread == true then
   vim.cmd("doautocmd BufRead")
 end
-vim.g.packer_needs_bufread = false
+_G._packer.needs_bufread = false
 ]]
 
 local catch_errors = [[
@@ -105,7 +106,6 @@ local function save_profiles(threshold)
     end
   end
 
-  _G._packer = _G._packer or {}
   _G._packer.profile_output = results
 end
 ]]
