@@ -521,6 +521,9 @@ packer.update = function(...)
     log.debug 'Gathering update tasks'
     await(a.main)
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results, opts)
+    if update_tasks == nil then
+      return
+    end
     vim.list_extend(tasks, update_tasks)
     log.debug 'Gathering luarocks tasks'
     local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
@@ -602,6 +605,9 @@ packer.sync = function(...)
     log.debug 'Gathering update tasks'
     await(a.main)
     update_tasks, display_win = update(plugins, installed_plugins, display_win, results, opts)
+    if update_tasks == nil then
+      return
+    end
     vim.list_extend(tasks, update_tasks)
     log.debug 'Gathering luarocks tasks'
     local luarocks_clean_task = luarocks.clean(rocks, results, display_win)
