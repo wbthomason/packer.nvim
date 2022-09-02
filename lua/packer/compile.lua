@@ -33,7 +33,6 @@ vim.api.nvim_command('packadd packer.nvim')
 local no_errors, error_msg = pcall(function()
 ]]
 
-
 local enter_packer_compile = [[
 _G._packer = _G._packer or {}
 _G._packer.inside_compile = true
