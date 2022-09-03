@@ -120,9 +120,13 @@ Clean, then install missing plugins.
 
 `PackerUpdate`                                  *packer-commands-update*
 Clean, then update and install plugins.
+Supports the `--preview` flag as an optional first argument to preview
+updates.
 
 `PackerSync`                                    *packer-commands-sync*
 Perform `PackerUpdate` and then `PackerCompile`.
+Supports the `--preview` flag as an optional first argument to preview
+updates.
 
 `PackerLoad`                                    *packer-commands-load*
 Loads opt plugin immediately
@@ -206,6 +210,8 @@ default values: >
     opt_default = false, -- Default to using opt (as opposed to start) plugins
     transitive_opt = true, -- Make dependencies of opt plugins also opt by default
     transitive_disable = true, -- Automatically disable dependencies of disabled plugins
+    auto_reload_compiled = true, -- Automatically reload the compiled file after creating it.
+    preview_updates = false, -- If true, always preview updates before choosing which plugins to update, same as `PackerUpdate --preview`.
     git = {
       cmd = 'git', -- The base command for git operations
       subcommands = { -- Format strings for git subcommands
@@ -228,6 +234,7 @@ default values: >
     log = { level = 'warn' }, -- The default print log level. One of: "trace", "debug", "info", "warn", "error", "fatal".
     display = {
       non_interactive = false, -- If true, disable display windows for all operations
+      compact = false, -- If true, fold updates results by default
       open_fn  = nil, -- An optional function to open a window for packer's display
       open_cmd = '65vnew \\[packer\\]', -- An optional command to open a window for packer's display
       working_sym = '⟳', -- The symbol for a plugin being installed/updated
@@ -536,6 +543,8 @@ details.
 sync()		                                     *packer.sync()*
 `sync` runs |packer.clean()| followed by |packer.update()|.
 
+Supports options as the first argument, see |packer.update()|.
+
 update()		                                   *packer.update()*
 `update` installs any missing plugins, updates all installed plugins, runs
 post-update hooks, and updates rplugins (|remote-plugin|) and helptags.
@@ -543,6 +552,10 @@ post-update hooks, and updates rplugins (|remote-plugin|) and helptags.
 It can be invoked with no arguments or with a list of plugin names to update.
 These plugin names must already be managed by `packer` via a call to
 |packer.use()|.
+
+Additionally, the first argument can be a table specifying options,
+such as `update({preview_updates = true}, ...)` to preview potential changes before updating
+(same as `PackerUpdate --preview`).
 
 snapshot(snapshot_name, ...)		                                *packer.snapshot()*
 `snapshot` takes the rev of all the installed plugins and serializes them into a Lua table which will be saved under `config.snapshot_path` (which is the directory that will hold all the snapshots files) as `config.snapshot_path/<snapshot_name>` or an absolute path provided by the users.
