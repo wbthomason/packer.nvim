@@ -54,6 +54,11 @@ util.get_separator = function()
   return '/'
 end
 
+util.strip_trailing_sep = function(path)
+  local res, _ = string.gsub(path, util.get_separator() .. '$', '', 1)
+  return res
+end
+
 util.join_paths = function(...)
   local separator = util.get_separator()
   return table.concat({ ... }, separator)

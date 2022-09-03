@@ -5,6 +5,7 @@ local result = require 'packer.result'
 
 local async = a.sync
 local await = a.wait
+local fmt = string.format
 
 local config = nil
 local function cfg(_config)
@@ -14,7 +15,7 @@ end
 -- Due to #679, we know that fs_symlink requires admin privileges on Windows. This is a workaround,
 -- as suggested by @nonsleepr.
 
-local symlink_fn
+local symlink_fn unlink_fn
 if util.is_windows then
   symlink_fn = function(path, new_path, flags, callback)
     flags = flags or {}
@@ -28,14 +29,9 @@ end
 local symlink = a.wrap(symlink_fn)
 local unlink = a.wrap(vim.loop.fs_unlink)
 
-local function strip_trailing_sep(path)
-  local res, _ = string.gsub(path, util.get_separator() .. '$', '', 1)
-  return res
-end
-
 local function setup_local(plugin)
-  local from = strip_trailing_sep(plugin.path)
-  local to = strip_trailing_sep(plugin.install_path)
+  local from = util.strip_trailing_sep(plugin.path)
+  local to = util.strip_trailing_sep(plugin.install_path)
 
   local plugin_name = util.get_plugin_full_name(plugin)
   plugin.installer = function(disp)
@@ -52,17 +48,18 @@ local function setup_local(plugin)
 
   plugin.updater = function(disp)
     return async(function()
+      local r = result.ok()
       disp:task_update(plugin_name, 'checking symlink...')
       local resolved_path = vim.fn.resolve(to)
       if resolved_path ~= from then
         disp:task_update(plugin_name, 'updating symlink...')
-        local r = await(unlink(to)):and_then(symlink(from, to, { dir = true }))
-        return r
+        r = await(unlink(to)):and_then(symlink(from, to, { dir = true }))
       end
 
-      return result.ok()
+      return r
     end)
   end
+
   plugin.revert_last = function(_)
     log.warn "Can't revert a local plugin!"
     return result.ok()
