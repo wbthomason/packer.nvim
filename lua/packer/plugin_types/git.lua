@@ -405,7 +405,7 @@ git.setup = function(plugin)
           end
         end
 
-        if current_branch ~= origin_branch or lockfile.is_updating then
+        if current_branch ~= origin_branch or config.is_lockfile then
           needs_checkout = true
           plugin.branch = origin_branch
         end
