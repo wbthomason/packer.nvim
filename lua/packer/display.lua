@@ -398,7 +398,6 @@ local display_mt = {
   end),
 
   --- Display the final results of an operation
-  -- TODO would be nice to have the option to not show all the commits but just the plugins, one per line
   final_results = vim.schedule_wrap(function(self, results, time, opts)
     opts = opts or {}
     if not self:valid_display() then
@@ -675,7 +674,6 @@ local display_mt = {
   end,
 
   diff = function(self)
-    -- TODO show full diff between range of commits <rev1>...<rev2>
     if not self:valid_display() then
       return
     end
