@@ -338,6 +338,8 @@ default configuration values (and structure of the configuration table) are:
     prompt_border = 'double', -- Border style of prompt popups.
     keybindings = { -- Keybindings for the display window
       quit = 'q',
+      toggle_update = 'u', -- only in preview
+      continue = 'c', -- only in preview
       toggle_info = '<CR>',
       diff = 'd',
       prompt_revert = 'r',

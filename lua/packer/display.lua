@@ -72,16 +72,6 @@ local function format_cmd(value)
   return fmt('"%s"', value)
 end
 
-local has_changes = function(plugin, opts)
-  if plugin.type ~= plugin_utils.git_plugin_type or plugin.revs[1] == plugin.revs[2] then
-    return false
-  end
-  if opts.preview_updates and plugin.commit ~= nil then
-    return false
-  end
-  return true
-end
-
 ---format a configuration value of unknown type into a string or list of strings
 ---@param key string
 ---@param value any
@@ -122,7 +112,7 @@ local config = nil
 local keymaps = {
   quit = { rhs = '<cmd>lua require"packer.display".quit()<cr>', action = 'quit' },
   diff = { rhs = '<cmd>lua require"packer.display".diff()<cr>', action = 'show the diff' },
-  remove = { rhs = '<cmd>lua require"packer.display".remove()<cr>', action = 'do not update' },
+  toggle_update = { rhs = '<cmd>lua require"packer.display".toggle_update()<cr>', action = 'toggle update' },
   continue = { rhs = '<cmd>lua require"packer.display".continue()<cr>', action = 'continue with updates' },
   toggle_info = {
     rhs = '<cmd>lua require"packer.display".toggle_info()<cr>',
@@ -212,6 +202,17 @@ local function prompt_user(headline, body, callback)
   )
 end
 
+local make_update_msg = function(symbol, status, plugin_name, plugin)
+  return fmt(
+    ' %s %s %s: %s..%s',
+    symbol,
+    status,
+    plugin_name,
+    plugin.revs[1],
+    plugin.revs[2]
+  )
+end
+
 local display = {}
 local display_mt = {
   --- Check if we have a valid display window
@@ -226,6 +227,12 @@ local display_mt = {
     api.nvim_buf_set_option(self.buf, 'modifiable', true)
     api.nvim_buf_set_lines(self.buf, start_idx, end_idx, true, lines)
     api.nvim_buf_set_option(self.buf, 'modifiable', false)
+  end,
+  get_lines = function(self, start_idx, end_idx)
+    if not self:valid_display() then
+      return
+    end
+    return api.nvim_buf_get_lines(self.buf, start_idx, end_idx, true)
   end,
   get_current_line = function(self)
     if not self:valid_display() then
@@ -397,9 +404,24 @@ local display_mt = {
     self:set_lines(config.header_lines, -1, lines)
   end),
 
+  is_previewing = function(self)
+    local opts = self.opts or {}
+    return opts.preview_updates
+  end,
+
+  has_changes = function(self, plugin)
+    if plugin.type ~= plugin_utils.git_plugin_type or plugin.revs[1] == plugin.revs[2] then
+      return false
+    end
+    if self:is_previewing() and plugin.commit ~= nil then
+      return false
+    end
+    return true
+  end,
+
   --- Display the final results of an operation
   final_results = vim.schedule_wrap(function(self, results, time, opts)
-    opts = opts or {}
+    self.opts = opts
     if not self:valid_display() then
       return
     end
@@ -458,11 +480,11 @@ local display_mt = {
     end
 
     if results.updates then
-      local change_msg = ' %s Updated %s: %s..%s'
-      if opts.preview_updates then
-        change_msg = ' %s Can update %s: %s..%s'
+      local status_msg = 'Updated'
+      if self:is_previewing() then
+        status_msg = 'Can update'
         table.insert(keymap_display_order, 1, 'continue')
-        table.insert(keymap_display_order, 2, 'remove')
+        table.insert(keymap_display_order, 2, 'toggle_update')
       end
       for plugin_name, result in pairs(results.updates) do
         local plugin = results.plugins[plugin_name]
@@ -470,11 +492,11 @@ local display_mt = {
         local actual_update = true
         local failed_update = false
         if result.ok then
-          if has_changes(plugin, opts) then
+          if self:has_changes(plugin) then
             table.insert(item_order, plugin_name)
             table.insert(
               message,
-              fmt(change_msg, config.done_sym, plugin_name, plugin.revs[1], plugin.revs[2])
+              make_update_msg(config.done_sym, status_msg, plugin_name, plugin)
             )
           else
             actual_update = false
@@ -716,32 +738,53 @@ local display_mt = {
     end)
   end,
 
-
-  remove = function(self)
+  toggle_update = function(self)
+    if not self:is_previewing() then
+      return
+    end
     local plugin_name, _ = self:find_nearest_plugin()
     local plugin = self.items[plugin_name]
     if not plugin then
       log.warn 'Plugin not available!'
       return
     end
-    self.results.updates[plugin_name] = nil
-    self:clear_plugin_text(plugin_name)
+    local plugin_data = plugin.spec
+    if not plugin_data.actual_update then
+      return
+    end
+    plugin_data.ignore_update = not plugin_data.ignore_update
+    self:toggle_plugin_text(plugin_name, plugin_data)
   end,
 
-  clear_plugin_text = function(self, plugin_name)
+  toggle_plugin_text = function(self, plugin_name, plugin_data)
     local mark_ids = self.marks[plugin_name]
-    local lines = {
-      start = get_extmark_by_id(self.buf, self.ns, mark_ids.start)[1],
-      end_ = get_extmark_by_id(self.buf, self.ns, mark_ids.end_)[1],
-    }
-    self:set_lines(lines.start, lines.end_, {})
+    local start_idx = get_extmark_by_id(self.buf, self.ns, mark_ids.start)[1]
+    local symbol
+    local status_msg
+    if plugin_data.ignore_update then
+      status_msg = [[Won't update]]
+      symbol = config.item_sym
+    else
+      status_msg = 'Can update'
+      symbol = config.done_sym
+    end
+    self:set_lines(
+      start_idx,
+      start_idx + 1,
+      {make_update_msg(symbol, status_msg, plugin_name, plugin_data)}
+    )
+    -- NOTE we need to reset the mark
+    self.marks[plugin_name].start = set_extmark(self.buf, self.ns, nil, start_idx, 0)
   end,
 
   continue = function(self)
+    if not self:is_previewing() then
+      return
+    end
     local plugins = {}
     for plugin_name, _ in pairs(self.results.updates) do
       local plugin_data = self.items[plugin_name].spec
-      if plugin_data.actual_update then
+      if plugin_data.actual_update and not plugin_data.ignore_update then
         table.insert(plugins, plugin_data.short_name)
       end
     end
@@ -965,9 +1008,9 @@ display.diff = function()
   end
 end
 
-display.remove = function()
+display.toggle_update = function()
   if display.status.disp then
-    display.status.disp:remove()
+    display.status.disp:toggle_update()
   end
 end
 
