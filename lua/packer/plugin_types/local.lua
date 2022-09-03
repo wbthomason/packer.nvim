@@ -5,6 +5,7 @@ local result = require 'packer.result'
 
 local async = a.sync
 local await = a.wait
+local fmt = string.format
 
 local config = nil
 local function cfg(_config)
@@ -26,10 +27,11 @@ else
 end
 
 local symlink = a.wrap(symlink_fn)
+local unlink = a.wrap(vim.loop.fs_unlink)
 
 local function setup_local(plugin)
-  local from = plugin.path
-  local to = plugin.install_path
+  local from = util.strip_trailing_sep(plugin.path)
+  local to = util.strip_trailing_sep(plugin.install_path)
 
   local plugin_name = util.get_plugin_full_name(plugin)
   plugin.installer = function(disp)
@@ -44,11 +46,20 @@ local function setup_local(plugin)
     end)
   end
 
-  plugin.updater = function(_)
+  plugin.updater = function(disp)
     return async(function()
-      return result.ok()
+      local r = result.ok()
+      disp:task_update(plugin_name, 'checking symlink...')
+      local resolved_path = vim.fn.resolve(to)
+      if resolved_path ~= from then
+        disp:task_update(plugin_name, 'updating symlink...')
+        r = await(unlink(to)):and_then(symlink(from, to, { dir = true }))
+      end
+
+      return r
     end)
   end
+
   plugin.revert_last = function(_)
     log.warn "Can't revert a local plugin!"
     return result.ok()
