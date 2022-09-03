@@ -15,7 +15,7 @@ end
 -- Due to #679, we know that fs_symlink requires admin privileges on Windows. This is a workaround,
 -- as suggested by @nonsleepr.
 
-local symlink_fn unlink_fn
+local symlink_fn
 if util.is_windows then
   symlink_fn = function(path, new_path, flags, callback)
     flags = flags or {}
