@@ -371,6 +371,8 @@ local display_mt = {
     self:setup_status_syntax()
     self:update_headline_message(fmt('Total plugins: %d', vim.tbl_count(plugins)))
 
+    local lockfile = require 'packer.lockfile'
+
     local plugs = {}
     local lines = {}
 
@@ -394,9 +396,16 @@ local display_mt = {
             end, details)
             vim.list_extend(config_lines, { fmt('%s%s: ', padding, key), unpack(details) })
           end
-          plugs[plug_name] = { lines = config_lines, displayed = false }
         end
       end
+
+      local lockfile_info = lockfile.get(plug_name)
+      if lockfile_info.commit then
+        vim.list_extend(config_lines, { fmt('%slockfile: %s', padding, lockfile_info.commit) })
+      end
+
+      plugs[plug_name] = { lines = config_lines, displayed = false }
+
       vim.list_extend(lines, header_lines)
     end
     table.sort(lines)
