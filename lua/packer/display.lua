@@ -1,7 +1,12 @@
+local lazy = require 'packer.lazy'
+---@module 'packer.log'
+local log = lazy.require 'packer.log'
+---@module 'packer.async'
+local a = lazy.require 'packer.async'
+---@module 'packer.plugin_utils'
+local plugin_utils = lazy.require 'packer.plugin_utils'
+
 local api = vim.api
-local log = require 'packer.log'
-local a = require 'packer.async'
-local plugin_utils = require 'packer.plugin_utils'
 local fmt = string.format
 
 local in_headless = #api.nvim_list_uis() == 0

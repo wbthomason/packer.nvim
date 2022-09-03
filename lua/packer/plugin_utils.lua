@@ -1,8 +1,14 @@
-local a = require 'packer.async'
-local jobs = require 'packer.jobs'
-local util = require 'packer.util'
-local result = require 'packer.result'
-local log = require 'packer.log'
+local lazy = require 'packer.lazy'
+---@module 'packer.async'
+local a = lazy.require 'packer.async'
+---@module 'packer.jobs'
+local jobs = lazy.require 'packer.jobs'
+---@module 'packer.util'
+local util = lazy.require 'packer.util'
+---@module 'packer.result'
+local result = lazy.require 'packer.result'
+---@module 'packer.log'
+local log = lazy.require 'packer.log'
 
 local await = a.wait
 
@@ -183,12 +189,10 @@ plugin_utils.load_plugin = function(plugin)
     vim.cmd('packadd ' .. plugin.short_name)
   else
     vim.o.runtimepath = vim.o.runtimepath .. ',' .. plugin.install_path
-    for _, pat in
-      ipairs {
-        table.concat({ 'plugin', '**/*.vim' }, util.get_separator()),
-        table.concat({ 'after', 'plugin', '**/*.vim' }, util.get_separator()),
-      }
-    do
+    for _, pat in ipairs {
+      table.concat({ 'plugin', '**/*.vim' }, util.get_separator()),
+      table.concat({ 'after', 'plugin', '**/*.vim' }, util.get_separator()),
+    } do
       local path = util.join_paths(plugin.install_path, pat)
       local glob_ok, files = pcall(vim.fn.glob, path, false, true)
       if not glob_ok then

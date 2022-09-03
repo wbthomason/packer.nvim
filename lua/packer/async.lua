@@ -1,5 +1,8 @@
 -- Adapted from https://ms-jpq.github.io/neovim-async-tutorial/
-local log = require 'packer.log'
+
+local lazy = require 'packer.lazy'
+---@module 'packer.log'
+local log = lazy.require 'packer.log'
 local yield = coroutine.yield
 local resume = coroutine.resume
 local thread_create = coroutine.create

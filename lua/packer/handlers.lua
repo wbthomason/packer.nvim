@@ -78,7 +78,8 @@ local handler_names = {
 
 -- Default handler implementations
 
-local profile = require 'packer.profile'
+local lazy = require 'packer.lazy'
+local profile = lazy.require 'packer.profile'
 local timed_run = profile.timed_run
 local timed_packadd = profile.timed_packadd
 local timed_load = profile.timed_load

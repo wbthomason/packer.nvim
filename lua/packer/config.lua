@@ -1,6 +1,8 @@
 --- Configuration
 
-local path_utils = require 'packer.path'
+local lazy = require 'packer.lazy'
+---@module 'packer.path'
+local path_utils = lazy.require 'packer.path'
 local stdpath = vim.fn.stdpath
 local join_paths = path_utils.join_paths
 local path_separator = path_utils.path_separator

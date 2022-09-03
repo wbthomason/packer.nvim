@@ -1,6 +1,9 @@
 -- TODO: Performance analysis/tuning
 -- TODO: Merge start plugins?
-local util = require 'packer.util'
+local lazy = require 'packer.lazy'
+local util = lazy.require 'packer.util'
+---@module 'packer.async'
+local a = lazy.require 'packer.async'
 
 local join_paths = util.join_paths
 local stdpath = vim.fn.stdpath
@@ -348,7 +351,6 @@ end
 -- Finds plugins present in the `packer` package but not in the managed set
 packer.clean = function(results)
   local plugin_utils = require_and_configure 'plugin_utils'
-  local a = require 'packer.async'
   local async = a.sync
   local await = a.wait
   local luarocks = require_and_configure 'luarocks'
@@ -379,7 +381,6 @@ packer.install = function(...)
   local log = require_and_configure 'log'
   log.debug 'packer.install: requiring modules'
   local plugin_utils = require_and_configure 'plugin_utils'
-  local a = require 'packer.async'
   local async = a.sync
   local await = a.wait
   local luarocks = require_and_configure 'luarocks'
@@ -452,7 +453,6 @@ packer.update = function(...)
   local log = require_and_configure 'log'
   log.debug 'packer.update: requiring modules'
   local plugin_utils = require_and_configure 'plugin_utils'
-  local a = require 'packer.async'
   local async = a.sync
   local await = a.wait
   local luarocks = require_and_configure 'luarocks'
@@ -527,7 +527,6 @@ packer.sync = function(...)
   local log = require_and_configure 'log'
   log.debug 'packer.sync: requiring modules'
   local plugin_utils = require_and_configure 'plugin_utils'
-  local a = require 'packer.async'
   local async = a.sync
   local await = a.wait
   local luarocks = require_and_configure 'luarocks'
@@ -604,7 +603,7 @@ packer.sync = function(...)
 end
 
 packer.status = function()
-  local async = require('packer.async').sync
+  local async = a.sync
   local display = require_and_configure 'display'
   local log = require_and_configure 'log'
   manage_all_plugins()
@@ -679,7 +678,6 @@ end
 packer.compile = function(raw_args, move_plugins)
   local compile = require_and_configure 'compile'
   local log = require_and_configure 'log'
-  local a = require 'packer.async'
   local async = a.sync
   local await = a.wait
   -- TODO: check if the user wants any compilation at all via a new config variable
@@ -745,7 +743,7 @@ packer.compile = function(raw_args, move_plugins)
 end
 
 packer.profile_output = function()
-  local async = require('packer.async').sync
+  local async = a.sync
   local display = require_and_configure 'display'
   local log = require_and_configure 'log'
 
@@ -812,8 +810,7 @@ end
 ---Snapshots installed plugins
 ---@param snapshot_name string absolute path or just a snapshot name
 packer.snapshot = function(snapshot_name, ...)
-  local async = require('packer.async').sync
-  local await = require('packer.async').wait
+  local async, await = a.sync, a.wait
   local snapshot = require 'packer.snapshot'
   local log = require_and_configure 'log'
   local args = { ... }
@@ -885,10 +882,8 @@ end
 ---otherwise all the plugins will be rolled back
 packer.rollback = function(snapshot_name, ...)
   local args = { ... }
-  local a = require 'packer.async'
   local async = a.sync
   local await = a.wait
-  local wait_all = a.wait_all
   local snapshot = require 'packer.snapshot'
   local log = require_and_configure 'log'
   local fmt = string.format

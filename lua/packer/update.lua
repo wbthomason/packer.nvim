@@ -1,9 +1,16 @@
-local util = require 'packer.util'
-local result = require 'packer.result'
-local display = require 'packer.display'
-local a = require 'packer.async'
-local log = require 'packer.log'
-local plugin_utils = require 'packer.plugin_utils'
+local lazy = require 'packer.lazy'
+---@module 'packer.util'
+local util = lazy.require 'packer.util'
+---@module 'packer.result'
+local result = lazy.require 'packer.result'
+---@module 'packer.display'
+local display = lazy.require 'packer.display'
+---@module 'packer.async'
+local a = lazy.require 'packer.async'
+---@module 'packer.log'
+local log = lazy.require 'packer.log'
+---@module 'packer.plugin_utils'
+local plugin_utils = lazy.require 'packer.plugin_utils'
 
 local fmt = string.format
 local async = a.sync
