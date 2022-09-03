@@ -10,6 +10,7 @@ local packer = {}
 local config_defaults = {
   ensure_dependencies = true,
   snapshot = nil,
+  snapshot_commits = {},
   snapshot_path = join_paths(stdpath 'cache', 'packer.nvim'),
   package_root = join_paths(stdpath 'data', 'site', 'pack'),
   compile_path = join_paths(stdpath 'config', 'plugin', 'packer_compiled.lua'),
@@ -135,6 +136,18 @@ packer.init = function(user_config)
   if vim.fn.mkdir(config.snapshot_path, 'p') ~= 1 then
     vim.notify("Couldn't create " .. config.snapshot_path, vim.log.levels.WARN)
   end
+
+  if config.snapshot then
+    local status, content = pcall(function()
+      return vim.fn.readfile(config.snapshot)
+    end)
+    if (status and content ~= nil) then
+      config.snapshot_commits = vim.fn.json_decode(content)
+    else
+      vim.notify("Couldn't read snapshot file " .. config.snapshot, vim.log.levels.WARN)
+    end
+  end
+
 end
 
 packer.make_commands = function()
@@ -226,6 +239,13 @@ manage = function(plugin_data)
   plugin_spec.short_name = name
   plugin_spec.name = path
   plugin_spec.path = path
+
+  if (not plugin_spec.commit and config.snapshot_commits[plugin_spec.short_name] ~= nil) then
+    plugin_spec = vim.tbl_extend('keep', plugin_spec, config.snapshot_commits[plugin_spec.short_name])
+    -- Indicate commit came from the snapshot file rather than specified explicitly
+    -- This is used to control whether plugin is updated or retained at specified commit
+    plugin_spec.snapshot = true
+  end
 
   -- Some config keys modify a plugin type
   if plugin_spec.opt then
