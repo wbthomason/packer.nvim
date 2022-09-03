@@ -483,7 +483,7 @@ git.setup = function(plugin)
             local commit_bodies_callbacks = { stdout = commit_bodies_onread, stderr = commit_bodies_onread }
             local commit_bodies_cmd = config.exec_cmd .. config.subcommands.get_bodies
             if opts.preview_updates then
-              commit_bodies_cmd = config.exec_cmd .. config.subcommands.get_bodies_fetch
+              commit_bodies_cmd = config.exec_cmd .. config.subcommands.get_fetch_bodies
             end
             disp:task_update(plugin_name, 'checking for breaking changes...')
             r:and_then(
