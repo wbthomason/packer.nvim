@@ -99,8 +99,13 @@ log.new = function(config, standalone)
   local console_output = vim.schedule_wrap(function(level_config, info, nameupper, msg)
     local console_lineinfo = vim.fn.fnamemodify(info.short_src, ':t') .. ':' .. info.currentline
     local console_string = string.format('[%-6s%s] %s: %s', nameupper, os.date '%H:%M:%S', console_lineinfo, msg)
-
-    vim.notify(string.format([[[%s] %s]], config.plugin, console_string), vim.log.levels[level_config.name:upper()])
+    -- Heuristic to check for nvim-notify
+    local is_fancy_notify = type(vim.notify) == 'table'
+    vim.notify(
+      string.format([[%s%s]], is_fancy_notify and '' or ('[' .. config.plugin .. '] '), console_string),
+      vim.log.levels[level_config.name:upper()],
+      { title = config.plugin }
+    )
   end)
 
   local log_at_level = function(level, level_config, message_maker, ...)
