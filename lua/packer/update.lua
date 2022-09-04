@@ -67,7 +67,7 @@ local function fix_plugin_types(plugins, plugin_names, results, fs_state)
   log.debug 'Done fixing plugin types'
 end
 
-local function update_plugin(plugin, display_win, results)
+local function update_plugin(plugin, display_win, results, opts)
   local plugin_name = util.get_plugin_full_name(plugin)
   -- TODO: This will have to change when separate packages are implemented
   local install_path = util.join_paths(config.pack_dir, plugin.opt and 'opt' or 'start', plugin.short_name)
@@ -77,14 +77,14 @@ local function update_plugin(plugin, display_win, results)
       return
     end
     display_win:task_start(plugin_name, 'updating...')
-    local r = await(plugin.updater(display_win))
+    local r = await(plugin.updater(display_win, opts))
     if r ~= nil and r.ok then
       local msg = 'up to date'
       if plugin.type == plugin_utils.git_plugin_type then
         local info = r.info
         local actual_update = info.revs[1] ~= info.revs[2]
         msg = actual_update and ('updated: ' .. info.revs[1] .. '...' .. info.revs[2]) or 'already up to date'
-        if actual_update then
+        if actual_update and not opts.preview_updates then
           log.debug(fmt('Updated %s: %s', plugin_name, vim.inspect(info)))
           r = r:and_then(await, plugin_utils.post_update_hook(plugin, display_win))
         end
@@ -107,7 +107,7 @@ local function update_plugin(plugin, display_win, results)
   end)
 end
 
-local function do_update(_, plugins, update_plugins, display_win, results)
+local function do_update(_, plugins, update_plugins, display_win, results, opts)
   results = results or {}
   results.updates = results.updates or {}
   results.plugins = results.plugins or {}
@@ -119,7 +119,7 @@ local function do_update(_, plugins, update_plugins, display_win, results)
         display_win = display.open(config.display.open_fn or config.display.open_cmd)
       end
 
-      table.insert(tasks, update_plugin(plugin, display_win, results))
+      table.insert(tasks, update_plugin(plugin, display_win, results, opts))
     end
   end
 
