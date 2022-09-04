@@ -133,7 +133,7 @@ packer.init = function(user_config)
   end
 
   if vim.fn.mkdir(config.snapshot_path, 'p') ~= 1 then
-    vim.notify("Couldn't create " .. config.snapshot_path, vim.log.levels.WARN)
+    require_and_configure('log').warn("Couldn't create " .. config.snapshot_path)
   end
 end
 
@@ -736,11 +736,7 @@ packer.compile = function(raw_args, move_plugins)
         for _, config_line in ipairs(plugin_config) do
           local success, err = pcall(loadstring(config_line))
           if not success then
-            vim.notify(
-              'Error running config for ' .. plugin_name .. ': ' .. vim.inspect(err),
-              vim.log.levels.ERROR,
-              { title = 'packer.nvim' }
-            )
+            log.error('Error running config for ' .. plugin_name .. ': ' .. vim.inspect(err))
           end
         end
       end
@@ -830,7 +826,7 @@ packer.snapshot = function(snapshot_name, ...)
   log.debug(fmt('Taking snapshots of currently installed plugins to %s...', snapshot_name))
   if vim.fn.fnamemodify(snapshot_name, ':p') ~= snapshot_path then -- is not absolute path
     if config.snapshot_path == nil then
-      vim.notify('config.snapshot_path is not set', vim.log.levels.WARN)
+      log.warn 'config.snapshot_path is not set'
       return
     else
       snapshot_path = util.join_paths(config.snapshot_path, snapshot_path) -- set to default path
@@ -871,14 +867,13 @@ packer.snapshot = function(snapshot_name, ...)
     if write_snapshot then
       await(snapshot.create(snapshot_path, target_plugins))
         :map_ok(function(ok)
-          vim.notify(ok.message, vim.log.levels.INFO, { title = 'packer.nvim' })
-
+          log.info(ok.message)
           if next(ok.failed) then
-            vim.notify("Couldn't snapshot " .. vim.inspect(ok.failed), vim.log.levels.WARN, { title = 'packer.nvim' })
+            log.warn("Couldn't snapshot " .. vim.inspect(ok.failed))
           end
         end)
         :map_err(function(err)
-          vim.notify(err.message, vim.log.levels.WARN, { title = 'packer.nvim' })
+          log.warn(err.message)
         end)
     end
   end)()
@@ -908,7 +903,6 @@ packer.rollback = function(snapshot_name, ...)
     if snapshot_path == nil then
       local warn = fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name)
       log.warn(warn)
-      vim.notify(warn, vim.log.levels.WARN)
       return
     end
 
@@ -928,14 +922,14 @@ packer.rollback = function(snapshot_name, ...)
     await(snapshot.rollback(snapshot_path, target_plugins))
       :map_ok(function(ok)
         await(a.main)
-        vim.notify('Rollback to "' .. snapshot_path .. '" completed', vim.log.levels.INFO, { title = 'packer.nvim' })
+        log.info('Rollback to "' .. snapshot_path .. '" completed')
         if next(ok.failed) then
-          vim.notify("Couldn't rollback " .. vim.inspect(ok.failed), vim.log.levels.INFO, { title = 'packer.nvim' })
+          log.warn("Couldn't rollback " .. vim.inspect(ok.failed))
         end
       end)
       :map_err(function(err)
         await(a.main)
-        vim.notify(err, vim.log.levels.ERROR, { title = 'packer.nvim' })
+        log.error(err)
       end)
 
     packer.on_complete()
