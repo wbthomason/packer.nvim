@@ -50,7 +50,7 @@ local function setup_local(plugin)
     return async(function()
       local r = result.ok()
       disp:task_update(plugin_name, 'checking symlink...')
-      local resolved_path = vim.fn.resolve(to)
+      local resolved_path = vim.loop.fs_realpath(to)
       if resolved_path ~= from then
         disp:task_update(plugin_name, 'updating symlink...')
         r = await(unlink(to)):and_then(symlink(from, to, { dir = true }))
