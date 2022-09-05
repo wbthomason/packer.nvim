@@ -456,8 +456,7 @@ git.setup = function(plugin)
         disp:task_update(plugin_name, 'pulling updates...')
         r:and_then(await, jobs.run(update_cmd, update_opts)):and_then(await, jobs.run(submodule_cmd, update_opts))
       end
-      r:map_err(function(err)
-        plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
+      plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
 
       local commit = plugin.commit or get_lockfile_info(plugin).commit
       local update_cmd = commit and fetch_cmd or pull_cmd
