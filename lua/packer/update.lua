@@ -116,9 +116,8 @@ local function do_update(_, plugins, update_plugins, display_win, results, opts)
     local plugin = plugins[v]
     if plugin == nil then
       log.error(fmt('Unknown plugin %s', v))
-      return
     end
-    if not plugin.frozen then
+    if plugin and not plugin.frozen then
       if display_win == nil then
         display_win = display.open(config.display.open_fn or config.display.open_cmd)
       end
