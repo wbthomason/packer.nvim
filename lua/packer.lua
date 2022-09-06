@@ -527,13 +527,16 @@ packer.update = function(...)
     if luarocks_ensure_task ~= nil then
       table.insert(tasks, luarocks_ensure_task)
     end
+
+    if #tasks == 0 then
+      return
+    end
+
     table.insert(tasks, 1, function()
       return not display.status.running
     end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
-    if #tasks > 0 then
-      display_win:update_headline_message('updating ' .. #tasks - 2 .. ' / ' .. #tasks - 2 .. ' plugins')
-    end
+    display_win:update_headline_message('updating ' .. #tasks - 2 .. ' / ' .. #tasks - 2 .. ' plugins')
     log.debug 'Running tasks'
     a.interruptible_wait_pool(unpack(tasks))
     local install_paths = {}
@@ -553,9 +556,7 @@ packer.update = function(...)
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
-    if #tasks > 0 then
-      display_win:final_results(results, delta, opts)
-    end
+    display_win:final_results(results, delta, opts)
     packer.on_complete()
   end)()
 end
@@ -612,18 +613,21 @@ packer.sync = function(...)
     if luarocks_clean_task ~= nil then
       table.insert(tasks, luarocks_clean_task)
     end
+
     local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
     if luarocks_ensure_task ~= nil then
       table.insert(tasks, luarocks_ensure_task)
     end
+    if #tasks == 0 then
+      return
+    end
+
     table.insert(tasks, 1, function()
       return not display.status.running
     end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     log.debug 'Running tasks'
-    if #tasks > 0 then
-      display_win:update_headline_message('syncing ' .. #tasks - 2 .. ' / ' .. #tasks - 2 .. ' plugins')
-    end
+    display_win:update_headline_message('syncing ' .. #tasks - 2 .. ' / ' .. #tasks - 2 .. ' plugins')
     a.interruptible_wait_pool(unpack(tasks))
     local install_paths = {}
     for plugin_name, r in pairs(results.installs) do
@@ -645,9 +649,7 @@ packer.sync = function(...)
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
-    if #tasks > 0 then
-      display_win:final_results(results, delta, opts)
-    end
+    display_win:final_results(results, delta, opts)
     packer.on_complete()
   end)()
 end
