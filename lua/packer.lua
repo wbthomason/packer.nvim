@@ -465,7 +465,7 @@ end
 -- Filter out options specified as the first argument to update or sync
 -- returns the options table and the plugin names
 local filter_opts_from_plugins = function(...)
-  local args = {...}
+  local args = { ... }
   local opts = {}
   if not vim.tbl_isempty(args) then
     local first = args[1]
@@ -474,7 +474,7 @@ local filter_opts_from_plugins = function(...)
       opts = first
     elseif first == '--preview' then
       table.remove(args, 1)
-      opts = {preview_updates = true}
+      opts = { preview_updates = true }
     end
   end
   if opts.preview_updates == nil and config.preview_updates then
