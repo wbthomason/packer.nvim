@@ -162,8 +162,7 @@ local handle_checkouts = function(plugin, dest, disp, opts)
       if disp ~= nil then
         disp:task_update(plugin_name, fmt('checking out %s...', commit))
       end
-      r
-        :and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, commit), opts))
+      r:and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, commit), opts))
         :map_err(function(err)
           return {
             msg = fmt('Error checking out commit %s for %s', commit, plugin_name),
@@ -301,8 +300,7 @@ git.setup = function(plugin)
       local commit = plugin.commit or get_lockfile_info(plugin).commit
       if commit then
         disp:task_update(plugin_name, fmt('checking out %s...', commit))
-        r
-          :and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, commit), installer_opts))
+        r:and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, commit), installer_opts))
           :map_err(function(err)
             return {
               msg = fmt('Error checking out commit %s for %s', commit, plugin_name),
@@ -460,8 +458,7 @@ git.setup = function(plugin)
 
       local commit = plugin.commit or get_lockfile_info(plugin).commit
       local update_cmd = commit and fetch_cmd or pull_cmd
-      r
-        :and_then(await, jobs.run(update_cmd, update_opts))
+      r:and_then(await, jobs.run(update_cmd, update_opts))
         :and_then(await, jobs.run(submodule_cmd, update_opts))
         :map_err(function(err)
           plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }

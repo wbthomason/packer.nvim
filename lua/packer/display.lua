@@ -203,14 +203,7 @@ local function prompt_user(headline, body, callback)
 end
 
 local make_update_msg = function(symbol, status, plugin_name, plugin)
-  return fmt(
-    ' %s %s %s: %s..%s',
-    symbol,
-    status,
-    plugin_name,
-    plugin.revs[1],
-    plugin.revs[2]
-  )
+  return fmt(' %s %s %s: %s..%s', symbol, status, plugin_name, plugin.revs[1], plugin.revs[2])
 end
 
 local display = {}
@@ -503,10 +496,7 @@ local display_mt = {
         if result.ok then
           if self:has_changes(plugin) then
             table.insert(item_order, plugin_name)
-            table.insert(
-              message,
-              make_update_msg(config.done_sym, status_msg, plugin_name, plugin)
-            )
+            table.insert(message, make_update_msg(config.done_sym, status_msg, plugin_name, plugin))
           else
             actual_update = false
             table.insert(message, fmt(' %s %s is already up to date', config.done_sym, plugin_name))
@@ -777,11 +767,7 @@ local display_mt = {
       status_msg = 'Can update'
       symbol = config.done_sym
     end
-    self:set_lines(
-      start_idx,
-      start_idx + 1,
-      {make_update_msg(symbol, status_msg, plugin_name, plugin_data)}
-    )
+    self:set_lines(start_idx, start_idx + 1, { make_update_msg(symbol, status_msg, plugin_name, plugin_data) })
     -- NOTE we need to reset the mark
     self.marks[plugin_name].start = set_extmark(self.buf, self.ns, nil, start_idx, 0)
   end,
@@ -798,7 +784,7 @@ local display_mt = {
       end
     end
     if #plugins > 0 then
-      require('packer').update({pull_head = true, preview_updates = false}, unpack(plugins))
+      require('packer').update({ pull_head = true, preview_updates = false }, unpack(plugins))
     else
       log.warn 'No plugins selected!'
     end
