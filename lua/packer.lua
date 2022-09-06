@@ -167,11 +167,11 @@ packer.make_commands = function()
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpgrade lua require('packer').upgrade(<f-args>)]]
+  vim.cmd [[command! -nargs=* PackerLockfile lua require('packer').lockfile(<f-args>)]]
   vim.cmd [[command! PackerClean             lua require('packer').clean()]]
   vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
   vim.cmd [[command! PackerStatus            lua require('packer').status()]]
   vim.cmd [[command! PackerProfile           lua require('packer').profile_output()]]
-  vim.cmd [[command! PackerLockfile          lua require('packer').lockfile()]]
   vim.cmd [[command! -bang -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad lua require('packer').loader(<f-args>, '<bang>' == '!')]]
 end
 
@@ -480,20 +480,34 @@ end
 local filter_opts_from_plugins = function(...)
   local args = { ... }
   local opts = {}
+  local plugs = {}
+
+  local unquote = function(str)
+    return str:gsub('"', ''):gsub("'", '')
+  end
+
   if not vim.tbl_isempty(args) then
     local first = args[1]
     if type(first) == 'table' then
-      table.remove(args, 1)
       opts = first
-    elseif first == '--preview' then
       table.remove(args, 1)
-      opts = { preview_updates = true }
+    end
+
+    for _, e in ipairs(args) do
+      if e:sub(1, 2) == '--' then
+        local x = string.find(e, '=', 1, true)
+        if x then
+          opts[string.sub(e, 3, x - 1)] = unquote(string.sub(e, x + 1))
+        else
+          opts[string.sub(e, 3)] = true
+        end
+      else
+        table.insert(plugs, e)
+      end
     end
   end
-  if opts.preview_updates == nil and config.preview_updates then
-    opts.preview_updates = true
-  end
-  return opts, util.nonempty_or(args, vim.tbl_keys(plugins))
+
+  return opts, util.nonempty_or(plugs, vim.tbl_keys(plugins))
 end
 
 --- Update operation:
@@ -518,6 +532,7 @@ packer.update = function(...)
   manage_all_plugins()
 
   local opts, update_plugins = filter_opts_from_plugins(...)
+  opts.preview_updates = opts.preview or config.preview_updates
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
@@ -598,6 +613,7 @@ packer.sync = function(...)
   manage_all_plugins()
 
   local opts, sync_plugins = filter_opts_from_plugins(...)
+  opts.preview_updates = opts.preview or config.preview_updates
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
@@ -736,7 +752,7 @@ packer.upgrade = function(...)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta)
-    lockfile.is_updating = false
+    notify.is_updating = false
 
     if config.lockfile.update_on_upgrade then
       await(lockfile.update(plugins))
@@ -745,7 +761,7 @@ packer.upgrade = function(...)
           if next(ok.failed) then
             log.error('Could not update lockfile ' .. vim.inspect(ok.failed))
           else
-            log.info("Lockfile updated")
+            log.info 'Lockfile updated'
             lockfile.load()
           end
         end)
@@ -760,7 +776,7 @@ packer.upgrade = function(...)
 end
 
 --- Update lockfile with current plugin status
-packer.lockfile = function()
+packer.lockfile = function(...)
   local a = require 'packer.async'
   local async = a.sync
   local await = a.wait
@@ -771,14 +787,13 @@ packer.lockfile = function()
   local lockfile_path = opts.path or config.lockfile.path
   async(function()
     manage_all_plugins()
-
-    await(lockfile.update(plugins))
+    await(lockfile.update(lockfile_path, lockfile_plugins))
       :map_ok(function(ok)
         await(a.main)
         if next(ok.failed) then
           log.error('Could not update lockfile ' .. vim.inspect(ok.failed))
         else
-          log.info 'Lockfile updated'
+          log.info(ok.message)
           lockfile.load()
         end
       end)

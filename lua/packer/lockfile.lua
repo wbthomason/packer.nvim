@@ -79,7 +79,7 @@ lockfile.get = function(name)
   return data[name] or {}
 end
 
-lockfile.update = function(plugins)
+lockfile.update = function(lockfile_path, plugins)
   local lines = {}
   return async(function()
     local commits = await(collect_commits(plugins))
@@ -96,16 +96,16 @@ lockfile.update = function(plugins)
 
     await(a.main)
     local status, res = pcall(function()
-      return vim.fn.writefile(lines, config.lockfile.path) == 0
+      return vim.fn.writefile(lines, lockfile_path) == 0
     end)
 
     if status and res then
       return result.ok {
-        message = fmt('Lockfile written to %s', config.lockfile.path),
+        message = fmt('Lockfile written to %s', lockfile_path),
         failed = commits.ok.failed,
       }
     else
-      return result.err { message = fmt("Error on creating lockfile '%s': '%s'", config.lockfile.path, res) }
+      return result.err { message = fmt("Error on creating lockfile '%s': '%s'", lockfile_path, res) }
     end
   end)
 end
