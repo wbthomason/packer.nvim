@@ -1,4 +1,5 @@
 local a = require 'packer.async'
+local log = require 'packer.log'
 local plugin_utils = require 'packer.plugin_utils'
 local result = require 'packer.result'
 local async = a.sync
@@ -16,13 +17,6 @@ local lockfile = {
   cfg = cfg,
   is_updating = false,
 }
-
-local function note_warn(msg)
-  vim.notify(msg, vim.log.levels.WARN, { title = 'packer.nvim' })
-end
-local function note_err(msg)
-  vim.notify(msg, vim.log.levels.ERROR, { title = 'packer.nvim' })
-end
 
 local function dofile_wrap(file)
   return dofile(file)
@@ -69,13 +63,13 @@ end
 lockfile.load = function()
   local file = config.lockfile.path
   if vim.loop.fs_stat(file) == nil then
-    note_warn(fmt("Lockfile: '%s' not found. Run `PackerLockfile` to generate", file))
+    log.warn(fmt("Lockfile: '%s' not found. Run `PackerLockfile` to generate", file))
     return
   end
 
   local ok, res = pcall(dofile_wrap, file)
   if not ok then
-    note_err(fmt("Failed loading '%s' lockfile: '%s'", file, res))
+    log.error(fmt("Failed loading '%s' lockfile: '%s'", file, res))
   else
     data = res
   end

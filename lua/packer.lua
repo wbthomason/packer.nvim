@@ -743,19 +743,15 @@ packer.upgrade = function(...)
         :map_ok(function(ok)
           await(a.main)
           if next(ok.failed) then
-            vim.notify(
-              'Could not update lockfile ' .. vim.inspect(ok.failed),
-              vim.log.levels.INFO,
-              { title = 'packer.nvim' }
-            )
+            log.error('Could not update lockfile ' .. vim.inspect(ok.failed))
           else
-            vim.notify('Lockfile updated', vim.log.levels.INFO, { title = 'packer.nvim' })
+            log.info("Lockfile updated")
             lockfile.load()
           end
         end)
         :map_err(function(err)
           await(a.main)
-          vim.notify(err, vim.log.levels.ERROR, { title = 'packer.nvim' })
+          log.error(err)
         end)
     end
 
@@ -768,8 +764,11 @@ packer.lockfile = function()
   local a = require 'packer.async'
   local async = a.sync
   local await = a.wait
+  local log = require 'packer.log'
   local lockfile = require_and_configure 'lockfile'
 
+  local opts, lockfile_plugins = filter_opts_from_plugins(...)
+  local lockfile_path = opts.path or config.lockfile.path
   async(function()
     manage_all_plugins()
 
@@ -777,19 +776,15 @@ packer.lockfile = function()
       :map_ok(function(ok)
         await(a.main)
         if next(ok.failed) then
-          vim.notify(
-            'Could not update lockfile ' .. vim.inspect(ok.failed),
-            vim.log.levels.INFO,
-            { title = 'packer.nvim' }
-          )
+          log.error('Could not update lockfile ' .. vim.inspect(ok.failed))
         else
-          vim.notify('Lockfile updated', vim.log.levels.INFO, { title = 'packer.nvim' })
+          log.info 'Lockfile updated'
           lockfile.load()
         end
       end)
       :map_err(function(err)
         await(a.main)
-        vim.notify(err, vim.log.levels.ERROR, { title = 'packer.nvim' })
+        log.error(err)
       end)
   end)()
 end
