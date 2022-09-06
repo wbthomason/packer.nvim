@@ -465,7 +465,7 @@ end
 -- Filter out options specified as the first argument to update or sync
 -- returns the options table and the plugin names
 local filter_opts_from_plugins = function(...)
-  local args = {...}
+  local args = { ... }
   local opts = {}
   if not vim.tbl_isempty(args) then
     local first = args[1]
@@ -474,7 +474,7 @@ local filter_opts_from_plugins = function(...)
       opts = first
     elseif first == '--preview' then
       table.remove(args, 1)
-      opts = {preview_updates = true}
+      opts = { preview_updates = true }
     end
   end
   if opts.preview_updates == nil and config.preview_updates then
@@ -527,6 +527,11 @@ packer.update = function(...)
     if luarocks_ensure_task ~= nil then
       table.insert(tasks, luarocks_ensure_task)
     end
+
+    if #tasks == 0 then
+      return
+    end
+
     table.insert(tasks, 1, function()
       return not display.status.running
     end)
@@ -608,10 +613,15 @@ packer.sync = function(...)
     if luarocks_clean_task ~= nil then
       table.insert(tasks, luarocks_clean_task)
     end
+
     local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
     if luarocks_ensure_task ~= nil then
       table.insert(tasks, luarocks_ensure_task)
     end
+    if #tasks == 0 then
+      return
+    end
+
     table.insert(tasks, 1, function()
       return not display.status.running
     end)
