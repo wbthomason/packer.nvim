@@ -112,7 +112,7 @@ local configurable_modules = {
 }
 
 local install_update_complete_opt_args = {
-  "--preview",
+  '--preview',
   '--nolockfile',
   '--lockfile=',
 }
@@ -198,11 +198,6 @@ packer.init = function(user_config)
   plugin_utils.ensure_dirs()
 
   require_and_configure 'snapshot'
-
-  local lockfile = require_and_configure 'lockfile'
-  if config.lockfile.enable then
-    lockfile.load()
-  end
 
   if not config.disable_commands then
     packer.make_commands()
@@ -476,7 +471,11 @@ packer.install = function(...)
   manage_all_plugins()
 
   local opts, _ = filter_opts_from_pos_args(...)
-  lockfile.is_updating = opts.nolockfile or false
+  if config.lockfile.enable then
+    local lockfile = require_and_configure 'lockfile'
+    lockfile.is_updating = opts.nolockfile or false
+    lockfile.load(opts.lockfile or config.lockfile.path)
+  end
 
   local install_plugins
   if ... then
@@ -551,14 +550,17 @@ packer.update = function(...)
   local install = require_and_configure 'install'
   local display = require_and_configure 'display'
   local update = require_and_configure 'update'
-  local lockfile = require_and_configure 'lockfile'
 
   manage_all_plugins()
 
   local opts, pos_args = filter_opts_from_pos_args(...)
   local update_plugins = util.nonempty_or(pos_args, vim.tbl_keys(plugins))
   opts.preview_updates = opts.preview or config.preview_updates
-  lockfile.is_updating = opts.nolockfile or false
+  if config.lockfile.enable then
+    local lockfile = require_and_configure 'lockfile'
+    lockfile.is_updating = opts.nolockfile or false
+    lockfile.load(opts.lockfile or config.lockfile.path)
+  end
 
   async(function()
     local start_time = vim.fn.reltime()
@@ -636,14 +638,17 @@ packer.sync = function(...)
   local install = require_and_configure 'install'
   local display = require_and_configure 'display'
   local update = require_and_configure 'update'
-  local lockfile = require_and_configure 'lockfile'
 
   manage_all_plugins()
 
   local opts, pos_args = filter_opts_from_pos_args(...)
   local sync_plugins = util.nonempty_or(pos_args, vim.tbl_keys(plugins))
   opts.preview_updates = opts.preview or config.preview_updates
-  lockfile.is_updating = opts.nolockfile or false
+  if config.lockfile.enable then
+    local lockfile = require_and_configure 'lockfile'
+    lockfile.is_updating = opts.nolockfile or false
+    lockfile.load(opts.lockfile or config.lockfile.path)
+  end
 
   async(function()
     local start_time = vim.fn.reltime()
@@ -735,7 +740,6 @@ packer.lockfile = function(...)
           log.error('Could not update lockfile ' .. vim.inspect(ok.failed))
         else
           log.info(ok.message)
-          lockfile.load()
         end
       end)
       :map_err(function(err)

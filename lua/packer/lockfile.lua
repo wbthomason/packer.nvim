@@ -10,7 +10,7 @@ local config = nil
 local data = {}
 
 local function cfg(_config)
-  config = _config
+  config = _config.lockfile
 end
 
 local lockfile = {
@@ -72,16 +72,16 @@ lockfile.completion = function(lead, _, _)
   end
 end
 
-lockfile.load = function()
-  local file = config.lockfile.path
-  if vim.loop.fs_stat(file) == nil then
-    log.warn(fmt("Lockfile: '%s' not found. Run `PackerLockfile` to generate", file))
+lockfile.load = function(path)
+  path = path or config.path
+  if vim.loop.fs_stat(path) == nil then
+    log.warn(fmt("Lockfile: '%s' not found. Run `PackerLockfile` to generate", path))
     return
   end
 
-  local ok, res = pcall(dofile_wrap, file)
+  local ok, res = pcall(dofile_wrap, path)
   if not ok then
-    log.error(fmt("Failed loading '%s' lockfile: '%s'", file, res))
+    log.error(fmt("Failed loading '%s' lockfile: '%s'", path, res))
   else
     data = res
   end
