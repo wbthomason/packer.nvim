@@ -65,6 +65,10 @@ local function collect_commits(plugins)
 end
 
 lockfile.completion = function(lead, _, _)
+  if vim.startswith(lead, '--path=') then
+    return require("packer.util").path_complete(lead)
+  end
+
   if vim.startswith(lead, '-') then
     return vim.tbl_filter(function(name)
       return vim.startswith(name, lead)

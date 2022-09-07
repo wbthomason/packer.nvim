@@ -954,6 +954,9 @@ end
 -- Completion user plugins
 -- Intended to provide completion for PackerUpdate/Sync/Install command
 packer.plugin_complete = function(lead, _, _)
+  if vim.startswith(lead, '--lockfile=') then
+    return require('packer.util').path_complete(lead)
+  end
   if vim.startswith(lead, '-') then
     return vim.tbl_filter(function(name)
       return vim.startswith(name, lead)
