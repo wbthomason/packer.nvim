@@ -162,7 +162,7 @@ local handle_checkouts = function(plugin, dest, disp, opts)
       if disp ~= nil then
         disp:task_update(plugin_name, fmt('checking out %s...', commit))
       end
-      r:and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, commit), opts))
+      r:and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, commit), job_opts))
         :map_err(function(err)
           return {
             msg = fmt('Error checking out commit %s for %s', commit, plugin_name),
@@ -403,7 +403,7 @@ git.setup = function(plugin)
           end
         end
 
-        if current_branch ~= origin_branch or config.is_lockfile then
+        if current_branch ~= origin_branch then
           needs_checkout = true
           plugin.branch = origin_branch
         end
@@ -420,7 +420,10 @@ git.setup = function(plugin)
         options = { env = git.job_env },
       }
 
-      if needs_checkout then
+      local commit = plugin.commit or get_lockfile_info(plugin).commit
+      local update_cmd = commit and fetch_cmd or pull_cmd
+
+      if needs_checkout or commit then
         r:and_then(await, jobs.run(config.exec_cmd .. config.subcommands.fetch, update_opts))
         r:and_then(await, handle_checkouts(plugin, install_to, disp, opts))
         local function merge_output(res)
@@ -454,20 +457,14 @@ git.setup = function(plugin)
         disp:task_update(plugin_name, 'pulling updates...')
         r:and_then(await, jobs.run(update_cmd, update_opts)):and_then(await, jobs.run(submodule_cmd, update_opts))
       end
-      plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
+      r:map_err(function(err)
+        plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
 
-      local commit = plugin.commit or get_lockfile_info(plugin).commit
-      local update_cmd = commit and fetch_cmd or pull_cmd
-      r:and_then(await, jobs.run(update_cmd, update_opts))
-        :and_then(await, jobs.run(submodule_cmd, update_opts))
-        :map_err(function(err)
-          plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
-
-          return {
-            msg = fmt('Error getting updates for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
-            data = err,
-          }
-        end)
+        return {
+          msg = fmt('Error getting updates for %s: %s', plugin_name, table.concat(update_info.output, '\n')),
+          data = err,
+        }
+      end)
 
       local post_rev_cmd
       if plugin.tag ~= nil then
