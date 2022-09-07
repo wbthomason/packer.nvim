@@ -18,6 +18,10 @@ local lockfile = {
   is_updating = false,
 }
 
+local opt_args = {
+  '--path=',
+}
+
 local function dofile_wrap(file)
   return dofile(file)
 end
@@ -58,6 +62,14 @@ local function collect_commits(plugins)
 
     return result.ok { failed = failed, completed = completed }
   end)
+end
+
+lockfile.completion = function(lead, _, _)
+  if vim.startswith(lead, '-') then
+    return vim.tbl_filter(function(name)
+      return vim.startswith(name, lead)
+    end, opt_args)
+  end
 end
 
 lockfile.load = function()

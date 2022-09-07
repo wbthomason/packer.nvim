@@ -111,6 +111,12 @@ local configurable_modules = {
   snapshot = false,
 }
 
+local install_update_complete_opt_args = {
+  "--preview",
+  '--nolockfile',
+  '--lockfile=',
+}
+
 local function require_and_configure(module_name)
   local fully_qualified_name = 'packer.' .. module_name
   local module = require(fully_qualified_name)
@@ -215,7 +221,7 @@ packer.make_commands = function()
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpgrade lua require('packer').upgrade(<f-args>)]]
-  vim.cmd [[command! -nargs=* PackerLockfile lua require('packer').lockfile(<f-args>)]]
+  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer.lockfile'.completion PackerLockfile lua require('packer').lockfile(<f-args>)]]
   vim.cmd [[command! PackerClean             lua require('packer').clean()]]
   vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
   vim.cmd [[command! PackerStatus            lua require('packer').status()]]
@@ -928,6 +934,12 @@ end
 -- Completion user plugins
 -- Intended to provide completion for PackerUpdate/Sync/Install command
 packer.plugin_complete = function(lead, _, _)
+  if vim.startswith(lead, '-') then
+    return vim.tbl_filter(function(name)
+      return vim.startswith(name, lead)
+    end, install_update_complete_opt_args)
+  end
+
   local completion_list = vim.tbl_filter(function(name)
     return vim.startswith(name, lead)
   end, vim.tbl_keys(_G.packer_plugins))
