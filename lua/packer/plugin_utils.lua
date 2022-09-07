@@ -185,7 +185,7 @@ plugin_utils.load_plugin = function(plugin)
   if plugin.opt then
     vim.cmd('packadd ' .. plugin.short_name)
   else
-    vim.o.runtimepath = vim.o.runtimepath .. ',' .. plugin.install_path
+    vim.opt.runtimepath:append(plugin.install_path)
     for _, pat in ipairs {
       table.concat({ 'plugin', '**/*.vim' }, util.get_separator()),
       table.concat({ 'after', 'plugin', '**/*.vim' }, util.get_separator()),

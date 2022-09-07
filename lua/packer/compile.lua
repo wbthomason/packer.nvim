@@ -296,7 +296,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       local path = plugin.install_path
       if plugin.rtp then
         path = util.join_paths(plugin.install_path, plugin.rtp)
-        table.insert(rtps, path)
+        table.insert(rtps, fmt([[vim.opt.runtimepath:append("%s")]], path))
       end
 
       loaders[name] = {
@@ -533,15 +533,6 @@ local function make_loaders(_, plugins, output_lua, should_profile)
     vim.list_extend(config_lines, lines)
   end
 
-  local rtp_line = ''
-  for _, rtp in ipairs(rtps) do
-    rtp_line = rtp_line .. ' .. ",' .. vim.fn.escape(rtp, '\\,') .. '"'
-  end
-
-  if rtp_line ~= '' then
-    rtp_line = 'vim.o.runtimepath = vim.o.runtimepath' .. rtp_line
-  end
-
   local setup_lines = {}
   for name, plugin_setup in pairs(setup) do
     local lines = { '-- Setup for: ' .. name }
@@ -717,9 +708,9 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   timed_chunk(try_loadstring, 'try_loadstring definition', result)
   timed_chunk(fmt('_G.packer_plugins = %s\n', dump_loaders(loaders)), 'Defining packer_plugins', result)
   -- Then the runtimepath line
-  if rtp_line ~= '' then
+  if #rtps > 0 then
     table.insert(result, '-- Runtimepath customization')
-    timed_chunk(rtp_line, 'Runtimepath customization', result)
+    timed_chunk(rtps, 'Runtimepath customization', result)
   end
 
   -- Then the module lazy loads
