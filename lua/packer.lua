@@ -123,6 +123,54 @@ local function require_and_configure(module_name)
   return module
 end
 
+---Filter options, flags and positional arguments from a variadic input.
+---The first argument in the variadic argument may be a table that
+--- options, and flags will be appended to.
+---
+--- Optional arguments are defined prefixed by `--`. There are two types:
+---
+--- - `Options`
+---   - Defined by containing `=` where the lhs is the name and rhs the value.
+---   - Example `--path=/some/path` -> { path = '/some/path' }
+--- - `Flags`
+---   - Defined by just their name. Their value is always set to true
+---   - Example `--nolockfile` -> { nolockfile = true }
+---
+--- - `Positional` arguments dont contain the optional prefix `--`.
+--- @return table, table First table is optional arguments second is positional
+local filter_opts_from_pos_args = function(...)
+  local args = { ... }
+  local opts = {}
+  local pos_args = {}
+
+  local unquote = function(str)
+    return str:gsub('"', ''):gsub("'", '')
+  end
+
+  if not vim.tbl_isempty(args) then
+    local first = args[1]
+    if type(first) == 'table' then
+      opts = first
+      table.remove(args, 1)
+    end
+
+    for _, e in ipairs(args) do
+      if e:sub(1, 2) == '--' then
+        local x = string.find(e, '=', 1, true)
+        if x then
+          opts[string.sub(e, 3, x - 1)] = unquote(string.sub(e, x + 1))
+        else
+          opts[string.sub(e, 3)] = true
+        end
+      else
+        table.insert(pos_args, e)
+      end
+    end
+  end
+
+  return opts, pos_args
+end
+
 --- Initialize packer
 -- Forwards user configuration to sub-modules, resets the set of managed plugins, and ensures that
 -- the necessary package directories exist
@@ -420,6 +468,10 @@ packer.install = function(...)
   local display = require_and_configure 'display'
 
   manage_all_plugins()
+
+  local opts, _ = filter_opts_from_pos_args(...)
+  lockfile.is_updating = opts.nolockfile or false
+
   local install_plugins
   if ... then
     install_plugins = { ... }
@@ -475,41 +527,6 @@ packer.install = function(...)
   end)()
 end
 
--- Filter out options specified as the first argument to update or sync
--- returns the options table and the plugin names
-local filter_opts_from_plugins = function(...)
-  local args = { ... }
-  local opts = {}
-  local plugs = {}
-
-  local unquote = function(str)
-    return str:gsub('"', ''):gsub("'", '')
-  end
-
-  if not vim.tbl_isempty(args) then
-    local first = args[1]
-    if type(first) == 'table' then
-      opts = first
-      table.remove(args, 1)
-    end
-
-    for _, e in ipairs(args) do
-      if e:sub(1, 2) == '--' then
-        local x = string.find(e, '=', 1, true)
-        if x then
-          opts[string.sub(e, 3, x - 1)] = unquote(string.sub(e, x + 1))
-        else
-          opts[string.sub(e, 3)] = true
-        end
-      else
-        table.insert(plugs, e)
-      end
-    end
-  end
-
-  return opts, util.nonempty_or(plugs, vim.tbl_keys(plugins))
-end
-
 --- Update operation:
 -- Takes an optional list of plugin names as an argument. If no list is given, operates on all
 -- managed plugins.
@@ -528,11 +545,15 @@ packer.update = function(...)
   local install = require_and_configure 'install'
   local display = require_and_configure 'display'
   local update = require_and_configure 'update'
+  local lockfile = require_and_configure 'lockfile'
 
   manage_all_plugins()
 
-  local opts, update_plugins = filter_opts_from_plugins(...)
+  local opts, pos_args = filter_opts_from_pos_args(...)
+  local update_plugins = util.nonempty_or(pos_args, vim.tbl_keys(plugins))
   opts.preview_updates = opts.preview or config.preview_updates
+  lockfile.is_updating = opts.nolockfile or false
+
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
@@ -609,11 +630,15 @@ packer.sync = function(...)
   local install = require_and_configure 'install'
   local display = require_and_configure 'display'
   local update = require_and_configure 'update'
+  local lockfile = require_and_configure 'lockfile'
 
   manage_all_plugins()
 
-  local opts, sync_plugins = filter_opts_from_plugins(...)
+  local opts, pos_args = filter_opts_from_pos_args(...)
+  local sync_plugins = util.nonempty_or(pos_args, vim.tbl_keys(plugins))
   opts.preview_updates = opts.preview or config.preview_updates
+  lockfile.is_updating = opts.nolockfile or false
+
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
@@ -683,98 +708,6 @@ packer.sync = function(...)
   end)()
 end
 
---- Upgrade operation:
--- Takes an optional list of plugin names as an argument. If no list is given, operates on all
--- managed plugins.
--- Temporarly disables lockfile and then performes a `sync` operation.
-packer.upgrade = function(...)
-  local log = require_and_configure 'log'
-  log.debug 'packer.update: requiring modules'
-  local plugin_utils = require_and_configure 'plugin_utils'
-  local a = require 'packer.async'
-  local async = a.sync
-  local await = a.wait
-  local luarocks = require_and_configure 'luarocks'
-  local clean = require_and_configure 'clean'
-  local install = require_and_configure 'install'
-  local display = require_and_configure 'display'
-  local update = require_and_configure 'update'
-  local lockfile = require_and_configure 'lockfile'
-
-  manage_all_plugins()
-
-  local update_plugins = args_or_all(...)
-  lockfile.is_updating = true
-  async(function()
-    local start_time = vim.fn.reltime()
-    local results = {}
-    local fs_state = await(plugin_utils.get_fs_state(plugins))
-    local missing_plugins, installed_plugins = util.partition(vim.tbl_keys(fs_state.missing), update_plugins)
-    update.fix_plugin_types(plugins, missing_plugins, results, fs_state)
-    await(clean(plugins, fs_state, results))
-    local _
-    _, missing_plugins = util.partition(vim.tbl_keys(results.moves), missing_plugins)
-    log.debug 'Gathering install tasks'
-    await(a.main)
-    local tasks, display_win = install(plugins, missing_plugins, results)
-    local update_tasks
-    log.debug 'Gathering update tasks'
-    await(a.main)
-    update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
-    vim.list_extend(tasks, update_tasks)
-    log.debug 'Gathering luarocks tasks'
-    local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
-    if luarocks_ensure_task ~= nil then
-      table.insert(tasks, luarocks_ensure_task)
-    end
-    table.insert(tasks, 1, function()
-      return not display.status.running
-    end)
-    table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
-    display_win:update_headline_message('updating ' .. #tasks - 2 .. ' / ' .. #tasks - 2 .. ' plugins')
-    log.debug 'Running tasks'
-    a.interruptible_wait_pool(unpack(tasks))
-    local install_paths = {}
-    for plugin_name, r in pairs(results.installs) do
-      if r.ok then
-        table.insert(install_paths, results.plugins[plugin_name].install_path)
-      end
-    end
-
-    for plugin_name, r in pairs(results.updates) do
-      if r.ok then
-        table.insert(install_paths, results.plugins[plugin_name].install_path)
-      end
-    end
-
-    await(a.main)
-    plugin_utils.update_helptags(install_paths)
-    plugin_utils.update_rplugins()
-    local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
-    display_win:final_results(results, delta)
-    notify.is_updating = false
-
-    if config.lockfile.update_on_upgrade then
-      await(lockfile.update(plugins))
-        :map_ok(function(ok)
-          await(a.main)
-          if next(ok.failed) then
-            log.error('Could not update lockfile ' .. vim.inspect(ok.failed))
-          else
-            log.info 'Lockfile updated'
-            lockfile.load()
-          end
-        end)
-        :map_err(function(err)
-          await(a.main)
-          log.error(err)
-        end)
-    end
-
-    packer.on_complete()
-  end)()
-end
-
 --- Update lockfile with current plugin status
 packer.lockfile = function(...)
   local a = require 'packer.async'
@@ -783,11 +716,13 @@ packer.lockfile = function(...)
   local log = require 'packer.log'
   local lockfile = require_and_configure 'lockfile'
 
-  local opts, lockfile_plugins = filter_opts_from_plugins(...)
+  manage_all_plugins()
+
+  local opts, _ = filter_opts_from_pos_args(...)
   local lockfile_path = opts.path or config.lockfile.path
+
   async(function()
-    manage_all_plugins()
-    await(lockfile.update(lockfile_path, lockfile_plugins))
+    await(lockfile.update(plugins, lockfile_path))
       :map_ok(function(ok)
         await(a.main)
         if next(ok.failed) then
