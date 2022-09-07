@@ -80,7 +80,7 @@ local config_defaults = {
   lockfile = {
     enable = false,
     path = join_paths(stdpath 'config', 'lockfile.lua'),
-    update_on_upgrade = false,
+    regen_on_update = false,
   },
   luarocks = { python_cmd = 'python' },
   log = { level = 'warn' },
@@ -614,6 +614,14 @@ packer.update = function(...)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta, opts)
+
+    if config.lockfile.enable then
+      local lockfile = require_and_configure 'lockfile'
+      if lockfile.is_updating and config.lockfile.regen_on_update then
+        await(lockfile.update(plugins, opts.lockfile or config.lockfile.path))
+      end
+    end
+
     packer.on_complete()
   end)()
 end
@@ -715,6 +723,14 @@ packer.sync = function(...)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta, opts)
+
+    if config.lockfile.enable then
+      local lockfile = require_and_configure 'lockfile'
+      if lockfile.is_updating and config.lockfile.regen_on_update then
+        await(lockfile.update(plugins, opts.lockfile or config.lockfile.path))
+      end
+    end
+
     packer.on_complete()
   end)()
 end
