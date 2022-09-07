@@ -159,12 +159,18 @@ packer.make_commands = function()
   vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
   vim.cmd [[command! PackerStatus            lua require('packer').status()]]
   vim.cmd [[command! PackerProfile           lua require('packer').profile_output()]]
-  vim.api.nvim_create_user_command('PackerLoad', packer.loader,
-  {
-    bang = true,
-    complete = packer.loader_complete,
-    nargs = '*',
-  })
+  if vim.api.nvim_create_user_command then
+    vim.api.nvim_create_user_command('PackerLoad', function(opts)
+      packer.load({plugin_names = opts.fargs, force = opts.bang})
+    end,
+    {
+      bang = true,
+      complete = packer.loader_complete,
+      nargs = '*',
+    })
+  else
+    vim.cmd [[command! -bang -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad lua require('packer').loader(<f-args>, '<bang>' == '!')]]
+  end
 end
 
 packer.reset = function()
@@ -810,9 +816,18 @@ end
 -- @param plugins string String of space separated plugins names
 --                      intended for PackerLoad command
 --                or list of plugin names as independent strings
-packer.loader = function(opts)
-  local plugin_names = opts.fargs
-  local force = opts.bang
+packer.loader = function(...)
+  local plugin_names = { ... }
+  local force = plugin_names[#plugin_names] == true
+  if type(plugin_names[#plugin_names]) == 'boolean' then
+    plugin_names[#plugin_names] = nil
+  end
+  packer.load({plugin_names = plugin_names, force = force})
+end
+
+packer.load = function(opts)
+  local plugin_names = opts.plugin_names
+  local force = opts.force
   if #plugin_names == 0 then
     vim.ui.select(packer.loader_complete(), {
       'Pick plugin to load',
@@ -820,9 +835,9 @@ packer.loader = function(opts)
       if not choice then
         return
       end
-      packer.loader({
-        fargs = {choice},
-        bang = opts.bang,
+      packer.load({
+        plugin_names = {choice},
+        force = opts.force,
       })
     end)
   end
