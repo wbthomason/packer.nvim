@@ -118,33 +118,39 @@ configuration. Regenerate compiled loader file.
 
 `PackerInstall`                                 *packer-commands-install*
 Clean, then install missing plugins.
+Optional arguments:
+    `--nolockfile`                  Do not apply lockfile if enabled
+    `--lockfile=/path/lockfile.lua` Override lockfile used
 
 `PackerUpdate`                                  *packer-commands-update*
 Clean, then update and install plugins.
-Supports the `--preview` flag as an optional first argument to preview
-updates.
+Optional arguments:
+    `--preview`                     Preview updates
+    `--nolockfile`                  Do not apply lockfile if enabled
+    `--lockfile=/path/lockfile.lua` Override lockfile used
 
 `PackerSync`                                    *packer-commands-sync*
 Perform `PackerUpdate` and then `PackerCompile`.
-Supports the `--preview` flag as an optional first argument to preview
-updates.
-
-`PackerUpdate`                                  *packer-commands-upgrade*
-Perform `PackerUpdate` without lockfile.
+Optional arguments:
+    `--preview`                     Preview updates
+    `--nolockfile`                  Do not apply lockfile if enabled
+    `--lockfile=/path/lockfile.lua` Override lockfile used
 
 `PackerLockfile`                                *packer-commands-lockfile*
 Updates lockfile from installed plugins.
+Optional arguments:
+    `--path=/path/lockfile.lua`     Override lockfile output
 
 `PackerLoad`                                    *packer-commands-load*
 Loads opt plugin immediately
 
-`PackerSnapshot`                                    *packer-commands-snapshot*
+`PackerSnapshot`                                *packer-commands-snapshot*
 Snapshots your plugins to a file
 
-`PackerSnapshotDelete`                                    *packer-commands-delete*
+`PackerSnapshotDelete`                          *packer-commands-delete*
 Deletes a snapshot
 
-`PackerSnapshotRollback`                                    *packer-commands-rollback*
+`PackerSnapshotRollback`                        *packer-commands-rollback*
 Rolls back plugins' commit specified by the snapshot
 ==============================================================================
 USAGE                                          *packer-usage*
@@ -197,10 +203,9 @@ commands work well for this purpose: >
   command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete  PackerInstall lua require('packer').install(<f-args>)
   command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)
   command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)
-  command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpgrade lua require('packer').upgrade(<f-args>)
+  command! -nargs=* -complete=customlist,v:lua.require'packer.lockfile'.completion PackerLockfile lua require('packer').lockfile(<f-args>)
   command! PackerClean packadd packer.nvim | lua require('plugins').clean()
   command! PackerCompile packadd packer.nvim | lua require('plugins').compile('~/.config/nvim/plugin/packer_load.vim')
-  command! PackerLockfile packadd packer.nvim | lua require('packer').lockfile()
   command! -bang -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad lua require('packer').loader(<f-args>, '<bang>')
 
 CONFIGURATION                                  *packer-configuration*
@@ -505,10 +510,43 @@ They can be configured by changing the value of `config.display.keybindings`
 Setting any of its keys to `false` will disable the corresponding keybinding.
 
 LOCKFILE                                       *packer-lockfile*
-`packer` provides a `lockfile` to help manage plugin updates. This is useful
-for users that store their configuration in some sort of source repository.
-Committing packer's lockfile will ensure that packer will `install` and
-`update` plugins to known working commits for their configuration.
+`packer` provides a `lockfile` to help manage plugin updates. This is useful for users that store their
+configuration in some sort of source repository. Committing packer's lockfile will ensure that packer will
+`install` and `update` plugins to known working commits for their configuration.
+
+Enabling lockfile support will change the default behavior of `install`, `update`, and `sync` commands.
+If the lockfile contains a plugin, packer will update to that commit instead of the latest changes. If the
+plugin is not found in the lockfile packer will fetch the latest changes.
+
+When wanting to update your local plugins to the latest changes call your packer update command with
+`--nolockfile` argument. This will ignore the lockfile and update your plugins to the latest changes.
+
+Some example commands:
+
+>
+    " Generate the lockfile to lockfile.path defined in packer's config
+    PackerLockfile
+
+    " Generating a lockfile to some other path
+    PackerLockfile --path="/some/other/path.lua"
+
+    " Update plugins to the state defined in lockfile
+    PackerUpdate
+
+    " Updating without applying lockfile
+    PackerUpdate --nolockfile
+
+    " Updating a specific plugin without applying lockfile
+    PackerUpdate --nolockfile plenary.nvim
+
+    " Updating plugins and applying a specific lockfile
+    PackerUpdate --lockfile="/some/other/path.lua"
+
+    " Updating a specific plugin with a specific lockfile
+    PackerUpdate --lockfile="/some/other/path.lua" plenary.nvim
+<
+
+The same options that apply to `PackerUpdate` also apply to `PackerInstall` and `PackerSync`.
 
 USER AUTOCMDS                                  *packer-user-autocmds*
 `packer` runs most of its operations asyncronously. If you would like to
@@ -582,10 +620,6 @@ These plugin names must already be managed by `packer` via a call to
 Additionally, the first argument can be a table specifying options,
 such as `update({preview_updates = true}, ...)` to preview potential changes before updating
 (same as `PackerUpdate --preview`).
-
-upgrade()		                                   *packer.upgrade()*
-`upgrade` performes an `update` without applying the `lockfile`. This will
-update plugins to their latest versions.
 
 snapshot(snapshot_name, ...)		                                *packer.snapshot()*
 `snapshot` takes the rev of all the installed plugins and serializes them into a Lua table which will be saved under `config.snapshot_path` (which is the directory that will hold all the snapshots files) as `config.snapshot_path/<snapshot_name>` or an absolute path provided by the users.
