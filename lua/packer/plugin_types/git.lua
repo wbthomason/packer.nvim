@@ -20,10 +20,11 @@ local blocked_env_vars = {
   GIT_COMMON_DIR = true,
 }
 
-local function ensure_git_env()
+local function ensure_git_env(addl_env)
   if git.job_env == nil then
     local job_env = {}
-    for k, v in pairs(vim.fn.environ()) do
+    local env = vim.tbl_extend('force', vim.fn.environ(), addl_env)
+    for k, v in pairs(env) do
       if not blocked_env_vars[k] then
         table.insert(job_env, k .. '=' .. v)
       end
@@ -81,7 +82,7 @@ git.cfg = function(_config)
   config.base_dir = _config.package_root
   config.default_base_dir = util.join_paths(config.base_dir, _config.plugin_package)
   config.exec_cmd = config.cmd .. ' '
-  ensure_git_env()
+  ensure_git_env(config.env)
 end
 
 ---Resets a git repo `dest` to `commit`

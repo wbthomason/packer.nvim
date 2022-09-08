@@ -49,6 +49,7 @@ local config_defaults = {
     depth = 1,
     clone_timeout = 60,
     default_url_format = 'https://github.com/%s.git',
+    env = {},
   },
   display = {
     non_interactive = false,
