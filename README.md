@@ -523,7 +523,11 @@ with `bax` filetype.
 
 #### Keybindings
 
-Plugins may be lazy-loaded on the use of keybindings/maps. Individual keybindings are specified either as a string (in which case they are treated as normal mode maps) or a table in the format `{mode, map}`.
+Plugins may be lazy-loaded on the use of keybindings/maps. Individual keybindings are specified either as a string (in which case they are treated as normal mode maps) or a table in one of the following formats:
+```lua
+  { key, { mode, key }, ... } -- treated as normal mode if mode is not provided
+  { mode = key, mode = { key, ... }, ... }
+```
 
 ### Performing plugin management operations
 `packer` exposes the following functions for common plugin management operations. In all of the

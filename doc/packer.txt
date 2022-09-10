@@ -388,9 +388,10 @@ only loaded for files with `bax` filetype.
 
 KEYBINDINGS                                    *packer-plugin-keybindings*
 Plugins may be lazy-loaded on the use of keybindings/maps. Individual
-keybindings are specified under the `keys` key in a plugin specification
-either as a string (in which case they are treated as normal mode maps) or a
-table in the format `{mode, map}`.
+keybindings are specified either as a string (in which case they are treated
+as normal mode maps) or a table in one of the following formats: >
+  { key, { mode, key }, ... } -- treated as normal mode if mode is not provided
+  { mode = key, mode = { key, ... }, ... }
 
 LAZY-LOADING                                   *packer-lazy-load*
 To optimize startup time, `packer.nvim` compiles code to perform the
