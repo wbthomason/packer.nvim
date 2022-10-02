@@ -389,7 +389,8 @@ use {
   rocks = string or list,      -- Specifies Luarocks dependencies for the plugin
   config = string or function, -- Specifies code to run after this plugin is loaded.
   -- The setup key implies opt = true
-  setup = string or function,  -- Specifies code to run before this plugin is loaded.
+  setup = string or function,  -- Specifies code to run before this plugin is loaded. The code is ran even if
+                               -- the plugin is waiting for other conditions (ft, cond...) to be met.
   -- The following keys all imply lazy-loading and imply opt = true
   cmd = string or list,        -- Specifies commands which load this plugin. Can be an autocmd pattern.
   ft = string or list,         -- Specifies filetypes which load this plugin.
