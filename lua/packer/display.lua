@@ -85,7 +85,7 @@ local function prompt_user(headline, body, callback)
       string.rep(' ', pad_width) .. headline .. string.rep(' ', pad_width), ''
     }, body))
   api.nvim_buf_set_option(buf, 'modifiable', false)
-  api.nvim_buf_set_option(buf, 'hidden', 'wipe')
+  api.nvim_buf_set_option(buf, 'bufhidden', 'wipe')
   local opts = {
     relative = 'editor',
     width = width,
