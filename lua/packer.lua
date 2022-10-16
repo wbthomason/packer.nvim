@@ -440,7 +440,7 @@ packer.install = function(...)
       end)
       table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
       log.debug 'Running tasks'
-      display_win:update_headline_message('installing ' .. #tasks - 2 .. ' / ' .. #tasks - 2 .. ' plugins')
+      display_win:update_headline_message('installing ' .. #tasks - 3 .. ' / ' .. #tasks - 3 .. ' plugins')
       a.interruptible_wait_pool(unpack(tasks))
       local install_paths = {}
       for plugin_name, r in pairs(results.installs) do
@@ -627,7 +627,7 @@ packer.sync = function(...)
     end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
     log.debug 'Running tasks'
-    display_win:update_headline_message('syncing ' .. #tasks - 2 .. ' / ' .. #tasks - 2 .. ' plugins')
+    display_win:update_headline_message('syncing ' .. #tasks - 4 .. ' / ' .. #tasks - 4 .. ' plugins')
     a.interruptible_wait_pool(unpack(tasks))
     local install_paths = {}
     for plugin_name, r in pairs(results.installs) do
