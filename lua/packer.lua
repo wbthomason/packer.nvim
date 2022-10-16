@@ -536,7 +536,7 @@ packer.update = function(...)
       return not display.status.running
     end)
     table.insert(tasks, 1, config.max_jobs and config.max_jobs or (#tasks - 1))
-    display_win:update_headline_message('updating ' .. #tasks - 2 .. ' / ' .. #tasks - 2 .. ' plugins')
+    display_win:update_headline_message('updating ' .. #tasks - 3 .. ' / ' .. #tasks - 3 .. ' plugins')
     log.debug 'Running tasks'
     a.interruptible_wait_pool(unpack(tasks))
     local install_paths = {}
