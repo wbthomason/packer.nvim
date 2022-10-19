@@ -27,10 +27,10 @@ local config_defaults = {
     mark_breaking_changes = true,
     cmd = 'git',
     subcommands = {
-      update = 'pull --ff-only --progress --rebase=false',
+      update = 'pull --ff-only --progress --rebase=false --force',
       update_head = 'merge FETCH_HEAD',
       install = 'clone --depth %i --no-single-branch --progress',
-      fetch = 'fetch --depth 999999 --progress',
+      fetch = 'fetch --depth 999999 --progress --force',
       checkout = 'checkout %s --',
       update_branch = 'merge --ff-only @{u}',
       current_branch = 'rev-parse --abbrev-ref HEAD',
