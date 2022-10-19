@@ -301,9 +301,9 @@ default configuration values (and structure of the configuration table) are:
   git = {
     cmd = 'git', -- The base command for git operations
     subcommands = { -- Format strings for git subcommands
-      update         = 'pull --ff-only --progress --rebase=false',
+      update         = 'pull --ff-only --progress --rebase=false --force',
       install        = 'clone --depth %i --no-single-branch --progress',
-      fetch          = 'fetch --depth 999999 --progress',
+      fetch          = 'fetch --depth 999999 --progress --force',
       checkout       = 'checkout %s --',
       update_branch  = 'merge --ff-only @{u}',
       current_branch = 'branch --show-current',
