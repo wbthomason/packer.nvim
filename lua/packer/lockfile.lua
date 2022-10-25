@@ -66,7 +66,7 @@ end
 
 lockfile.completion = function(lead, _, _)
   if vim.startswith(lead, '--path=') then
-    return require("packer.util").path_complete(lead)
+    return require('packer.util').path_complete(lead)
   end
 
   if vim.startswith(lead, '-') then

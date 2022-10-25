@@ -499,23 +499,30 @@ git.setup = function(plugin)
 
           local ahead_behind_onread = jobs.logging_callback(update_info.err, update_info.ahead_behind)
           local ahead_behind_callbacks = { stdout = ahead_behind_onread, stderr = ahead_behind_onread }
+          local ahead_behind_cmd = config.exec_cmd .. config.subcommands.commit_count
 
-          local ahead_cmd = string.format(config.exec_cmd .. config.subcommands.commit_count, update_info.revs[1], update_info.revs[2])
-          local behind_cmd = string.format(config.exec_cmd .. config.subcommands.commit_count, update_info.revs[2], update_info.revs[1])
+          local ahead_cmd = fmt(ahead_behind_cmd, update_info.revs[1], update_info.revs[2])
+          local behind_cmd = fmt(ahead_behind_cmd, update_info.revs[2], update_info.revs[1])
 
-          r:and_then(await, jobs.run(ahead_cmd, {
-            success_test = exit_ok,
-            capture_output = ahead_behind_callbacks,
-            cwd = install_to,
-            options = { env = git.job_env }
-          }))
+          r:and_then(
+            await,
+            jobs.run(ahead_cmd, {
+              success_test = exit_ok,
+              capture_output = ahead_behind_callbacks,
+              cwd = install_to,
+              options = { env = git.job_env },
+            })
+          )
 
-          r:and_then(await, jobs.run(behind_cmd, {
-            success_test = exit_ok,
-            capture_output = ahead_behind_callbacks,
-            cwd = install_to,
-            options = { env = git.job_env }
-          }))
+          r:and_then(
+            await,
+            jobs.run(behind_cmd, {
+              success_test = exit_ok,
+              capture_output = ahead_behind_callbacks,
+              cwd = install_to,
+              options = { env = git.job_env },
+            })
+          )
 
           update_info.ahead_behind[1] = tonumber(update_info.ahead_behind[1])
           update_info.ahead_behind[2] = tonumber(update_info.ahead_behind[2])
