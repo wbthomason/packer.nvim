@@ -36,6 +36,7 @@ local config_defaults = {
       current_branch = 'rev-parse --abbrev-ref HEAD',
       diff = 'log --color=never --pretty=format:FMT --no-show-signature %s...%s',
       diff_fmt = '%%h %%s (%%cr)',
+      commit_count = 'rev-list --count %s..%s',
       git_diff_fmt = 'show --no-color --pretty=medium %s',
       get_rev = 'rev-parse --short HEAD',
       get_header = 'log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',

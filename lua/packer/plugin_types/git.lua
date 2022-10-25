@@ -342,7 +342,7 @@ git.setup = function(plugin)
 
   plugin.updater = function(disp, opts)
     return async(function()
-      local update_info = { err = {}, revs = {}, output = {}, messages = {} }
+      local update_info = { err = {}, revs = {}, output = {}, messages = {}, ahead_behind = {} }
       local function exit_ok(r)
         if #update_info.err > 0 or r.exit_code ~= 0 then
           return result.err(r)
@@ -497,6 +497,29 @@ git.setup = function(plugin)
           local commit_headers_onread = jobs.logging_callback(update_info.err, update_info.messages)
           local commit_headers_callbacks = { stdout = commit_headers_onread, stderr = commit_headers_onread }
 
+          local ahead_behind_onread = jobs.logging_callback(update_info.err, update_info.ahead_behind)
+          local ahead_behind_callbacks = { stdout = ahead_behind_onread, stderr = ahead_behind_onread }
+
+          local ahead_cmd = string.format(config.exec_cmd .. config.subcommands.commit_count, update_info.revs[1], update_info.revs[2])
+          local behind_cmd = string.format(config.exec_cmd .. config.subcommands.commit_count, update_info.revs[2], update_info.revs[1])
+
+          r:and_then(await, jobs.run(ahead_cmd, {
+            success_test = exit_ok,
+            capture_output = ahead_behind_callbacks,
+            cwd = install_to,
+            options = { env = git.job_env }
+          }))
+
+          r:and_then(await, jobs.run(behind_cmd, {
+            success_test = exit_ok,
+            capture_output = ahead_behind_callbacks,
+            cwd = install_to,
+            options = { env = git.job_env }
+          }))
+
+          update_info.ahead_behind[1] = tonumber(update_info.ahead_behind[1])
+          update_info.ahead_behind[2] = tonumber(update_info.ahead_behind[2])
+
           local diff_cmd = string.format(config.subcommands.diff, update_info.revs[1], update_info.revs[2])
           local commit_headers_cmd = vim.split(config.exec_cmd .. diff_cmd, '%s+')
           for i, arg in ipairs(commit_headers_cmd) do
@@ -518,6 +541,7 @@ git.setup = function(plugin)
           if r.ok then
             plugin.messages = update_info.messages
             plugin.revs = update_info.revs
+            plugin.ahead_behind = update_info.ahead_behind
           end
 
           if config.mark_breaking_changes then

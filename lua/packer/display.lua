@@ -203,7 +203,10 @@ local function prompt_user(headline, body, callback)
 end
 
 local make_update_msg = function(symbol, status, plugin_name, plugin)
-  return fmt(' %s %s %s: %s..%s', symbol, status, plugin_name, plugin.revs[1], plugin.revs[2])
+  local ahead, behind = plugin.ahead_behind[1], plugin.ahead_behind[2]
+  local msg = ahead > 0 and 'ahead' or 'behind'
+  local count = ahead > 0 and ahead or behind
+  return fmt(' %s %s %s: %s..%s (%s %s)', symbol, status, plugin_name, plugin.revs[1], plugin.revs[2], count, msg)
 end
 
 local display = {}
