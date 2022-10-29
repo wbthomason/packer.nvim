@@ -4,7 +4,9 @@ local a = require 'packer.async'
 local plugin_utils = require 'packer.plugin_utils'
 local fmt = string.format
 
-local in_headless = #api.nvim_list_uis() == 0
+local function interactive(config)
+  return not config.non_interactive and #api.nvim_list_uis() > 0
+end
 
 -- Temporary wrappers to compensate for the updated extmark API, until most people have updated to
 -- the latest HEAD (2020-09-04)
@@ -140,7 +142,7 @@ local default_keymap_display_order = {
 
 --- Utility function to prompt a user with a question in a floating window
 local function prompt_user(headline, body, callback)
-  if config.non_interactive then
+  if not interactive(config) then
     callback(true)
     return
   end
@@ -961,7 +963,7 @@ display.open = function(opener)
   local disp = setmetatable({}, display_mt)
   disp.marks = {}
   disp.plugins = {}
-  disp.interactive = not config.non_interactive and not in_headless
+  disp.interactive = interactive(config)
 
   if disp.interactive then
     if type(opener) == 'string' then
