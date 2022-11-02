@@ -4,8 +4,6 @@ local util = require 'packer.util'
 local mocked_plugin_utils = require 'packer.plugin_utils'
 local log = require 'packer.log'
 local async = require('packer.async').sync
-local await = require('packer.async').wait
-local wait_all = require('packer.async').wait_all
 local main = require('packer.async').main
 local packer = require 'packer'
 local jobs = require 'packer.jobs'
@@ -25,9 +23,6 @@ local config = {
   auto_clean = true,
   compile_on_sync = true,
   disable_commands = false,
-  opt_default = false,
-  transitive_opt = true,
-  transitive_disable = true,
   auto_reload_compiled = true,
   git = {
     mark_breaking_changes = true,
@@ -43,9 +38,7 @@ local config = {
       diff_fmt = '%%h %%s (%%cr)',
       git_diff_fmt = 'show --no-color --pretty=medium %s',
       get_rev = 'rev-parse --short HEAD',
-      get_header = 'log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',
       get_bodies = 'log --color=never --pretty=format:"===COMMIT_START===%h%n%s===BODY_START===%b" --no-show-signature HEAD@{1}...HEAD',
-      submodules = 'submodule update --init --recursive --progress',
       revert = 'reset --hard HEAD@{1}',
       revert_to = 'reset --hard %s --',
     },
@@ -69,9 +62,7 @@ local config = {
     prompt_border = 'double',
     keybindings = { quit = 'q', toggle_info = '<CR>', diff = 'd', prompt_revert = 'r' },
   },
-  luarocks = { python_cmd = 'python' },
   log = { level = 'trace' },
-  profile = { enable = false },
 }
 
 git.cfg(config)
@@ -98,7 +89,7 @@ local spec = { 'wbthomason/packer.nvim' }
 
 local function exec_cmd(cmd, opts)
   return async(function()
-    local r = await(jobs.run(cmd, opts))
+    local r = jobs.run(cmd, opts)
     if r.err then
       print(fmt("Failed on command '%s': %s", cmd, vim.inspect(r.err)))
     end
@@ -118,7 +109,7 @@ a.describe('Packer testing ', function()
   before_each(function()
     packer.reset()
     packer.init(config)
-    packer.use(spec)
+    packer.__use(spec)
     packer.__manage_all()
   end)
 
@@ -129,7 +120,7 @@ a.describe('Packer testing ', function()
 
   a.describe('snapshot.create()', function()
     a.it(fmt("create snapshot in '%s'", test_path), function()
-      local result = await(snapshot.create(test_path, { spec }))
+      local result = snapshot.create(test_path, { spec })
       local stat = vim.loop.fs_stat(test_path)
       assert.truthy(stat)
     end)
@@ -138,7 +129,7 @@ a.describe('Packer testing ', function()
       async(function()
         local file_content = vim.fn.readfile(test_path)
         snapshotted_plugins = vim.fn.json_decode(file_content)
-        local expected_rev = await(spec.get_rev())
+        local expected_rev = spec.get_rev()()
         assert.are.equals(expected_rev.ok, snapshotted_plugins['packer.nvim'].commit)
       end)()
     end)
@@ -162,13 +153,13 @@ a.describe('Packer testing ', function()
 
     a.it("restore 'packer' to the commit hash HEAD~5", function()
       async(function()
-        local commit = await(exec_cmd(prev_commit_cmd, opts))
+        local commit = exec_cmd(prev_commit_cmd, opts)()
         snapshotted_plugins['packer.nvim'] = { commit = commit }
-        await(main)
+        main()
         local encoded_json = vim.fn.json_encode(snapshotted_plugins)
         vim.fn.writefile({ encoded_json }, rollback_test_path)
-        await(snapshot.rollback(rollback_test_path, { spec }))
-        local rev = await(exec_cmd(get_rev_cmd, opts))
+        snapshot.rollback(rollback_test_path, { spec })()
+        local rev = exec_cmd(get_rev_cmd, opts)()
         assert.are.equals(snapshotted_plugins['packer.nvim'].commit, rev)
       end)()
     end)

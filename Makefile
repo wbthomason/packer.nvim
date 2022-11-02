@@ -1,3 +1,9 @@
+
+.PHONY: build
+build:
+	cyan check teal/**/*.tl
+	cyan build
+
 test:
 	nvim --headless --noplugin -u tests/minimal.vim -c "PlenaryBustedDirectory tests/ { minimal_init = './tests/minimal.vim' }"
 run:

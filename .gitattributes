@@ -1,0 +1,3 @@
+*.tl linguist-language=Lua
+lua/** linguist-generated
+doc/* linguist-documentation
