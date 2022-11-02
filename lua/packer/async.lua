@@ -1,132 +1,143 @@
--- Adapted from https://ms-jpq.github.io/neovim-async-tutorial/
-local log = require 'packer.log'
-local yield = coroutine.yield
-local resume = coroutine.resume
-local thread_create = coroutine.create
 
-local function EMPTY_CALLBACK() end
-local function step(func, callback)
-  local thread = thread_create(func)
-  local tick = nil
-  tick = function(...)
-    local ok, val = resume(thread, ...)
-    if ok then
-      if type(val) == 'function' then
-        val(tick)
-      else
-        (callback or EMPTY_CALLBACK)(val)
-      end
-    else
-      log.error('Error in coroutine: ' .. val);
-      (callback or EMPTY_CALLBACK)(nil)
-    end
-  end
 
-  tick()
-end
 
-local function wrap(func)
-  return function(...)
-    local params = { ... }
-    return function(tick)
-      params[#params + 1] = tick
-      return func(unpack(params))
-    end
-  end
-end
 
-local function join(...)
-  local thunks = { ... }
-  local thunk_all = function(s)
-    if #thunks == 0 then
-      return s()
-    end
-    local to_go = #thunks
-    local results = {}
-    for i, thunk in ipairs(thunks) do
-      local callback = function(...)
-        results[i] = { ... }
-        if to_go == 1 then
-          s(unpack(results))
-        else
-          to_go = to_go - 1
-        end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+local co = coroutine
+
+
+local function execute(func, callback, ...)
+   local thread = co.create(func)
+
+   local function step(...)
+      local ret = { co.resume(thread, ...) }
+      local stat, nargs, fn_or_ret = unpack(ret)
+
+      if not stat then
+         error(string.format("The coroutine failed with this message: %s\n%s",
+         nargs, debug.traceback(thread)))
       end
 
-      thunk(callback)
-    end
-  end
-
-  return thunk_all
-end
-
-local function wait_all(...)
-  return yield(join(...))
-end
-
-local function pool(n, interrupt_check, ...)
-  local thunks = { ... }
-  return function(s)
-    if #thunks == 0 then
-      return s()
-    end
-    local remaining = { select(n + 1, unpack(thunks)) }
-    local results = {}
-    local to_go = #thunks
-    local make_callback = nil
-    make_callback = function(idx, left)
-      local i = (left == nil) and idx or (idx + left)
-      return function(...)
-        results[i] = { ... }
-        to_go = to_go - 1
-        if to_go == 0 then
-          s(unpack(results))
-        elseif not interrupt_check or not interrupt_check() then
-          if remaining and #remaining > 0 then
-            local next_task = table.remove(remaining)
-            next_task(make_callback(n, #remaining + 1))
-          end
-        end
+      if co.status(thread) == 'dead' then
+         if callback then
+            callback(unpack(ret, 3))
+         end
+         return
       end
-    end
 
-    for i = 1, math.min(n, #thunks) do
-      local thunk = thunks[i]
-      thunk(make_callback(i))
-    end
-  end
+      local args = { select(4, unpack(ret)) }
+      args[nargs] = step
+      fn_or_ret(unpack(args, 1, nargs))
+   end
+
+   step(...)
 end
 
-local function wait_pool(limit, ...)
-  return yield(pool(limit, false, ...))
+local M = {}
+
+
+
+
+
+
+function M.wrap(func, argc)
+   return function(...)
+      if not co.running() or select('#', ...) == argc then
+         return func(...)
+      end
+      return co.yield(argc, func, ...)
+   end
 end
 
-local function interruptible_wait_pool(limit, interrupt_check, ...)
-  return yield(pool(limit, interrupt_check, ...))
+
+
+
+function M.sync(func, nargs)
+   nargs = nargs or 0
+   return function(...)
+      if co.running() then
+         return func(...)
+      end
+      local callback = select(nargs + 1, ...)
+      execute(func, callback, unpack({ ... }, 1, nargs))
+   end
 end
 
-local function main(f)
-  vim.schedule(f)
+
+function M.void(func)
+   return function(...)
+      if co.running() then
+         return func(...)
+      end
+      execute(func, nil, ...)
+   end
 end
 
-local M = {
-  --- Wrapper for functions that do not take a callback to make async functions
-  sync = wrap(step),
-  --- Alias for yielding to await the result of an async function
-  wait = yield,
-  --- Await the completion of a full set of async functions
-  wait_all = wait_all,
-  --- Await the completion of a full set of async functions, with a limit on how many functions can
-  --  run simultaneously
-  wait_pool = wait_pool,
-  --- Like wait_pool, but additionally checks at every function completion to see if a condition is
-  --  met indicating that it should keep running the remaining tasks
-  interruptible_wait_pool = interruptible_wait_pool,
-  --- Wrapper for functions that do take a callback to make async functions
-  wrap = wrap,
-  --- Convenience function to ensure a function runs on the main "thread" (i.e. for functions which
-  --  use Neovim functions, etc.)
-  main = main,
-}
+function M.join(n, interrupt_check, thunks)
+   return co.yield(1, function(finish)
+      if #thunks == 0 then
+         return finish()
+      end
+
+      local remaining = { select(n + 1, unpack(thunks)) }
+      local to_go = #thunks
+
+      local ret = {}
+
+      local function cb(...)
+         ret[#ret + 1] = { ... }
+         to_go = to_go - 1
+         if to_go == 0 then
+            finish(ret)
+         elseif not interrupt_check or not interrupt_check() then
+            if #remaining > 0 then
+               local next_task = table.remove(remaining)
+               next_task(cb)
+            end
+         end
+      end
+
+      for i = 1, math.min(n, #thunks) do
+         thunks[i](cb)
+      end
+   end, 1)
+end
+
+
+function M.curry(fn, ...)
+   local args = { ... }
+   local nargs = select('#', ...)
+   return function(...)
+      local other = { ... }
+      for i = 1, select('#', ...) do
+         args[nargs + i] = other[i]
+      end
+      fn(unpack(args))
+   end
+end
+
+
+
+M.main = M.wrap(vim.schedule, 1)
 
 return M

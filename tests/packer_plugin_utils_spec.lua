@@ -1,5 +1,4 @@
 local a = require('plenary.async_lib.tests')
-local await = require('packer.async').wait
 local plugin_utils = require("packer.plugin_utils")
 local packer_path = vim.fn.stdpath("data") .. "/site/pack/packer/start/"
 
@@ -18,7 +17,7 @@ a.describe("Packer post update hooks", function()
       run = "touch 'this_file_should_exist'"
     }
 
-    await(run_hook(plugin_spec, {task_update = function() end}))
+    run_hook(plugin_spec, {task_update = function() end})
 
     assert.truthy(vim.loop.fs_stat(test_plugin_path .. "this_file_should_exist"))
   end)

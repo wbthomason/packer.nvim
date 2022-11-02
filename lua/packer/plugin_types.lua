@@ -1,16 +1,21 @@
-local config
+local Display = require('packer.display').Display
 
-local function cfg(_config)
-  config = _config
-end
 
-local plugin_types = setmetatable({ cfg = cfg }, {
-  __index = function(self, k)
-    local v = require('packer.plugin_types.' .. k)
-    v.cfg(config)
-    self[k] = v
-    return v
-  end,
+
+
+
+
+
+
+
+local plugin_types = {}
+
+return setmetatable(plugin_types, {
+   __index = function(_, k)
+      if k == 'git' then
+         return require('packer.plugin_types.git')
+      elseif k == 'local' then
+         return require('packer.plugin_types.local')
+      end
+   end,
 })
-
-return plugin_types

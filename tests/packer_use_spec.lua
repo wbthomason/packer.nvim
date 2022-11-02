@@ -1,5 +1,5 @@
 local packer = require("packer")
-local use = packer.use
+local use = packer.__use
 local packer_path = vim.fn.stdpath("data").."/site/pack/packer/start/"
 
 describe("Packer use tests", function()
@@ -14,7 +14,7 @@ describe("Packer use tests", function()
     end)
     packer.__manage_all()
     assert.truthy(spec.install_path)
-    assert.equal(spec.install_path, packer_path .. spec.short_name)
+    assert.equal(spec.install_path, packer_path .. spec.name)
   end)
 
   it("should add metadata to a plugin from a spec", function ()
@@ -24,6 +24,5 @@ describe("Packer use tests", function()
     end)
     packer.__manage_all()
     assert.equal(spec.name, "test/plugin1")
-    assert.equal(spec.path, "test/plugin1")
   end)
 end)

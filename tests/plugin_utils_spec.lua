@@ -1,5 +1,4 @@
 local a = require('plenary.async_lib.tests')
-local await = require('packer.async').wait
 local async = require('packer.async').sync
 local plugin_utils = require('packer.plugin_utils')
 local helpers = require("tests.helpers")
@@ -24,8 +23,7 @@ a.describe('Plugin utils -', function()
         [repo_name] = {
           opt = false,
           type = "git",
-          name = fmt("user1/%s", repo_name),
-          short_name = repo_name,
+          name = repo_name,
           remote_url = function()
             return async(function()
               return {ok = {remote = fmt('https://github.com/%s', test_repo_name)}}
@@ -33,7 +31,7 @@ a.describe('Plugin utils -', function()
           end
         }
       }
-      local result = await(plugin_utils.find_missing_plugins(plugins, {}, {[path] = true}))
+      local result = plugin_utils.find_missing_plugins(plugins, {}, {[path] = true})()
       assert.truthy(result)
       assert.equal(1, #vim.tbl_keys(result))
     end)
@@ -44,8 +42,7 @@ a.describe('Plugin utils -', function()
         [repo_name] = {
           opt = false,
           type = "git",
-          name = test_repo_name,
-          short_name = repo_name,
+          name = repo_name,
           remote_url = function()
             return async(function()
               return {ok = {remote = fmt('https://github.com/%s', test_repo_name)}}
@@ -53,7 +50,7 @@ a.describe('Plugin utils -', function()
           end
         }
       }
-      local result = await(plugin_utils.find_missing_plugins(plugins, {}, {[path] = true}))
+      local result = plugin_utils.find_missing_plugins(plugins, {}, {[path] = true})()
       assert.truthy(result)
       assert.equal(0, #result)
     end)
@@ -64,8 +61,7 @@ a.describe('Plugin utils -', function()
         [repo_name] = {
           opt = false,
           type = "git",
-          name = fmt("user1/%s", repo_name),
-          short_name = repo_name,
+          name = repo_name,
           remote_url = function()
             return async(function()
               return {ok = {remote = fmt('git@github.com:%s.git', test_repo_name)}}
@@ -73,7 +69,7 @@ a.describe('Plugin utils -', function()
           end
         }
       }
-      local result = await(plugin_utils.find_missing_plugins(plugins, {}, {[path] = true}))
+      local result = plugin_utils.find_missing_plugins(plugins, {}, {[path] = true})()
       assert.truthy(result)
       assert.equal(1, #vim.tbl_keys(result))
     end)
