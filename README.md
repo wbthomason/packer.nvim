@@ -195,6 +195,10 @@ end)
 -- supports the `--preview` flag as an optional first argument to preview updates
 :PackerSync
 
+
+-- Show list of installed plugins
+:PackerStatus
+
 -- Loads opt plugin immediately
 :PackerLoad completion-nvim ale
 ```
