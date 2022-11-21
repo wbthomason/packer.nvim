@@ -162,15 +162,17 @@ local filter_opts_from_pos_args = function(...)
     end
 
     for _, e in ipairs(args) do
-      if e:sub(1, 2) == '--' then
-        local x = string.find(e, '=', 1, true)
-        if x then
-          opts[string.sub(e, 3, x - 1)] = unquote(string.sub(e, x + 1))
+      if type(e) == 'string' and e ~= '' then
+        if e:sub(1, 2) == '--' then
+          local x = string.find(e, '=', 1, true)
+          if x then
+            opts[string.sub(e, 3, x - 1)] = unquote(string.sub(e, x + 1))
+          else
+            opts[string.sub(e, 3)] = true
+          end
         else
-          opts[string.sub(e, 3)] = true
+          table.insert(pos_args, e)
         end
-      else
-        table.insert(pos_args, e)
       end
     end
   end
@@ -470,7 +472,7 @@ packer.install = function(...)
 
   manage_all_plugins()
 
-  local opts, _ = filter_opts_from_pos_args(...)
+  local opts, pos_args = filter_opts_from_pos_args(...)
   if config.lockfile.enable then
     local lockfile = require_and_configure 'lockfile'
     lockfile.is_updating = opts.nolockfile or false
@@ -478,9 +480,10 @@ packer.install = function(...)
   end
 
   local install_plugins
-  if ... then
-    install_plugins = { ... }
+  if #pos_args > 0 then
+    install_plugins = pos_args
   end
+
   async(function()
     local fs_state = await(plugin_utils.get_fs_state(plugins))
     if not install_plugins then
