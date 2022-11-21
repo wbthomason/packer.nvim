@@ -769,6 +769,12 @@ packer.status = function()
   local async = require('packer.async').sync
   local display = require_and_configure 'display'
   local log = require_and_configure 'log'
+
+  if config.lockfile.enable then
+    local lockfile = require_and_configure 'lockfile'
+    lockfile.load(config.lockfile.path)
+  end
+
   manage_all_plugins()
   async(function()
     local display_win = display.open(config.display.open_fn or config.display.open_cmd)
