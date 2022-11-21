@@ -576,6 +576,7 @@ configuration in some sort of source repository. Committing the lockfile will en
 Enabling lockfile support will change the default behavior of `packer.install()`, `packer.update()`, and
 `packer.sync()`. If the lockfile contains a plugin, `packer` will update to the specified commit instead
 of the latest changes. If the plugin is not found in the lockfile, `packer` will fetch the latest changes.
+The plugin value `commit` will take precedence over any lockfile value.
 
 If you want to update your local plugins to the latest changes, call `:PackerUpdate` or `:PackerSync` with
 the `--nolockfile` argument. This will ignore the lockfile and update your plugins to the latest changes.
