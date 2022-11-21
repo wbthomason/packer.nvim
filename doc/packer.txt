@@ -666,17 +666,22 @@ Some examples:
     packer.update({ nolockfile = true }, "telescope.nvim", "plenary.nvim"})
 <
 
-snapshot(snapshot_name, ...)		                                *packer.snapshot()*
-`snapshot` takes the rev of all the installed plugins and serializes them into a Lua table which will be saved under `config.snapshot_path` (which is the directory that will hold all the snapshots files) as `config.snapshot_path/<snapshot_name>` or an absolute path provided by the users.
-Optionally plugins name can be specified so that only those plugins will be
-snapshotted.
-Snapshot files can be loaded manually via `dofile` which will return a table with the plugins name as keys the commit short hash as value.
+snapshot(snapshot_name, ...)                   *packer.snapshot()*
+`snapshot` takes the rev of all the installed plugins and serializes them into
+a Lua table which will be saved under `config.snapshot_path` (which is the
+directory that will hold all the snapshots files) as
+`config.snapshot_path/<snapshot_name>` or an absolute path provided by the
+users.  Optionally plugins name can be specified so that only those plugins
+will be snapshotted.  Snapshot files can be loaded manually via `dofile` which
+will return a table with the plugins name as keys the commit short hash as
+value.
 
-delete(snapshot_name)		                                *packer.delete()*
+delete(snapshot_name)                          *packer.delete()*
 `delete` deletes a snapshot given the name or the absolute path.
 
-rollback(snapshot_name, ...)		                                *packer.rollback()*
-`rollback` reverts all plugins or only the specified as extra arguments to the commit specified in the snapshot file
+rollback(snapshot_name, ...)                   *packer.rollback()*
+`rollback` reverts all plugins or only the specified as extra arguments to the
+commit specified in the snapshot file
 
 use()                                          *packer.use()*
 `use` allows you to add one or more plugins to the managed set. It can be
@@ -718,8 +723,10 @@ invoked as follows:
   }
 - With a list of plugins specified in either of the above two forms
 
-For the *cmd* option, the command may be a full command, or an autocommand pattern. If the command contains any
-non-alphanumeric characters, it is assumed to be a pattern, and instead of creating a stub command, it creates
-a CmdUndefined autocmd to load the plugin when a command that matches the pattern is invoked.
+For the *cmd* option, the command may be a full command, or an autocommand
+pattern. If the command contains any non-alphanumeric characters, it is
+assumed to be a pattern, and instead of creating a stub command, it creates a
+CmdUndefined autocmd to load the plugin when a command that matches the
+pattern is invoked.
 
  vim:tw=78:ts=2:ft=help:norl:
