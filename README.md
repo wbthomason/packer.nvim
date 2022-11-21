@@ -334,9 +334,9 @@ default configuration values (and structure of the configuration table) are:
     }
   },
   lockfile = {
-    enable = false, -- Should packer apply lockfile to `installer` and `updater`
+    enable = false, -- Should packer apply lockfile to `installer` and `updater`?
     path = util.join_paths(stdpath 'config', 'lockfile.lua'), -- Default file location for lockfile
-    regen_on_update = false, -- Should packer update the lockfile after upgrading plugins
+    regen_on_update = false, -- Should packer update the lockfile after upgrading plugins?
   },
   luarocks = {
     python_cmd = 'python' -- Set the python command to use for running hererocks
@@ -400,7 +400,7 @@ use {
   module = string or list,     -- Specifies Lua module names for require. When requiring a string which starts
                                -- with one of these module names, the plugin will be loaded.
   module_pattern = string/list -- Specifies Lua pattern of Lua module names for require. When requiring a
-                              -- string which matches one of these patterns, the plugin will be loaded.
+                               -- string which matches one of these patterns, the plugin will be loaded.
 }
 ```
 
@@ -569,21 +569,21 @@ name and information table as arguments.
 
 ### Lockfile
 
-`packer` provides a `lockfile` to help manage plugin updates. This is useful for users that store their
-configuration in some sort of source repository. Committing packer's lockfile will ensure that packer will
+`packer` can provide a `lockfile` to help manage plugin updates. This is useful for users that store their
+configuration in some sort of source repository. Committing the lockfile will ensure that `packer` will
 `install` and `update` plugins to known working commits for their configuration.
 
-Enabling lockfile support will change the default behavior of `install`, `update`, and `sync` commands.
-If the lockfile contains a plugin, packer will update to that commit instead of the latest changes. If the
-plugin is not found in the lockfile packer will fetch the latest changes.
+Enabling lockfile support will change the default behavior of `packer.install()`, `packer.update()`, and
+`packer.sync()`. If the lockfile contains a plugin, `packer` will update to the specified commit instead
+of the latest changes. If the plugin is not found in the lockfile, `packer` will fetch the latest changes.
 
-When wanting to update your local plugins to the latest changes call your packer update command with
-`--nolockfile` argument. This will ignore the lockfile and update your plugins to the latest changes.
+If you want to update your local plugins to the latest changes, call `:PackerUpdate` or `:PackerSync` with
+the `--nolockfile` argument. This will ignore the lockfile and update your plugins to the latest changes.
 
 Some example commands:
 
 ```vim
-" Generate the lockfile to lockfile.path defined in packer's config
+" Generate the lockfile to lockfile.path, as defined in packer's config
 PackerLockfile
 
 " Generating a lockfile to some other path
@@ -612,7 +612,7 @@ The same options that apply to `PackerUpdate` also apply to `PackerInstall` and 
 require knowing when the operations are complete, you can use the following `User` autocmds (see
 `:help User` for more info on how to use):
 
-- `PackerComplete`: Fires after install, update, clean, sync, and upgrade asynchronous operations finish.
+- `PackerComplete`: Fires after install, update, clean, and sync asynchronous operations finish.
 - `PackerCompileDone`: Fires after compiling (see [the section on compilation](#compiling-lazy-loaders))
 
 ### Using a floating window

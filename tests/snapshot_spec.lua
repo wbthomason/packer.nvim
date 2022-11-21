@@ -72,7 +72,7 @@ local config = {
   lockfile = {
     enable = false,
     path = join_paths(stdpath 'config', 'lockfile.lua'),
-    update_on_upgrade = false,
+    regen_on_update = false,
   },
   luarocks = { python_cmd = 'python' },
   log = { level = 'trace' },

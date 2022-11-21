@@ -44,7 +44,7 @@ FEATURES                                         *packer-intro-features*
 - Uses jobs for async installation
 - Support for `git` tags, branches, revisions, submodules
 - Support for local plugins
-- Lockfile for for keeping plugins in sync between systems
+- Lockfile for keeping plugins in sync between systems
 - Support for saving/restoring snapshots for plugin versions (`git` only)
 
 ==============================================================================
@@ -246,9 +246,9 @@ default values: >
       default_url_format = 'https://github.com/%s' -- Lua format string used for "aaa/bbb" style plugins
     },
     lockfile = {
-      enable = false, -- Should packer apply lockfile to `installer` and `updater`
+      enable = false, -- Should packer apply lockfile to `installer` and `updater`?
       path = util.join_paths(stdpath 'config', 'lockfile.lua'), -- Default file location for lockfile
-      update_on_upgrade = false, -- Should packer update the lockfile after upgrading plugins
+      regen_on_update = false, -- Should packer update the lockfile after upgrading plugins?
     },
     log = { level = 'warn' }, -- The default print log level. One of: "trace", "debug", "info", "warn", "error", "fatal".
     display = {
@@ -510,16 +510,19 @@ They can be configured by changing the value of `config.display.keybindings`
 Setting any of its keys to `false` will disable the corresponding keybinding.
 
 LOCKFILE                                       *packer-lockfile*
-`packer` provides a `lockfile` to help manage plugin updates. This is useful for users that store their
-configuration in some sort of source repository. Committing packer's lockfile will ensure that packer will
-`install` and `update` plugins to known working commits for their configuration.
+`packer` can provide a `lockfile` to help manage plugin updates. This is
+useful for users that store their configuration in some sort of source
+repository. Committing the lockfile will ensure that `packer` will `install`
+and `update` plugins to known working commits for their configuration.
 
-Enabling lockfile support will change the default behavior of `install`, `update`, and `sync` commands.
-If the lockfile contains a plugin, packer will update to that commit instead of the latest changes. If the
-plugin is not found in the lockfile packer will fetch the latest changes.
+Enabling lockfile support will change the default behavior of |packer.install()|,
+|packer.update()|, and |packer.sync()|. If the lockfile contains a plugin, `packer`
+will update to the specified commit instead of the latest changes. If the plugin
+is not found in the lockfile, `packer` will fetch the latest changes.
 
-When wanting to update your local plugins to the latest changes call your packer update command with
-`--nolockfile` argument. This will ignore the lockfile and update your plugins to the latest changes.
+If you want to update your local plugins to the latest changes, call
+`:PackerUpdate` or `:PackerSync` with the `--nolockfile` argument.
+This will ignore the lockfile and update your plugins to the latest changes.
 
 Some example commands:
 
@@ -587,8 +590,8 @@ These plugin names must already be managed by `packer` via a call to
 |packer.use()|.
 
 lockfile()		                                     *packer.lockfile()*
-`lockfile` updates packer's lockfile (defined by `lockfile.path`) based on
-currently installed plugins.
+`lockfile` updates `packer`'s lockfile (|packer-lockfile|) at `lockfile.path` based
+on the currently installed plugins.
 
 reset()		                                     *packer.reset()*
 `reset` empties the set of managed plugins. Called with no arguments; used to
