@@ -44,7 +44,7 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 - Uses jobs for async installation
 - Support for `git` tags, branches, revisions, submodules
 - Support for local plugins
-- Lockfile for for keeping plugins in sync between systems
+- Lockfile for keeping plugins in sync between systems
 
 ## Requirements
 - You need to be running **Neovim v0.5.0+**
