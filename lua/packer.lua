@@ -765,6 +765,8 @@ packer.lockfile = function(...)
         await(a.main)
         log.error(err)
       end)
+
+    packer.on_complete()
   end)()
 end
 
