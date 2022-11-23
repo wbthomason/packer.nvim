@@ -73,14 +73,6 @@ local function load_plugin_configs()
 end
 
 local function make_commands()
-  local snapshot_cmpl = setmetatable({}, {
-    __index = function(_, k: string): function
-      return function(...:any): any...
-        return (require'packer.snapshot'.completion as {string:function})[k](...)
-      end
-    end
-  }) as {string:function(string, string): {string}}
-
   local actions = setmetatable({}, {
     __index = function(_, k: string): function
       return function(...:any): any...
@@ -90,14 +82,11 @@ local function make_commands()
   }) as {string:function}
 
   for _, cmd in ipairs {
-    { 'PackerSnapshot'         , '+', actions.create  , snapshot_cmpl.create   },
-    { 'PackerSnapshotRollback' , '+', actions.rollback, snapshot_cmpl.rollback },
-    { 'PackerSnapshotDelete'   , '+', actions.delete  , snapshot_cmpl.snapshot },
-    { 'PackerInstall'          , '*', actions.install , plugin_complete        },
-    { 'PackerUpdate'           , '*', actions.update  , plugin_complete        },
-    { 'PackerSync'             , '*', actions.sync                             },
-    { 'PackerClean'            , '*', actions.clean                            },
-    { 'PackerStatus'           , '*', actions.status                           },
+    { 'PackerInstall', '*', actions.install , plugin_complete},
+    { 'PackerUpdate' , '*', actions.update  , plugin_complete},
+    { 'PackerSync'   , '*', actions.sync                     },
+    { 'PackerClean'  , '*', actions.clean                    },
+    { 'PackerStatus' , '*', actions.status                   },
   } do
     vim.api.nvim_create_user_command(cmd[1], function(args: vim.api.UserCmdParams)
       cmd[3](unpack(args.fargs))
@@ -116,7 +105,6 @@ end
 -- element, config overrides as another element.
 function M.startup(spec: SSpec)
   local config = require 'packer.config'
-  local log    = require 'packer.log'
 
   assert(type(spec) == 'table')
   assert(type(spec[1]) == 'table')
@@ -131,20 +119,12 @@ function M.startup(spec: SSpec)
 
   make_commands()
 
-  if vim.fn.mkdir(config.snapshot_path, 'p') ~= 1 then
-    log.warn("Couldn't create " .. config.snapshot_path)
-  end
-
   _G.packer_plugins = require 'packer.plugin'.process_spec{
     spec = spec[1],
     line = debug.getinfo(2, 'l').currentline,
   }
 
   load_plugin_configs()
-
-  if config.snapshot then
-    require'packer.actions'.rollback(config.snapshot)
-  end
 end
 
 return M

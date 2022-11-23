@@ -17,8 +17,6 @@ local record M
   update  : function(string|table, ...: string)
   sync    : function(string|table, ...: string)
   status  : function()
-  rollback: function(snapshot_name: string, ...: string)
-  snapshot: function(snapshot_name: string, ...: string)
 end
 
 local function open_display(): Display
@@ -537,104 +535,6 @@ end)
 -- Finds plugins present in the `packer` package but not in the managed set
 M.clean = a.void(function()
   clean(_G.packer_plugins)
-end)
-
----Snapshots installed plugins
-M.snapshot = a.void(function(snapshot_name: string, ...:string)
-  local args = { ... }
-  snapshot_name = snapshot_name or require('os').date '%Y-%m-%d'
-  local snapshot_path = fn.expand(snapshot_name)
-
-  log.debug(fmt('Taking snapshots of currently installed plugins to %s...', snapshot_name))
-  if fn.fnamemodify(snapshot_name, ':p') ~= snapshot_path then -- is not absolute path
-    if config.snapshot_path == nil then
-      log.warn 'config.snapshot_path is not set'
-      return
-    else
-      snapshot_path = util.join_paths(config.snapshot_path, snapshot_path) -- set to default path
-    end
-  end
-
-  local target_plugins = _G.packer_plugins
-  if next(args) ~= nil then -- provided extra args
-    target_plugins = vim.tbl_filter( -- filter plugins
-      function(plugin: Plugin): boolean
-        for i, name in ipairs(args) do
-          if name == plugin.name then
-            args[i] = nil
-            return true
-          end
-        end
-        return false
-      end,
-      _G.packer_plugins
-    )
-  end
-
-  local write_snapshot = true
-
-  if fn.filereadable(snapshot_path) == 1 then
-    vim.ui.select(
-      { 'Replace', 'Cancel' },
-      { prompt = fmt("Do you want to replace '%s'?", snapshot_path) },
-      function(_: string, idx: integer)
-        write_snapshot = idx == 1
-      end
-    )
-  end
-
-  if write_snapshot then
-    local r = require('packer.snapshot').create(snapshot_path, target_plugins)
-    if not r.err then
-      log.info(r.message)
-      if next(r.failed) then
-        log.warn("Couldn't snapshot " .. vim.inspect(r.failed))
-      end
-    else
-      log.warn(r.message)
-    end
-  end
-end)
-
----Instantly rolls back plugins to a previous state specified by `snapshot_name`
----If `snapshot_name` doesn't exist an error will be displayed
-M.rollback = a.void(function(snapshot_name: string, ...: string)
-  local args = { ... }
-
-  local snapshot_path = vim.loop.fs_realpath(util.join_paths(config.snapshot_path, snapshot_name))
-    or vim.loop.fs_realpath(snapshot_name)
-
-  if snapshot_path == nil then
-    local warn = fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name)
-    log.warn(warn)
-    return
-  end
-
-  local target_plugins = _G.packer_plugins
-
-  if next(args) ~= nil then -- provided extra args
-    target_plugins = vim.tbl_filter(function(plugin: Plugin): boolean
-      for _, plugin_sname in ipairs(args) do
-        if plugin_sname == plugin.name then
-          return true
-        end
-      end
-      return false
-    end, _G.packer_plugins)
-  end
-
-  local r = require('packer.snapshot').rollback(snapshot_path, target_plugins)
-
-  if not r then
-    a.main()
-    log.info(fmt('Rollback to "%s" completed', snapshot_path))
-    if next(r.failed) then
-      log.warn("Couldn't rollback " .. vim.inspect(r.failed))
-    end
-  else
-    a.main()
-    log.error(r.err)
-  end
 end)
 
 return M

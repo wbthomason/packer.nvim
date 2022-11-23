@@ -178,8 +178,6 @@ default configuration values (and structure of the configuration table) are:
 ```lua
 require('packer').startup{{...}, config = {
   ensure_dependencies = true, -- Should packer install plugin dependencies?
-  snapshot            = nil, -- Name of the snapshot you would like to load at startup
-  snapshot_path       = join_paths(stdpath 'cache', 'packer.nvim'), -- Default save directory for snapshots
   package_root        = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
   plugin_package      = 'packer', -- The default package for plugins
   max_jobs            = nil, -- Limit the number of simultaneous jobs. nil means no limit
@@ -310,9 +308,6 @@ plugins":
 - `packer.update(plugins)`: Update the specified plugins, installing any that are missing
 - `packer.update(opts, plugins)`: First argument can be a table specifying options, such as `{preview_updates = true}` to preview potential changes before updating (same as `PackerUpdate --preview`).
 - `packer.clean()`: Remove any disabled or no longer managed plugins
-- `packer.snapshot(snapshot_name, ...)`: Creates a snapshot file that will live under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be taken. Optionally, a list of plugins name can be provided to selectively choose the plugins to snapshot.
-- `packer.rollback(snapshot_name, ...)`: Rollback plugins status a snapshot file that will live under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be taken. Optionally, a list of plugins name can be provided to selectively choose which plugins to revert.
-- `packer.delete(snapshot_name)`: Deletes a snapshot file under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be deleted.
 
 ### Using a floating window
 You can configure Packer to use a floating window for command outputs by passing a utility
