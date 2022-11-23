@@ -20,6 +20,7 @@ local M = {}
 
 
 
+
 local function open_display()
    return display.display.open({
       diff = function(plugin, commit, callback)
@@ -446,8 +447,42 @@ end)
 
 
 
-
 M.update = a.void(function(first, ...)
+   local plugins = _G.packer_plugins
+   local opts, update_plugins = filter_opts_from_plugins(first, ...)
+   local fs_state = plugin_utils.get_fs_state(plugins)
+   local _, installed_plugins = util.partition(vim.tbl_keys(fs_state.missing), update_plugins)
+
+   local updates = {}
+
+   a.main()
+
+   local disp = open_display()
+
+   local delta = measure(function()
+      local tasks = {}
+
+      a.main()
+
+      log.debug('Gathering update tasks')
+      vim.list_extend(tasks, update(plugins, installed_plugins, disp, updates, opts))
+
+      run_tasks(tasks, disp)
+
+      a.main()
+      update_helptags(updates)
+   end)
+
+   disp:final_results({ updates = updates }, delta)
+end)
+
+
+
+
+
+
+
+M.sync = a.void(function(first, ...)
    local plugins = _G.packer_plugins
    local opts, update_plugins = filter_opts_from_plugins(first, ...)
    local fs_state = plugin_utils.get_fs_state(plugins)

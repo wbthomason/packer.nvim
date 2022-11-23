@@ -95,6 +95,7 @@ local function make_commands()
     { 'PackerSnapshotDelete'   , '+', actions.delete  , snapshot_cmpl.snapshot },
     { 'PackerInstall'          , '*', actions.install , plugin_complete        },
     { 'PackerUpdate'           , '*', actions.update  , plugin_complete        },
+    { 'PackerSync'             , '*', actions.sync                             },
     { 'PackerClean'            , '*', actions.clean                            },
     { 'PackerStatus'           , '*', actions.status                           },
   } do

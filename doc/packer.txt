@@ -104,6 +104,11 @@ Remove any disabled or unused plugins.
 Clean, then install missing plugins.
 
 `PackerUpdate`                                  *packer-commands-update*
+Update installed plugins.
+Supports the `--preview` flag as an optional first argument to preview
+updates.
+
+`PackerSync`                                    *packer-commands-sync*
 Clean, then update and install plugins.
 Supports the `--preview` flag as an optional first argument to preview
 updates.
