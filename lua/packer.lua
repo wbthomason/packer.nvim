@@ -431,6 +431,13 @@ packer.on_compile_done = function()
   log.debug 'packer.compile: Complete'
 end
 
+packer.on_lockfile_done = function()
+  local log = require_and_configure 'log'
+
+  vim.cmd [[doautocmd User PackerLockfileDone]]
+  log.debug 'packer.lockfile: Complete'
+end
+
 --- Clean operation:
 -- Finds plugins present in the `packer` package but not in the managed set
 packer.clean = function(results)
@@ -766,7 +773,7 @@ packer.lockfile = function(...)
         log.error(err)
       end)
 
-    packer.on_complete()
+    packer.on_lockfile_done()
   end)()
 end
 
