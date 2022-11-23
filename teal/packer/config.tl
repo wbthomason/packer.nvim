@@ -3,8 +3,6 @@ local util = require 'packer.util'
 local join_paths = util.join_paths
 
 local default_config: Config = {
-  snapshot = nil,
-  snapshot_path = join_paths(vim.fn.stdpath 'cache', 'packer.nvim'),
   package_root = join_paths(vim.fn.stdpath 'data', 'site', 'pack'),
   max_jobs = nil,
   auto_clean = true,

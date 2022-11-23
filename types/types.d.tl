@@ -49,12 +49,10 @@ global record Config
   max_jobs        : integer
   start_dir       : string
   opt_dir         : string
-  snapshot_path   : string
   preview_updates : boolean
   auto_clean      : boolean
   autoremove      : boolean
   display         : Display
-  snapshot        : string
   git             : Git
   log             : Log
 

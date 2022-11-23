@@ -73,14 +73,6 @@ local function load_plugin_configs()
 end
 
 local function make_commands()
-   local snapshot_cmpl = setmetatable({}, {
-      __index = function(_, k)
-         return function(...)
-            return (require('packer.snapshot').completion)[k](...)
-         end
-      end,
-   })
-
    local actions = setmetatable({}, {
       __index = function(_, k)
          return function(...)
@@ -90,9 +82,6 @@ local function make_commands()
    })
 
    for _, cmd in ipairs({
-         { 'PackerSnapshot', '+', actions.create, snapshot_cmpl.create },
-         { 'PackerSnapshotRollback', '+', actions.rollback, snapshot_cmpl.rollback },
-         { 'PackerSnapshotDelete', '+', actions.delete, snapshot_cmpl.snapshot },
          { 'PackerInstall', '*', actions.install, plugin_complete },
          { 'PackerUpdate', '*', actions.update, plugin_complete },
          { 'PackerSync', '*', actions.sync },
@@ -116,7 +105,6 @@ end
 
 function M.startup(spec)
    local config = require('packer.config')
-   local log = require('packer.log')
 
    assert(type(spec) == 'table')
    assert(type(spec[1]) == 'table')
@@ -131,20 +119,12 @@ function M.startup(spec)
 
    make_commands()
 
-   if vim.fn.mkdir(config.snapshot_path, 'p') ~= 1 then
-      log.warn("Couldn't create " .. config.snapshot_path)
-   end
-
    _G.packer_plugins = require('packer.plugin').process_spec({
       spec = spec[1],
       line = debug.getinfo(2, 'l').currentline,
    })
 
    load_plugin_configs()
-
-   if config.snapshot then
-      require('packer.actions').rollback(config.snapshot)
-   end
 end
 
 return M
