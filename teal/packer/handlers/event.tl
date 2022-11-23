@@ -9,7 +9,11 @@ return function(event_plugins: {string:Plugin}, loader: function({Plugin}))
   end
 
   for event, eplugins in pairs(events) do
-    vim.api.nvim_create_autocmd(event, {
+    -- Handle 'User Foo' events
+    local ev, pattern = unpack(vim.split(event, '%s+'))
+
+    vim.api.nvim_create_autocmd(ev, {
+      pattern = pattern,
       once = true,
       callback = function()
         loader(eplugins)
