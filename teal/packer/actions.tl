@@ -12,10 +12,11 @@ local display = require 'packer.display'
 local Display = display.Display
 
 local record M
-  install: function()
-  update: function(string|table, ...: string)
-  status: function()
-  clean: function()
+  clean   : function()
+  install : function()
+  update  : function(string|table, ...: string)
+  sync    : function(string|table, ...: string)
+  status  : function()
   rollback: function(snapshot_name: string, ...: string)
   snapshot: function(snapshot_name: string, ...: string)
 end
@@ -443,11 +444,45 @@ end)
 
 --- Update operation:
 --- Takes an optional list of plugin names as an argument. If no list is given,
+--- operates on all managed plugin then updates installed plugins and updates
+--- helptags. - Options can be specified in the first argument as either a table -
+--- or explicit `'--preview'`.
+M.update = a.void(function(first: string|table, ...:string)
+  local plugins = _G.packer_plugins
+  local opts, update_plugins = filter_opts_from_plugins(first, ...)
+  local fs_state = plugin_utils.get_fs_state(plugins)
+  local _, installed_plugins = util.partition(vim.tbl_keys(fs_state.missing), update_plugins)
+
+  local updates = {}
+
+  a.main()
+
+  local disp = open_display()
+
+  local delta = measure(function()
+    local tasks = {}
+
+    a.main()
+
+    log.debug 'Gathering update tasks'
+    vim.list_extend(tasks, update(plugins, installed_plugins, disp, updates, opts))
+
+    run_tasks(tasks, disp)
+
+    a.main()
+    update_helptags(updates)
+  end)
+
+  disp:final_results({updates=updates}, delta)
+end)
+
+--- Sync operation:
+--- Takes an optional list of plugin names as an argument. If no list is given,
 --- operates on all managed plugins. Fixes plugin types, installs missing
 --- plugins, then updates installed plugins and updates helptags and rplugins
 --- Options can be specified in the first argument as either a table
 --- or explicit `'--preview'`.
-M.update = a.void(function(first: string|table, ...:string)
+M.sync = a.void(function(first: string|table, ...:string)
   local plugins = _G.packer_plugins
   local opts, update_plugins = filter_opts_from_plugins(first, ...)
   local fs_state = plugin_utils.get_fs_state(plugins)

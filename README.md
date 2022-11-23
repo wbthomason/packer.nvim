@@ -121,15 +121,16 @@ require('packer').startup({
 " Install missing plugins
 :PackerInstall
 
-" Clean, then update and install plugins
+" Update installed plugins
 " supports the `--preview` flag as an optional first argument to preview updates
 :PackerUpdate
 
+" Clean, fix, install then update
+" supports the `--preview` flag as an optional first argument to preview updates
+:PackerSync
+
 " View status of plugins
 :PackerStatus
-
-" Loads opt plugin immediately
-:PackerLoad completion-nvim ale
 ```
 
 ## Bootstrapping
