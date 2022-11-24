@@ -840,6 +840,7 @@ global record vim
   tbl_isempty: function(table): boolean
   tbl_islist: function(table): boolean
   tbl_keys: function<K,V>({K:V}): {K}
+  tbl_values: function<K,V>({K:V}): {V}
   tbl_map: function<T,R>((function(T): R), {T}): {R}
 
   record InspectOptions
