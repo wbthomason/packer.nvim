@@ -161,7 +161,7 @@ local post_update_hook = a.sync(function(plugin: Plugin, disp: Display): {string
   end
 end, 2)
 
-local install_task = a.sync(function(plugin: Plugin, disp: Display, installs: {string:PluginResult}): {string}
+local install_task = a.sync(function(plugin: Plugin, disp: Display, installs: {string:PluginResult}): string, {string}
   disp:task_start(plugin.full_name, 'installing...')
 
   local plugin_type = require'packer.plugin_types'[plugin.type]
@@ -172,19 +172,28 @@ local install_task = a.sync(function(plugin: Plugin, disp: Display, installs: {s
     err = post_update_hook(plugin, disp)
   end
 
+  if not disp.items then
+    disp.items = {}
+  end
+
   if not err then
     disp:task_succeeded(plugin.full_name, 'installed')
     log.debug(fmt('Installed %s', plugin.full_name))
   else
     disp:task_failed(plugin.full_name, 'failed to install')
     log.debug(fmt('Failed to install %s: %s', plugin.full_name, vim.inspect(err)))
+    disp.items[plugin.name] = {
+      displayed = false,
+      lines = err,
+      plugin = plugin
+    }
   end
 
-  installs[plugin.name] = err and { err = err } or {}
-  return err
+  installs[plugin.name] = { err = err }
+  return plugin.name, err
 end, 3)
 
-local function install(
+local function get_install_tasks(
   plugins: {string:Plugin},
   missing_plugins: {string},
   disp: Display,
@@ -213,9 +222,11 @@ local function move_plugin(plugin: Plugin, moves: {string:PluginResult}, fs_stat
     to = util.join_paths(config.start_dir, plugin.name)
   end
 
-  fs_state.start[to] = true
+  fs_state.start[to] = plugin.name
   fs_state.opt[from] = nil
-  fs_state.missing[plugin.name] = nil
+  fs_state.dirty[from] = nil
+  -- TODO(lewis6991): recal is plugin is still dirty
+  fs_state.dirty[to] = plugin.name
 
   moves[plugin.name] = {from = from, to = to}
 
@@ -264,11 +275,11 @@ local update_task = a.sync(function(plugin: Plugin, disp: Display, updates: {str
     log.debug(fmt('Failed to update %s: %s', plugin_name, plugin.err))
   end
 
-  updates[plugin_name] = err and { err = err } or {}
+  updates[plugin_name] = { err = err }
   return plugin_name, err
 end, 4)
 
-local function update(
+local function get_update_tasks(
   plugins: {string:Plugin},
   update_plugins: {string},
   disp: Display,
@@ -331,49 +342,14 @@ local function filter_opts_from_plugins(first: table|string, ...: string): table
   return opts, #args > 0 and args or vim.tbl_keys(_G.packer_plugins)
 end
 
-local function is_dirty(plugin: Plugin, isopt: boolean): boolean
-  return (plugin.opt and isopt == false) or (not plugin.opt and isopt == true)
-end
-
 -- Find and remove any plugins not currently configured for use
-local clean = a.sync(function(plugins: {string:Plugin}, fs_state: plugin_utils.FSState, removals: {string})
-  fs_state = fs_state or require('packer.plugin_utils').get_fs_state(plugins)
+local do_clean = a.sync(function(plugins: {string:Plugin}, fs_state: plugin_utils.FSState, removals: {string})
+  fs_state = fs_state or plugin_utils.get_fs_state(plugins)
 
   log.debug 'Starting clean'
-  local dirty_plugins: {string} = {}
-  local opt_plugins = vim.deepcopy(fs_state.opt)
-  local start_plugins = vim.deepcopy(fs_state.start)
-  local missing_plugins = fs_state.missing
+  local dirty_plugins = fs_state.dirty
 
-  -- test for dirty / 'missing' plugins
-  for _, plugin_config in pairs(plugins) do
-    local path = plugin_config.install_path
-    local plugin_isopt: boolean
-    if opt_plugins[path] then
-      plugin_isopt = true
-      opt_plugins[path] = nil
-    elseif start_plugins[path] then
-      plugin_isopt = false
-      start_plugins[path] = nil
-    end
-
-    -- We don't want to report paths which don't exist for removal; that will confuse people
-    local path_exists = false
-    if missing_plugins[plugin_config.name] then
-      path_exists = vim.loop.fs_stat(path) ~= nil
-    end
-
-    local plugin_missing = path_exists and missing_plugins[plugin_config.name]
-    if plugin_missing or is_dirty(plugin_config, plugin_isopt) then
-      dirty_plugins[#dirty_plugins + 1] = path
-    end
-  end
-
-  -- Any path which was not set to `nil` above will be set to dirty here
-  vim.list_extend(dirty_plugins, vim.tbl_keys(opt_plugins))
-  vim.list_extend(dirty_plugins, vim.tbl_keys(start_plugins))
-
-  if #dirty_plugins == 0 then
+  if not next(dirty_plugins) then
     log.info 'Already clean!'
     return
   end
@@ -381,23 +357,24 @@ local clean = a.sync(function(plugins: {string:Plugin}, fs_state: plugin_utils.F
   a.main()
 
   local lines = {}
-  for _, path in ipairs(dirty_plugins) do
+  for path, _ in pairs(dirty_plugins) do
     table.insert(lines, '  - ' .. path)
   end
 
   if config.autoremove or display.display.ask_user('Removing the following directories. OK? (y/N)', lines) then
     if removals then
-      for i, r in ipairs(dirty_plugins) do
-        removals[i] = r
+      for r, _ in pairs(dirty_plugins) do
+        removals[#removals+1] = r
       end
     end
-    log.debug('Removed ' .. vim.inspect(dirty_plugins))
-    for _, path in ipairs(dirty_plugins) do
+    for path, _ in pairs(dirty_plugins) do
       local result = vim.fn.delete(path, 'rf')
       if result == -1 then
         log.warn('Could not remove ' .. path)
       end
+      dirty_plugins[path] = nil
     end
+    log.debug('Removed ' .. vim.inspect(dirty_plugins))
   else
     log.warn 'Cleaning cancelled!'
   end
@@ -411,13 +388,13 @@ local record Results
 end
 
 --- Install operation:
--- Installs missing plugins, then updates helptags and rplugins
+--- Installs missing plugins, then updates helptags
 M.install = a.sync(function()
   log.debug 'packer.install: requiring modules'
 
   local fs_state = plugin_utils.get_fs_state(_G.packer_plugins)
-  local install_plugins = vim.tbl_keys(fs_state.missing)
-  if #install_plugins == 0 then
+  local missing_plugins = vim.tbl_values(fs_state.missing)
+  if #missing_plugins == 0 then
     log.info 'All configured plugins are installed'
     return
   end
@@ -430,7 +407,7 @@ M.install = a.sync(function()
   local installs: {string:PluginResult} = {}
 
   local delta = measure(function()
-    local install_tasks = install(_G.packer_plugins, install_plugins, disp, installs)
+    local install_tasks = get_install_tasks(_G.packer_plugins, missing_plugins, disp, installs)
     run_tasks(install_tasks, disp)
 
     a.main()
@@ -449,7 +426,7 @@ M.update = a.void(function(first: string|table, ...:string)
   local plugins = _G.packer_plugins
   local opts, update_plugins = filter_opts_from_plugins(first, ...)
   local fs_state = plugin_utils.get_fs_state(plugins)
-  local _, installed_plugins = util.partition(vim.tbl_keys(fs_state.missing), update_plugins)
+  local _, installed_plugins = util.partition(vim.tbl_values(fs_state.missing), update_plugins)
 
   local updates = {}
 
@@ -463,7 +440,7 @@ M.update = a.void(function(first: string|table, ...:string)
     a.main()
 
     log.debug 'Gathering update tasks'
-    vim.list_extend(tasks, update(plugins, installed_plugins, disp, updates, opts))
+    vim.list_extend(tasks, get_update_tasks(plugins, installed_plugins, disp, updates, opts))
 
     run_tasks(tasks, disp)
 
@@ -484,7 +461,8 @@ M.sync = a.void(function(first: string|table, ...:string)
   local plugins = _G.packer_plugins
   local opts, update_plugins = filter_opts_from_plugins(first, ...)
   local fs_state = plugin_utils.get_fs_state(plugins)
-  local missing_plugins, installed_plugins = util.partition(vim.tbl_keys(fs_state.missing), update_plugins)
+
+  local dirty_plugins = util.partition(vim.tbl_values(fs_state.dirty), update_plugins)
 
   local results: Results = {
     moves = {},
@@ -493,10 +471,15 @@ M.sync = a.void(function(first: string|table, ...:string)
     updates = {}
   }
 
-  fix_plugin_types(plugins, missing_plugins, results.moves, fs_state)
-  clean(plugins, fs_state, results.removals)
+  fix_plugin_types(plugins, dirty_plugins, results.moves, fs_state)
 
-  missing_plugins = ({util.partition(vim.tbl_keys(results.moves), missing_plugins)})[2]
+  -- Even though we may have moved some dirty plugins, they may still be dirty
+  -- for a different reason so recalculate fs_state
+  fs_state = plugin_utils.get_fs_state(plugins)
+
+  do_clean(plugins, fs_state, results.removals)
+
+  local missing_plugins, installed_plugins = util.partition(vim.tbl_values(fs_state.missing), update_plugins)
 
   a.main()
 
@@ -506,12 +489,12 @@ M.sync = a.void(function(first: string|table, ...:string)
     local tasks = {}
 
     log.debug 'Gathering install tasks'
-    vim.list_extend(tasks, install(plugins, missing_plugins, disp, results.installs))
+    vim.list_extend(tasks, get_install_tasks(plugins, missing_plugins, disp, results.installs))
 
     a.main()
 
     log.debug 'Gathering update tasks'
-    vim.list_extend(tasks, update(plugins, installed_plugins, disp, results.updates, opts))
+    vim.list_extend(tasks, get_update_tasks(plugins, installed_plugins, disp, results.updates, opts))
 
     run_tasks(tasks, disp)
 
@@ -534,7 +517,7 @@ end)
 --- Clean operation:
 -- Finds plugins present in the `packer` package but not in the managed set
 M.clean = a.void(function()
-  clean(_G.packer_plugins)
+  do_clean(_G.packer_plugins)
 end)
 
 return M

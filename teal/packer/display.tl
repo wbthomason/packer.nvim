@@ -308,6 +308,14 @@ local function continue(disp: Display)
   end
 end
 
+local function pad(x: {string}): {string}
+  local r = {}
+  for i, s in ipairs(x) do
+    r[i] = '   '..s
+  end
+  return r
+end
+
   --- Toggle the display of detailed information for a plugin in the final results display
 local function toggle_info(disp: Display)
   if not valid_display(disp) then
@@ -330,7 +338,7 @@ local function toggle_info(disp: Display)
     set_lines(disp, cursor_pos[1], cursor_pos[1] + #item.lines, {})
     item.displayed = false
   elseif #item.lines > 0 then
-    set_lines(disp, cursor_pos[1], cursor_pos[1], item.lines)
+    set_lines(disp, cursor_pos[1], cursor_pos[1], pad(item.lines))
     item.displayed = true
   else
     log.info('No further information for ' .. plugin_name)
@@ -632,14 +640,6 @@ local function load_state(plugin: Plugin): string
   return ''
 end
 
-local function pad(x: {string}): {string}
-  local r = {}
-  for i, s in ipairs(x) do
-    r[i] = '   '..s
-  end
-  return r
-end
-
 local function get_plugin_status(plugin: Plugin): {string}
   local config_lines = {}
   for key, value in pairs(plugin as {string:any}) do
@@ -672,7 +672,7 @@ display.set_status = vim.schedule_wrap(function(self: Display, plugins: {string:
     lines[#lines+1] = fmt(' %s %s%s', config.display.item_sym, plugin_name, load_state(plugin))
     self.items[plugin_name] = {
       plugin = plugin,
-      lines = pad(get_plugin_status(plugin)),
+      lines = get_plugin_status(plugin),
       displayed = false
     }
   end
