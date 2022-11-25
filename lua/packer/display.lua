@@ -96,7 +96,16 @@ local function is_plugin_line(line)
    return false
 end
 
-local M = {Display = {Item = {}, Results = {}, Callbacks = {}, }, }
+local M = {Display = {Item = {}, Result = {}, Results = {}, Callbacks = {}, }, }
+
+
+
+
+
+
+
+
+
 
 
 

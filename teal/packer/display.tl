@@ -97,6 +97,7 @@ local function is_plugin_line(line: string): boolean
 end
 
 local record M
+
   record Display
     record Item
       plugin        : Plugin
@@ -111,11 +112,19 @@ local record M
     ns            : integer
     opts          : Config.Display
 
+    record Result
+      err: {string}
+
+      -- Used for moves
+      from: string
+      to: string
+    end
+
     record Results
       removals: {string}
-      moves: {string:PluginResult}
-      installs: {string:PluginResult}
-      updates: {string:PluginResult}
+      moves: {string:Result}
+      installs: {string:Result}
+      updates: {string:Result}
     end
 
     results       : Results

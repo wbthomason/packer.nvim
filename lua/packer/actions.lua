@@ -382,13 +382,6 @@ end, 4)
 
 
 
-
-
-
-
-
-
-
 M.install = a.sync(function()
    log.debug('packer.install: requiring modules')
 

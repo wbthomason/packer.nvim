@@ -48,14 +48,6 @@ end
 
 global packer_plugins: {string:Plugin}
 
-global record PluginResult
-  err: {string}
-
-  -- Used for moves
-  from: string
-  to: string
-end
-
 global record jit
   arch: string
   os: string
