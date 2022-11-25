@@ -189,7 +189,7 @@ local record M
   tbl_extend: function<T>(ExtendBehavior, T, T, ...: T): T
   tbl_filter: function<S,T>((function(T): boolean), {S:T}): {S:T}
   tbl_isempty: function(table): boolean
-  tbl_islist: function(table): boolean
+  tbl_islist: function(any): boolean
   tbl_keys: function<K,V>({K:V}): {K}
   tbl_values: function<K,V>({K:V}): {V}
   tbl_map: function<T,R>((function(T): R), {T}): {R}
