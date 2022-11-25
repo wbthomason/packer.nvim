@@ -2,6 +2,58 @@ local util = require 'packer.util'
 
 local join_paths = util.join_paths
 
+local record Config
+  record Display
+    open_cmd        : string
+    preview_updates : boolean
+    non_interactive : boolean
+    prompt_border   : string
+    compact         : boolean
+    working_sym     : string
+    error_sym       : string
+    done_sym        : string
+    removed_sym     : string
+    moved_sym       : string
+    item_sym        : string
+    header_sym      : string
+    header_lines    : integer
+    title           : string
+    show_all_info   : boolean
+    keybindings     : {string: string}
+  end
+
+  record Git
+    mark_breaking_changes : boolean
+    cmd                   : string
+    depth                 : integer
+    clone_timeout         : integer
+    default_url_format    : string
+  end
+
+  record Log
+    enum Level
+      'trace' 'debug' 'info' 'warn' 'error' 'fatal'
+    end
+    level: Level
+  end
+
+  package_root    : string
+  pack_dir        : string
+  max_jobs        : integer
+  start_dir       : string
+  opt_dir         : string
+  preview_updates : boolean
+  auto_clean      : boolean
+  autoremove      : boolean
+  display         : Display
+  git             : Git
+  log             : Log
+
+  Config: Config
+
+  metamethod __call: function(Config, Config): Config
+end
+
 local default_config: Config = {
   package_root = join_paths(vim.fn.stdpath 'data', 'site', 'pack'),
   max_jobs = nil,

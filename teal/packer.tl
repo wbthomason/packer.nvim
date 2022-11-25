@@ -1,3 +1,7 @@
+local config = require 'packer.config'
+
+local Config = config.Config
+
 local M = {}
 
 local function apply_config(plugin: Plugin)
@@ -104,8 +108,6 @@ end
 -- spec can be a table with a table of plugin specifications as its first
 -- element, config overrides as another element.
 function M.startup(spec: SSpec)
-  local config = require 'packer.config'
-
   assert(type(spec) == 'table')
   assert(type(spec[1]) == 'table')
 

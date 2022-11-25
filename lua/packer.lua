@@ -1,3 +1,7 @@
+local config = require('packer.config')
+
+local Config = config.Config
+
 local M = {}
 
 local function apply_config(plugin)
@@ -104,8 +108,6 @@ end
 
 
 function M.startup(spec)
-   local config = require('packer.config')
-
    assert(type(spec) == 'table')
    assert(type(spec[1]) == 'table')
 

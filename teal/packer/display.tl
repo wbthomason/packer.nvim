@@ -4,6 +4,8 @@ local config = require 'packer.config'
 local awrap = require 'packer.async'.wrap
 local fmt = string.format
 
+local Config = config.Config
+
 local function set_extmark(buf: integer, ns: integer, id: integer, line: integer, col: integer): integer
   if not api.nvim_buf_is_valid(buf) then
     return
