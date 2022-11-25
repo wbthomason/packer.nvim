@@ -5,7 +5,7 @@ local a = require('packer.async')
 local config = require('packer.config')
 local log = require('packer.log')
 local util = require('packer.util')
-local plugin_utils = require('packer.plugin_utils')
+local fsstate = require('packer.fsstate')
 
 local display = require('packer.display')
 
@@ -342,7 +342,7 @@ end
 
 
 local do_clean = a.sync(function(plugins, fs_state, removals)
-   fs_state = fs_state or plugin_utils.get_fs_state(plugins)
+   fs_state = fs_state or fsstate.get_fs_state(plugins)
 
    log.debug('Starting clean')
    local extra_plugins = fs_state.extra
@@ -383,7 +383,7 @@ end, 4)
 M.install = a.sync(function()
    log.debug('packer.install: requiring modules')
 
-   local fs_state = plugin_utils.get_fs_state(_G.packer_plugins)
+   local fs_state = fsstate.get_fs_state(_G.packer_plugins)
    local missing_plugins = vim.tbl_values(fs_state.missing)
    if #missing_plugins == 0 then
       log.info('All configured plugins are installed')
@@ -416,7 +416,7 @@ end)
 M.update = a.void(function(first, ...)
    local plugins = _G.packer_plugins
    local opts, update_plugins = filter_opts_from_plugins(first, ...)
-   local fs_state = plugin_utils.get_fs_state(plugins)
+   local fs_state = fsstate.get_fs_state(plugins)
    local _, installed_plugins = util.partition(vim.tbl_values(fs_state.missing), update_plugins)
 
    local updates = {}
@@ -451,7 +451,7 @@ end)
 M.sync = a.void(function(first, ...)
    local plugins = _G.packer_plugins
    local opts, update_plugins = filter_opts_from_plugins(first, ...)
-   local fs_state = plugin_utils.get_fs_state(plugins)
+   local fs_state = fsstate.get_fs_state(plugins)
 
    local extra_plugins = util.partition(vim.tbl_values(fs_state.extra), update_plugins)
 
@@ -466,7 +466,7 @@ M.sync = a.void(function(first, ...)
 
 
 
-   fs_state = plugin_utils.get_fs_state(plugins)
+   fs_state = fsstate.get_fs_state(plugins)
 
    do_clean(plugins, fs_state, results.removals)
 
