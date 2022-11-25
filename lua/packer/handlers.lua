@@ -11,6 +11,16 @@ local M = {}
 
 
 
+
+
+M.types = {
+   'keys',
+   'event',
+   'ft',
+   'cmd',
+   'cond',
+}
+
 return setmetatable(M, {
    __index = function(_, cond)
       if cond == 'keys' then

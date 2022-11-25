@@ -40,23 +40,15 @@ end
 local function load_plugin_configs()
    local Handlers = require('packer.handlers')
 
-   local cond_plugins = {
-      cmd = {},
-      keys = {},
-      ft = {},
-      event = {},
-      cond = {},
-   }
-
+   local cond_plugins = {}
    local uncond_plugins = {}
-
-   local conds = { 'cmd', 'keys', 'ft', 'event', 'cond' }
 
    for name, plugin in pairs(_G.packer_plugins) do
       local has_cond = false
-      for _, cond in ipairs(conds) do
+      for _, cond in ipairs(Handlers.types) do
          if (plugin)[cond] then
             has_cond = true
+            cond_plugins[cond] = cond_plugins[cond] or {}
             cond_plugins[cond][name] = plugin
             break
          end
@@ -70,8 +62,8 @@ local function load_plugin_configs()
       apply_config(plugin)
    end
 
-   for _, cond in ipairs(conds) do
-      if next(cond_plugins[cond]) then
+   for _, cond in ipairs(Handlers.types) do
+      if cond_plugins[cond] then
          Handlers[cond](cond_plugins[cond], loader)
       end
    end
