@@ -121,10 +121,7 @@ function M.startup(spec)
 
    make_commands()
 
-   _G.packer_plugins = require('packer.plugin').process_spec({
-      spec = spec[1],
-      line = debug.getinfo(2, 'l').currentline,
-   })
+   _G.packer_plugins = require('packer.plugin').process_spec(spec[1])
 
    load_plugin_configs()
 end

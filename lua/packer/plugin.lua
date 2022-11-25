@@ -4,6 +4,7 @@ local config = require('packer.config')
 
 local fmt = string.format
 
+local M = {UserSpec = {}, Plugin = {}, }
 
 
 
@@ -16,7 +17,6 @@ local fmt = string.format
 
 
 
-local M = {Plugin = {}, }
 
 
 
@@ -88,140 +88,145 @@ local function get_plugin_name(text)
    return name, path
 end
 
-local function get_plugin_full_name(plugin)
-   local plugin_name = plugin.name
-   if plugin.branch then
+local function get_plugin_full_name(name, user)
+   if user.branch then
 
-      plugin_name = plugin_name .. '/' .. plugin.branch
+      name = name .. '/' .. user.branch
    end
 
-   if plugin.rev then
-      plugin_name = plugin_name .. '@' .. plugin.rev
+   if user.rev then
+      name = name .. '@' .. user.rev
    end
 
-   return plugin_name
+   return name
 end
 
 local function remove_ending_git_url(url)
    return vim.endswith(url, '.git') and url:sub(1, -5) or url
 end
 
+local function normspec(x)
+   return type(x) == "string" and { x } or x
+end
+
+local function normcond(x)
+   if type(x) == "string" then
+      return { x }
+   end
+   return x
+end
+
+local function normkeys(x)
+   if type(x) == "string" then
+      return { { '', x } }
+   end
+   return x
+end
+
+local function normrun(x)
+   if type(x) == "function" or type(x) == "string" then
+      return { x }
+   end
+   return x
+end
 
 
 
 
-local function process_spec(plugin_data, plugins)
-   local spec = plugin_data.spec
-   local spec_line = plugin_data.line
+local function process_spec(
+   spec0,
+   plugins,
+   required_by)
 
-   local speclist = spec
-   if type(speclist) == 'table' and #speclist > 1 then
-      for _, s in ipairs(speclist) do
-         process_spec({ line = spec_line, spec = s }, plugins)
+   local spec = normspec(spec0)
+
+   if #spec > 1 then
+      local r = {}
+      for _, s in ipairs(spec) do
+         r = vim.tbl_extend('error', r, process_spec(s, plugins, required_by))
       end
-      return
+      return r
    end
 
-   if type(spec) == 'string' then
-      spec = { spec }
-   end
-
-   local spec0 = spec[1]
+   local id = spec[1]
    spec[1] = nil
 
-   if spec0 == nil then
-      log.warn(fmt('No plugin name provided at line %s!', spec_line))
-      return
+   if id == nil then
+      log.warn('No plugin name provided!')
+      return {}
    end
 
-   local name, path = get_plugin_name(spec0)
+   local name, path = get_plugin_name(id)
 
    if name == '' then
-      log.warn(fmt('"%s" is an invalid plugin name!', spec0))
-      return
+      log.warn(fmt('"%s" is an invalid plugin name!', id))
+      return {}
    end
 
-   if plugins[name] and not plugins[name].from_requires then
-      log.warn(fmt('Plugin "%s" is used twice! (line %s)', name, spec_line))
-      return
-   end
-
-
-   spec.name = name
-   spec.full_name = get_plugin_full_name(spec)
-
-   local manual_opt = spec.opt
-
-   if spec.keys ~= nil or
-      spec.ft ~= nil or
-      spec.cmd ~= nil or
-      spec.event ~= nil or
-      spec.cond ~= nil then
-      spec.opt = true
-   end
-
-
-   for _, field in ipairs({ 'cmd', 'ft', 'event', 'run' }) do
-      local v = (spec)[field]
-      if v and type(v) ~= 'table' then
-         (spec)[field] = { v }
+   if plugins[name] then
+      if required_by then
+         plugins[name].required_by = plugins[name].required_by or {}
+         table.insert(plugins[name].required_by, required_by.name)
+      else
+         log.warn(fmt('Plugin "%s" is specified more than once!', name))
       end
+
+      return { [name] = plugins[name] }
    end
 
+   local url, ptype = guess_plugin_type(path)
 
-   if type(spec.keys) == 'string' then
-      spec.keys = { { '', spec.keys } }
-   elseif type(spec.keys) == 'table' then
-      for i, v in ipairs(spec.keys) do
-         if type(v) == 'string' then
-            spec.keys[i] = { '', v }
-         end
-      end
+   local plugin = {
+      name = name,
+      full_name = get_plugin_full_name(name, spec),
+      branch = spec.branch,
+      rev = spec.rev,
+      tag = spec.tag,
+      commit = spec.commit,
+      keys = normkeys(spec.keys),
+      event = normcond(spec.event),
+      ft = normcond(spec.ft),
+      cmd = normcond(spec.cmd),
+      cond = spec.cond,
+      run = normrun(spec.run),
+      lock = spec.lock,
+      url = remove_ending_git_url(url),
+      type = ptype,
+      config = spec.config,
+      required_by = required_by and { required_by.name } or nil,
+      revs = {},
+   }
+
+   plugins[name] = plugin
+
+   if plugin.opt == nil then
+      plugin.opt = plugin.keys ~= nil or
+      plugin.ft ~= nil or
+      plugin.cmd ~= nil or
+      plugin.event ~= nil or
+      plugin.cond ~= nil or
+      (required_by or {}).opt
    end
 
-   spec.install_path = util.join_paths(spec.opt and config.opt_dir or config.start_dir, name)
-
-   spec.loaded = not spec.opt and vim.loop.fs_stat(spec.install_path) ~= nil
-
-   spec.url, spec.type = guess_plugin_type(path)
-
-
-   spec.url = remove_ending_git_url(spec.url)
-   spec.revs = {}
-
-   plugins[name] = spec
+   plugin.install_path = util.join_paths(plugin.opt and config.opt_dir or config.start_dir, name)
+   plugin.loaded = not plugin.opt and vim.loop.fs_stat(plugin.install_path) ~= nil
 
    if spec.requires then
-
-      if type(spec.requires) == 'string' or (
-         type(spec.requires) == 'table' and
-         not vim.tbl_islist(spec.requires) and
-         #spec.requires == 1) then
-
-         spec.requires = { spec.requires }
-      end
-
-      for _, req in ipairs(spec.requires) do
-         if type(req) == 'string' then
-            req = { req }
-         end
-
-         local req_name_segments = vim.split(req[1], '/')
-         local req_name = req_name_segments[#req_name_segments]
+      if required_by then
+         log.warn(fmt('(%s) Nested requires are not support', name))
+      else
+         local sr = spec.requires
+         local r = type(sr) == "string" and { sr } or sr
 
 
-
-
-         req.from_requires = true
-         if not plugins[req_name] then
-            if manual_opt then
-               req.opt = true
-            end
-
-            process_spec({ spec = req, line = spec_line }, plugins)
+         plugin.requires = {}
+         for _, s in ipairs(r) do
+            vim.list_extend(plugin.requires, vim.tbl_keys(process_spec(s, plugins, plugin)))
          end
       end
    end
+
+   return { [name] = plugin }
 end
 
 function M.process_spec(spec)

@@ -4,27 +4,28 @@ local config = require('packer.config')
 
 local fmt = string.format
 
----@class PluginSpecInput
----@field branch       string
----@field rev          string
----@field tag          string
----@field commit       string
----@field keys         string|string[]
----@field event        string|string[]
----@field ft           string|string[]
----@field cmd          string|string[]
----@field run          string|function|(string|function)[]
----@field lock         boolean
-
 local record M
-  record Plugin
+  record UserSpec
     {string}
 
-    name             : string
-    full_name        : string -- Includes rev and branch
+    branch   : string
+    rev      : string
+    tag      : string
+    commit   : string
+    keys     : string|{{string,string}}
+    event    : string|{string}
+    ft       : string|{string}
+    cmd      : string|{string}
+    cond     : function(): boolean
+    run      : string|function|{string|function}
+    config   : string|function()
+    lock     : boolean
+    requires : string|{string|UserSpec}
+  end
+
+  record Plugin
     branch           : string
     rev              : string
-    revs             : {string, string}
     tag              : string
     commit           : string
     install_path     : string
@@ -35,6 +36,12 @@ local record M
     cond             : function(): boolean
     run              : {string | function}
     config           : string|function()
+    requires         : {string}
+
+    name             : string
+    full_name        : string -- Includes rev and branch
+    revs             : {string, string}
+    required_by      : {string}
 
     enum Type
       'git'
@@ -45,9 +52,7 @@ local record M
     type             : Type
     url              : string
     lock             : boolean
-    from_requires    : boolean
     breaking_commits : {string}
-    requires         : {Plugin}
     opt              : boolean
     loaded           : boolean
 
@@ -56,12 +61,7 @@ local record M
   end
 end
 
-local record PluginData
-  line: integer
-  spec: Plugin
-end
-
-local function guess_plugin_type(path: string): string, Plugin.Type
+local function guess_plugin_type(path: string): string, M.Plugin.Type
   if vim.fn.isdirectory(path) ~= 0 then
     return path, 'local'
   end
@@ -88,143 +88,148 @@ local function get_plugin_name(text: string): string, string
   return name, path
 end
 
-local function get_plugin_full_name(plugin: Plugin): string
-  local plugin_name = plugin.name
-  if plugin.branch then
+local function get_plugin_full_name(name: string, user: M.UserSpec): string
+  if user.branch then
     -- NOTE: maybe have to change the seperator here too
-    plugin_name = plugin_name .. '/' .. plugin.branch
+    name = name .. '/' .. user.branch
   end
 
-  if plugin.rev then
-    plugin_name = plugin_name .. '@' .. plugin.rev
+  if user.rev then
+    name = name .. '@' .. user.rev
   end
 
-  return plugin_name
+  return name
 end
 
 local function remove_ending_git_url(url: string): string
   return vim.endswith(url, '.git') and url:sub(1, -5) or url
 end
 
+local function normspec(x: string|M.UserSpec): M.UserSpec
+  return x is string and { x } or x as M.UserSpec
+end
+
+local function normcond(x: string|{string}): {string}
+  if x is string then
+    return { x }
+  end
+  return x as {string}
+end
+
+local function normkeys(x: string|{{string,string}}): {{string,string}}
+  if x is string then
+    return {{ '', x as string }}
+  end
+  return x as {{string,string}}
+end
+
+local function normrun(x: string|function|{string|function}): {string|function}
+  if x is function or x is string then
+    return { x }
+  end
+  return x as {string|function}
+end
 
 --- The main logic for adding a plugin (and any dependencies) to the managed set
 -- Can be invoked with (1) a single plugin spec as a string, (2) a single plugin spec table, or (3)
 -- a list of plugin specs
-local function process_spec(plugin_data: PluginData, plugins: {string:Plugin})
-  local spec = plugin_data.spec
-  local spec_line = plugin_data.line
+local function process_spec(
+  spec0: string|M.UserSpec,
+  plugins: {string:M.Plugin},
+  required_by: M.Plugin
+): {string:M.Plugin}
+  local spec = normspec(spec0)
 
-  local speclist = spec as {Plugin}
-  if type(speclist) == 'table' and #speclist > 1 then
-    for _, s in ipairs(speclist) do
-      process_spec({ line = spec_line, spec = s}, plugins)
+  if #spec > 1 then
+    local r: {string:M.Plugin} = {}
+    for _, s in ipairs(spec) do
+      r = vim.tbl_extend('error', r, process_spec(s, plugins, required_by))
     end
-    return
+    return r
   end
 
-  if type(spec) == 'string' then
-    spec = { spec } as Plugin
-  end
-
-  local spec0 = spec[1]
+  local id = spec[1] as string
   spec[1] = nil
 
-  if spec0 == nil then
-    log.warn(fmt('No plugin name provided at line %s!', spec_line))
-    return
+  if id == nil then
+    log.warn('No plugin name provided!')
+    return {}
   end
 
-  local name, path = get_plugin_name(spec0)
+  local name, path = get_plugin_name(id)
 
   if name == '' then
-    log.warn(fmt('"%s" is an invalid plugin name!', spec0))
-    return
+    log.warn(fmt('"%s" is an invalid plugin name!', id))
+    return {}
   end
 
-  if plugins[name] and not plugins[name].from_requires then
-    log.warn(fmt('Plugin "%s" is used twice! (line %s)', name, spec_line))
-    return
-  end
-
-  -- Handle aliases
-  spec.name = name
-  spec.full_name = get_plugin_full_name(spec)
-
-  local manual_opt = spec.opt
-
-  if spec.keys ~= nil
-    or spec.ft ~= nil
-    or spec.cmd ~= nil
-    or spec.event ~= nil
-    or spec.cond ~= nil then
-    spec.opt = true
-  end
-
-  -- Normalize
-  for _, field in ipairs{'cmd', 'ft', 'event', 'run'} do
-    local v = (spec as {string:any})[field]
-    if v and type(v) ~= 'table' then
-      (spec as {string:any})[field] = { v }
+  if plugins[name] then
+    if required_by then
+      plugins[name].required_by = plugins[name].required_by or {}
+      table.insert(plugins[name].required_by, required_by.name)
+    else
+      log.warn(fmt('Plugin "%s" is specified more than once!', name))
     end
+
+    return {[name] = plugins[name]}
   end
 
-  -- Normalize
-  if type(spec.keys) == 'string' then
-    spec.keys = {{'', spec.keys as string}}
-  elseif type(spec.keys) == 'table' then
-    for i, v in ipairs(spec.keys) do
-      if type(v) == 'string' then
-        spec.keys[i] = {'', v as string}
-      end
-    end
+  local url, ptype = guess_plugin_type(path)
+
+  local plugin: M.Plugin = {
+    name        = name,
+    full_name   = get_plugin_full_name(name, spec),
+    branch      = spec.branch,
+    rev         = spec.rev,
+    tag         = spec.tag,
+    commit      = spec.commit,
+    keys        = normkeys(spec.keys),
+    event       = normcond(spec.event),
+    ft          = normcond(spec.ft   ),
+    cmd         = normcond(spec.cmd  ),
+    cond        = spec.cond,
+    run         = normrun(spec.run),
+    lock        = spec.lock,
+    url         = remove_ending_git_url(url),
+    type        = ptype,
+    config      = spec.config,
+    required_by = required_by and {required_by.name} or nil,
+    revs        = {}
+  }
+
+  plugins[name] = plugin
+
+  if plugin.opt == nil then
+    plugin.opt = plugin.keys ~= nil
+      or plugin.ft ~= nil
+      or plugin.cmd ~= nil
+      or plugin.event ~= nil
+      or plugin.cond ~= nil
+      or (required_by or {}).opt
   end
 
-  spec.install_path = util.join_paths(spec.opt and config.opt_dir or config.start_dir, name)
-
-  spec.loaded = not spec.opt and vim.loop.fs_stat(spec.install_path) ~= nil
-
-  spec.url, spec.type = guess_plugin_type(path)
-
-  -- Add the git URL for displaying in PackerStatus and PackerSync.
-  spec.url = remove_ending_git_url(spec.url)
-  spec.revs = {}
-
-  plugins[name] = spec
+  plugin.install_path = util.join_paths(plugin.opt and config.opt_dir or config.start_dir, name)
+  plugin.loaded = not plugin.opt and vim.loop.fs_stat(plugin.install_path) ~= nil
 
   if spec.requires then
-    -- Handle single plugins given as strings or single plugin specs given as tables
-    if type(spec.requires) == 'string' or (
-        type(spec.requires) == 'table'
-        and not vim.tbl_islist(spec.requires)
-        and #spec.requires == 1
-      ) then
-      spec.requires = { spec.requires as Plugin }
-    end
+    if required_by then
+      log.warn(fmt('(%s) Nested requires are not support', name))
+    else
+      local sr = spec.requires
+      local r: {string|M.UserSpec} = sr is string and {sr} or  sr
 
-    for _, req in ipairs(spec.requires) do
-      if type(req) == 'string' then
-        req = { req as string }
-      end
-      ---@diagnostic disable-next-line
-      local req_name_segments = vim.split(req[1], '/')
-      local req_name = req_name_segments[#req_name_segments]
-      -- this flag marks a plugin as being from a require which we use to allow
-      -- multiple requires for a plugin without triggering a duplicate warning *IF*
-      -- the plugin is from a `requires` field and the full specificaiton has not been called yet.
-      -- @see: https://github.com/wbthomason/packer.nvim/issues/258#issuecomment-876568439
-      req.from_requires = true
-      if not plugins[req_name] then
-        if manual_opt then
-          req.opt = true
-        end
-
-        process_spec({ spec = req, line = spec_line }, plugins)
+      -- TODO(lewis6991): handle cyclic deps
+      plugin.requires = {}
+      for _, s in ipairs(r) do
+        vim.list_extend(plugin.requires, vim.tbl_keys(process_spec(s, plugins, plugin)))
       end
     end
   end
+
+  return {[name] = plugin}
 end
 
-function M.process_spec(spec: PluginData): {string:Plugin}
+function M.process_spec(spec: M.UserSpec): {string:M.Plugin}
   local plugins = {}
   process_spec(spec, plugins)
   return plugins
