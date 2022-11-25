@@ -9,7 +9,17 @@ local record M
   type HandlerFun = function({string:Plugin}, function({Plugin}))
 
   metamethod __index: function(M, M.Type): HandlerFun
+
+  types: {Type}
 end
+
+M.types = {
+  'keys',
+  'event',
+  'ft',
+  'cmd',
+  'cond',
+}
 
 return setmetatable(M, {
   __index = function(_, cond: M.Type): M.HandlerFun
