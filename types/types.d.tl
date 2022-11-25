@@ -74,6 +74,7 @@ global record Plugin
   event            : {string}
   ft               : {string}
   cmd              : {string}
+  cond             : function(): boolean
   run              : {string | function}
   config           : string|function()
 
