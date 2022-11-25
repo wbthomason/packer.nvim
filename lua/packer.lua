@@ -45,11 +45,12 @@ local function load_plugin_configs()
       keys = {},
       ft = {},
       event = {},
+      cond = {},
    }
 
    local uncond_plugins = {}
 
-   local conds = { 'cmd', 'keys', 'ft', 'event' }
+   local conds = { 'cmd', 'keys', 'ft', 'event', 'cond' }
 
    for name, plugin in pairs(_G.packer_plugins) do
       local has_cond = false
