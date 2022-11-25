@@ -8,57 +8,6 @@ global unpack: function<T>({T}, number, number): T...
 
 global getfenv: function(function): table
 
-global record Config
-  record Display
-    open_cmd        : string
-    preview_updates : boolean
-    non_interactive : boolean
-    prompt_border   : string
-    compact         : boolean
-    working_sym     : string
-    error_sym       : string
-    done_sym        : string
-    removed_sym     : string
-    moved_sym       : string
-    item_sym        : string
-    header_sym      : string
-    header_lines    : integer
-    title           : string
-    show_all_info   : boolean
-    keybindings     : {string: string}
-  end
-
-  record Git
-    mark_breaking_changes : boolean
-    cmd                   : string
-    depth                 : integer
-    clone_timeout         : integer
-    default_url_format    : string
-  end
-
-
-  record Log
-    enum Level
-      'trace' 'debug' 'info' 'warn' 'error' 'fatal'
-    end
-    level: Level
-  end
-
-  package_root    : string
-  pack_dir        : string
-  max_jobs        : integer
-  start_dir       : string
-  opt_dir         : string
-  preview_updates : boolean
-  auto_clean      : boolean
-  autoremove      : boolean
-  display         : Display
-  git             : Git
-  log             : Log
-
-  metamethod __call: function(Config, Config): Config
-end
-
 global record Plugin
   {string}
 
