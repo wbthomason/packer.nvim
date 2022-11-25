@@ -81,9 +81,9 @@ local function helptags_stale(dir: string): boolean
   return txt_newest > tag_oldest
 end
 
-local function update_helptags(results: {string:PluginResult})
+local function update_helptags(results: {string:Display.Result})
   local paths = {}
-  for plugin_name, r in pairs(results as {string:PluginResult}) do
+  for plugin_name, r in pairs(results as {string:Display.Result}) do
     if not r.err then
       paths[#paths+1] = _G.packer_plugins[plugin_name].install_path
     end
@@ -161,7 +161,7 @@ local post_update_hook = a.sync(function(plugin: Plugin, disp: Display): {string
   end
 end, 2)
 
-local install_task = a.sync(function(plugin: Plugin, disp: Display, installs: {string:PluginResult}): string, {string}
+local install_task = a.sync(function(plugin: Plugin, disp: Display, installs: {string:Display.Result}): string, {string}
   disp:task_start(plugin.full_name, 'installing...')
 
   local plugin_type = require'packer.plugin_types'[plugin.type]
@@ -197,7 +197,7 @@ local function get_install_tasks(
   plugins: {string:Plugin},
   missing_plugins: {string},
   disp: Display,
-  installs: {string:PluginResult}
+  installs: {string:Display.Result}
 ): {a.Thunk}
   if #missing_plugins == 0 then
     return {}
@@ -211,7 +211,7 @@ local function get_install_tasks(
   return tasks
 end
 
-local function move_plugin(plugin: Plugin, moves: {string:PluginResult}, fs_state: plugin_utils.FSState)
+local function move_plugin(plugin: Plugin, moves: {string:Display.Result}, fs_state: plugin_utils.FSState)
   local from: string
   local to: string
   if plugin.opt then
@@ -241,7 +241,7 @@ local function move_plugin(plugin: Plugin, moves: {string:PluginResult}, fs_stat
   end
 end
 
-local update_task = a.sync(function(plugin: Plugin, disp: Display, updates: {string:PluginResult}, opts: table): string, {string}
+local update_task = a.sync(function(plugin: Plugin, disp: Display, updates: {string:Display.Result}, opts: table): string, {string}
   local plugin_name = plugin.full_name
   disp:task_start(plugin_name, 'updating...')
 
@@ -283,7 +283,7 @@ local function get_update_tasks(
   plugins: {string:Plugin},
   update_plugins: {string},
   disp: Display,
-  updates: {string:PluginResult},
+  updates: {string:Display.Result},
   opts: table
 ): {a.Thunk}
   local tasks = {}
@@ -307,7 +307,7 @@ end
 local function fix_plugin_types(
   plugins: {string:Plugin},
   plugin_names: {string},
-  moves: {string:PluginResult},
+  moves: {string:Display.Result},
   fs_state: plugin_utils.FSState
 )
   log.debug 'Fixing plugin types'
@@ -380,13 +380,6 @@ local do_clean = a.sync(function(plugins: {string:Plugin}, fs_state: plugin_util
   end
 end, 4)
 
-local record Results
-  removals : {string}
-  installs : {string:PluginResult}
-  moves    : {string:PluginResult}
-  updates  : {string:PluginResult}
-end
-
 --- Install operation:
 --- Installs missing plugins, then updates helptags
 M.install = a.sync(function()
@@ -404,7 +397,7 @@ M.install = a.sync(function()
   log.debug 'Gathering install tasks'
 
   local disp = open_display()
-  local installs: {string:PluginResult} = {}
+  local installs: {string:Display.Result} = {}
 
   local delta = measure(function()
     local install_tasks = get_install_tasks(_G.packer_plugins, missing_plugins, disp, installs)
@@ -464,7 +457,7 @@ M.sync = a.void(function(first: string|table, ...:string)
 
   local dirty_plugins = util.partition(vim.tbl_values(fs_state.dirty), update_plugins)
 
-  local results: Results = {
+  local results: Display.Results = {
     moves = {},
     removals = {},
     installs = {},
