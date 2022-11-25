@@ -79,7 +79,7 @@ local function find_extra_plugins(
 
   for cond, p in pairs {
     [false] = { plugins = opt_plugins  , dir = config.opt_dir  },
-    [true]  = { pluins  = start_plugins, dir = config.start_dir},
+    [true]  = { plugins = start_plugins, dir = config.start_dir},
   } do
     for name, _ in pairs(p.plugins) do
       if not plugins[name] or plugins[name].opt == cond then
