@@ -22,6 +22,7 @@ local M = {FSState = {}, Error = {}, }
 
 
 
+
 local function guess_dir_type(dir)
    local globdir = fn.glob(dir)
    local dir_type = (uv.fs_lstat(globdir) or { type = 'noexist' }).type
@@ -43,34 +44,51 @@ local function guess_dir_type(dir)
    return 'unknown'
 end
 
-function M.list_installed_plugins()
+local function get_installed_plugins()
    local opt_plugins = {}
    local start_plugins = {}
-   local opt_dir_handle = uv.fs_opendir(config.opt_dir, nil, 50)
-   if opt_dir_handle then
-      local opt_dir_items = uv.fs_readdir(opt_dir_handle)
-      while opt_dir_items do
-         for _, item in ipairs(opt_dir_items) do
-            opt_plugins[util.join_paths(config.opt_dir, item.name)] = item.name
+
+   for dir, tbl in pairs({
+         [config.opt_dir] = opt_plugins,
+         [config.start_dir] = start_plugins,
+      }) do
+      local dir_handle = uv.fs_opendir(dir, nil, 50)
+      if dir_handle then
+         local dir_items = uv.fs_readdir(dir_handle)
+         while dir_items do
+            for _, item in ipairs(dir_items) do
+               tbl[util.join_paths(dir, item.name)] = item.name
+            end
+
+            dir_items = uv.fs_readdir(dir_handle)
          end
-
-         opt_dir_items = uv.fs_readdir(opt_dir_handle)
-      end
-   end
-
-   local start_dir_handle = uv.fs_opendir(config.start_dir, nil, 50)
-   if start_dir_handle then
-      local start_dir_items = uv.fs_readdir(start_dir_handle)
-      while start_dir_items do
-         for _, item in ipairs(start_dir_items) do
-            start_plugins[util.join_paths(config.start_dir, item.name)] = item.name
-         end
-
-         start_dir_items = uv.fs_readdir(start_dir_handle)
       end
    end
 
    return opt_plugins, start_plugins
+end
+
+local function find_extra_plugins(
+   plugins,
+
+   opt_plugins,
+
+   start_plugins)
+
+   local extra
+
+   for cond, p in pairs({
+         [false] = { plugins = opt_plugins, dir = config.opt_dir },
+         [true] = { pluins = start_plugins, dir = config.start_dir },
+      }) do
+      for name, _ in pairs(p.plugins) do
+         if not plugins[name] or plugins[name].opt == cond then
+            extra[util.join_paths(p.dir, name)] = name
+         end
+      end
+   end
+
+   return extra
 end
 
 local find_dirty_plugins = a.sync(function(
@@ -83,18 +101,6 @@ local find_dirty_plugins = a.sync(function(
 
    local dirty_plugins = {}
    local missing_plugins = {}
-
-   for name, _ in pairs(opt_plugins) do
-      if not plugins[name] or not plugins[name].opt then
-         dirty_plugins[util.join_paths(config.opt_dir, name)] = name
-      end
-   end
-
-   for name, _ in pairs(start_plugins) do
-      if not plugins[name] or plugins[name].opt then
-         dirty_plugins[util.join_paths(config.start_dir, name)] = name
-      end
-   end
 
    for plugin_name, plugin in pairs(plugins) do
       local plugin_installed = false
@@ -137,13 +143,14 @@ end, 3)
 
 M.get_fs_state = a.sync(function(plugins)
    log.debug('Updating FS state')
-   local opt, start = M.list_installed_plugins()
+   local opt, start = get_installed_plugins()
    local dirty, missing = find_dirty_plugins(plugins, opt, start)
    return {
       opt = opt,
       start = start,
       missing = missing,
       dirty = dirty,
+      extra = find_extra_plugins(plugins, opt, start),
    }
 end, 1)
 
