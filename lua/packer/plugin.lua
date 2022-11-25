@@ -16,6 +16,45 @@ local fmt = string.format
 
 
 
+local M = {Plugin = {}, }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -67,7 +106,6 @@ local function remove_ending_git_url(url)
    return vim.endswith(url, '.git') and url:sub(1, -5) or url
 end
 
-local M = {}
 
 
 

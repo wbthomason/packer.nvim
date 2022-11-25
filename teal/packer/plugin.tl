@@ -16,6 +16,45 @@ local fmt = string.format
 ---@field run          string|function|(string|function)[]
 ---@field lock         boolean
 
+local record M
+  record Plugin
+    {string}
+
+    name             : string
+    full_name        : string -- Includes rev and branch
+    branch           : string
+    rev              : string
+    revs             : {string, string}
+    tag              : string
+    commit           : string
+    install_path     : string
+    keys             : {{string,string}}
+    event            : {string}
+    ft               : {string}
+    cmd              : {string}
+    cond             : function(): boolean
+    run              : {string | function}
+    config           : string|function()
+
+    enum Type
+      'git'
+      'local'
+      'unknown'
+    end
+
+    type             : Type
+    url              : string
+    lock             : boolean
+    from_requires    : boolean
+    breaking_commits : {string}
+    requires         : {Plugin}
+    opt              : boolean
+    loaded           : boolean
+
+    messages: {string}
+    err: {string}
+  end
+end
 
 local record PluginData
   line: integer
@@ -67,7 +106,6 @@ local function remove_ending_git_url(url: string): string
   return vim.endswith(url, '.git') and url:sub(1, -5) or url
 end
 
-local M = {}
 
 --- The main logic for adding a plugin (and any dependencies) to the managed set
 -- Can be invoked with (1) a single plugin spec as a string, (2) a single plugin spec table, or (3)
