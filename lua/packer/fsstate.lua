@@ -75,7 +75,7 @@ local function find_extra_plugins(
 
    start_plugins)
 
-   local extra
+   local extra = {}
 
    for cond, p in pairs({
          [false] = { plugins = opt_plugins, dir = config.opt_dir },
