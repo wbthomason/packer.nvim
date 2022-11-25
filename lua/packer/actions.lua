@@ -226,8 +226,6 @@ local function move_plugin(plugin, moves, fs_state)
    fs_state.opt[from] = nil
    fs_state.dirty[from] = nil
 
-   fs_state.dirty[to] = plugin.name
-
    moves[plugin.name] = { from = from, to = to }
 
 
@@ -306,13 +304,13 @@ end
 
 local function fix_plugin_types(
    plugins,
-   plugin_names,
+   extra_plugins,
    moves,
    fs_state)
 
    log.debug('Fixing plugin types')
 
-   for _, v in ipairs(plugin_names) do
+   for _, v in ipairs(extra_plugins) do
       local plugin = plugins[v]
       local wrong_install_dir = util.join_paths(plugin.opt and config.start_dir or config.opt_dir, plugin.name)
       if vim.loop.fs_stat(wrong_install_dir) then
@@ -347,9 +345,9 @@ local do_clean = a.sync(function(plugins, fs_state, removals)
    fs_state = fs_state or plugin_utils.get_fs_state(plugins)
 
    log.debug('Starting clean')
-   local dirty_plugins = fs_state.dirty
+   local extra_plugins = fs_state.extra
 
-   if not next(dirty_plugins) then
+   if not next(extra_plugins) then
       log.info('Already clean!')
       return
    end
@@ -357,24 +355,24 @@ local do_clean = a.sync(function(plugins, fs_state, removals)
    a.main()
 
    local lines = {}
-   for path, _ in pairs(dirty_plugins) do
+   for path, _ in pairs(extra_plugins) do
       table.insert(lines, '  - ' .. path)
    end
 
    if config.autoremove or display.display.ask_user('Removing the following directories. OK? (y/N)', lines) then
       if removals then
-         for r, _ in pairs(dirty_plugins) do
+         for r, _ in pairs(extra_plugins) do
             removals[#removals + 1] = r
          end
       end
-      for path, _ in pairs(dirty_plugins) do
+      for path, _ in pairs(extra_plugins) do
          local result = vim.fn.delete(path, 'rf')
          if result == -1 then
             log.warn('Could not remove ' .. path)
          end
-         dirty_plugins[path] = nil
+         extra_plugins[path] = nil
       end
-      log.debug('Removed ' .. vim.inspect(dirty_plugins))
+      log.debug('Removed ' .. vim.inspect(extra_plugins))
    else
       log.warn('Cleaning cancelled!')
    end
@@ -455,7 +453,7 @@ M.sync = a.void(function(first, ...)
    local opts, update_plugins = filter_opts_from_plugins(first, ...)
    local fs_state = plugin_utils.get_fs_state(plugins)
 
-   local dirty_plugins = util.partition(vim.tbl_values(fs_state.dirty), update_plugins)
+   local extra_plugins = util.partition(vim.tbl_values(fs_state.extra), update_plugins)
 
    local results = {
       moves = {},
@@ -464,7 +462,7 @@ M.sync = a.void(function(first, ...)
       updates = {},
    }
 
-   fix_plugin_types(plugins, dirty_plugins, results.moves, fs_state)
+   fix_plugin_types(plugins, extra_plugins, results.moves, fs_state)
 
 
 

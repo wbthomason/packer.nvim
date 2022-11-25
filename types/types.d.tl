@@ -1,5 +1,6 @@
 global _: any
 
+global loadstring: function(string, string): (function(): any)
 global unpack = table.unpack
 
 -- Hacky trick to get Plugin defined everywhere without having to require
