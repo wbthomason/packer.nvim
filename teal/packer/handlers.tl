@@ -4,6 +4,7 @@ local record M
     'event'
     'ft'
     'cmd'
+    'cond'
   end
   type HandlerFun = function({string:Plugin}, function({Plugin}))
 
@@ -20,6 +21,8 @@ return setmetatable(M, {
       return require('packer.handlers.ft')
     elseif cond == 'cmd' then
       return require('packer.handlers.cmd')
+    elseif cond == 'cond' then
+      return require('packer.handlers.cond')
     end
   end
 })

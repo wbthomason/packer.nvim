@@ -114,7 +114,11 @@ local function process_spec(plugin_data, plugins)
 
    local manual_opt = spec.opt
 
-   if spec.keys ~= nil or spec.ft ~= nil or spec.cmd ~= nil or spec.event ~= nil then
+   if spec.keys ~= nil or
+      spec.ft ~= nil or
+      spec.cmd ~= nil or
+      spec.event ~= nil or
+      spec.cond ~= nil then
       spec.opt = true
    end
 
