@@ -15,11 +15,6 @@ local record M
     extra   : {string:string}
   end
 
-  record Error
-    msg: string
-    data: any
-  end
-
   get_fs_state: function({string:Plugin}): FSState
 end
 

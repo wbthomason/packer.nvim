@@ -6,12 +6,7 @@ local config = require('packer.config')
 local fn = vim.fn
 local uv = vim.loop
 
-local M = {FSState = {}, Error = {}, }
-
-
-
-
-
+local M = {FSState = {}, }
 
 
 
