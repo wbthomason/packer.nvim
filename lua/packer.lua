@@ -88,6 +88,7 @@ _G._packer = _G._packer or {}
 
 local config = vim.tbl_extend('force', {}, config_defaults)
 local plugins = nil
+local iplugins = nil
 local plugin_specifications = nil
 local rocks = nil
 
@@ -164,6 +165,7 @@ end
 
 packer.reset = function()
   plugins = {}
+  iplugins = {}
   plugin_specifications = {}
   rocks = {}
 end
@@ -271,6 +273,7 @@ manage = function(plugin_data)
     end
   end
   plugins[plugin_spec.short_name] = plugin_spec
+  iplugins[#iplugins+1] = plugin_spec.short_name
   if plugin_spec.rocks then
     packer.use_rocks(plugin_spec.rocks)
   end
@@ -754,7 +757,7 @@ packer.compile = function(raw_args, move_plugins)
     end
     refresh_configs(plugins)
     -- NOTE: we copy the plugins table so the in memory value is not mutated during compilation
-    local compiled_loader = compile(vim.deepcopy(plugins), output_lua, should_profile)
+    local compiled_loader = compile(vim.deepcopy(plugins), iplugins, output_lua, should_profile)
     output_path = vim.fn.expand(output_path, true)
     vim.fn.mkdir(vim.fn.fnamemodify(output_path, ':h'), 'p')
     local output_file = io.open(output_path, 'w')

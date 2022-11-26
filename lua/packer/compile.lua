@@ -181,14 +181,16 @@ local function timed_chunk(chunk, name, output_table)
   return output_table
 end
 
-local function dump_loaders(loaders)
+local function dump_loaders(loaders, iplugins)
   local result = vim.deepcopy(loaders)
-  for k, _ in pairs(result) do
-    if result[k].only_setup or result[k].only_sequence then
-      result[k].loaded = true
+  for _, k in ipairs(loaders) do
+    if result[k] then
+      if result[k].only_setup or result[k].only_sequence then
+        result[k].loaded = true
+      end
+      result[k].only_setup = nil
+      result[k].only_sequence = nil
     end
-    result[k].only_setup = nil
-    result[k].only_sequence = nil
   end
 
   return vim.inspect(result)
@@ -257,7 +259,7 @@ local function detect_bufread(plugin_path)
   return false
 end
 
-local function make_loaders(_, plugins, output_lua, should_profile)
+local function make_loaders(_, plugins, iplugins, output_lua, should_profile)
   local loaders = {}
   local configs = {}
   local rtps = {}
@@ -271,7 +273,8 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   local fns = {}
   local ftdetect_paths = {}
   local module_lazy_loads = {}
-  for name, plugin in pairs(plugins) do
+  for _, name in ipairs(iplugins) do
+    local plugin = plugins[name]
     if not plugin.disable then
       plugin.simple_load = true
       local quote_name = "'" .. name .. "'"
@@ -527,10 +530,13 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   end
 
   local config_lines = {}
-  for name, plugin_config in pairs(configs) do
-    local lines = { '-- Config for: ' .. name }
-    timed_chunk(plugin_config, 'Config for ' .. name, lines)
-    vim.list_extend(config_lines, lines)
+  for _, name in ipairs(iplugins) do
+    local plugin_config = configs[name]
+    if plugin_config then
+      local lines = { '-- Config for: ' .. name }
+      timed_chunk(plugin_config, 'Config for ' .. name, lines)
+      vim.list_extend(config_lines, lines)
+    end
   end
 
   local rtp_line = ''
@@ -543,14 +549,17 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   end
 
   local setup_lines = {}
-  for name, plugin_setup in pairs(setup) do
-    local lines = { '-- Setup for: ' .. name }
-    timed_chunk(plugin_setup, 'Setup for ' .. name, lines)
-    if loaders[name].only_setup then
-      timed_chunk('vim.cmd [[packadd ' .. name .. ']]', 'packadd for ' .. name, lines)
-    end
+  for _, name in ipairs(iplugins) do
+    local plugin_setup = setup[name]
+    if plugin_setup then
+      local lines = { '-- Setup for: ' .. name }
+      timed_chunk(plugin_setup, 'Setup for ' .. name, lines)
+      if loaders[name].only_setup then
+        timed_chunk('vim.cmd [[packadd ' .. name .. ']]', 'packadd for ' .. name, lines)
+      end
 
-    vim.list_extend(setup_lines, lines)
+      vim.list_extend(setup_lines, lines)
+    end
   end
 
   local conditionals = {}
@@ -715,7 +724,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   table.insert(result, profile_output)
   timed_chunk(luarocks.generate_path_setup(), 'Luarocks path setup', result)
   timed_chunk(try_loadstring, 'try_loadstring definition', result)
-  timed_chunk(fmt('_G.packer_plugins = %s\n', dump_loaders(loaders)), 'Defining packer_plugins', result)
+  timed_chunk(fmt('_G.packer_plugins = %s\n', dump_loaders(loaders, iplugins)), 'Defining packer_plugins', result)
   -- Then the runtimepath line
   if rtp_line ~= '' then
     table.insert(result, '-- Runtimepath customization')
