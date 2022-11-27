@@ -175,6 +175,11 @@ local function get_install_cmd(plugin)
    local install_cmd = {
       'clone',
       '--depth', tostring(plugin.commit and 999999 or config.git.depth),
+
+
+
+
+
       '--no-single-branch',
       '--progress',
    }

@@ -175,6 +175,11 @@ local function get_install_cmd(plugin: Plugin): {string}
   local install_cmd = {
     'clone',
     '--depth', tostring(plugin.commit and 999999 or config.git.depth),
+    -- TODO(lewis6991,clason): is this option needed? It can inflate the
+    -- checkout size, and it's not clear why we want to pull in all branches.
+    -- If you switch to a branch in the spec, it's cleaner to remove and
+    -- re-clone anyway. And --depth 1 already prevents you from using the clone
+    -- as an actual local repo.
     '--no-single-branch',
     '--progress'
   }
