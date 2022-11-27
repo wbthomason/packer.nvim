@@ -36,7 +36,7 @@ local function open_display()
    })
 end
 
-local function run_tasks(tasks, disp)
+local function run_tasks(tasks, disp, kind)
    if #tasks == 0 then
       log.info('Nothing to do!')
       return
@@ -49,7 +49,7 @@ local function run_tasks(tasks, disp)
    local limit = config.max_jobs and config.max_jobs or #tasks
 
    log.debug('Running tasks')
-   disp:update_headline_message(string.format('updating %d / %d plugins', #tasks, #tasks))
+   disp:update_headline_message(string.format('%s %d / %d plugins', kind, #tasks, #tasks))
    return a.join(limit, check, tasks)
 end
 
@@ -398,7 +398,7 @@ M.install = a.sync(function()
 
    local delta = measure(function()
       local install_tasks = get_install_tasks(packer_plugins, missing_plugins, disp, installs)
-      run_tasks(install_tasks, disp)
+      run_tasks(install_tasks, disp, 'installing')
 
       a.main()
       update_helptags(installs)
@@ -431,7 +431,7 @@ M.update = a.void(function(first, ...)
       log.debug('Gathering update tasks')
       vim.list_extend(tasks, get_update_tasks(packer_plugins, installed_plugins, disp, updates, opts))
 
-      run_tasks(tasks, disp)
+      run_tasks(tasks, disp, 'updating')
 
       a.main()
       update_helptags(updates)
@@ -485,7 +485,7 @@ M.sync = a.void(function(first, ...)
       log.debug('Gathering update tasks')
       vim.list_extend(tasks, get_update_tasks(plugins, installed_plugins, disp, results.updates, opts))
 
-      run_tasks(tasks, disp)
+      run_tasks(tasks, disp, 'syncing')
 
       a.main()
       update_helptags(vim.tbl_extend('error', results.installs, results.updates))
