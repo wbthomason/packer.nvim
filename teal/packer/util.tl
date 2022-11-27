@@ -22,6 +22,7 @@ function util.partition<T>(sub: {T}, seq: {T}): {T}, {T}
   return unpack(result)
 end
 
+-- TODO(lewis6991): use vim.loop.os_uname().sysname
 if jit then
   util.is_windows = jit.os == 'Windows'
 else
