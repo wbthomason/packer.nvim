@@ -381,8 +381,6 @@ end, 4)
 --- Install operation:
 --- Installs missing plugins, then updates helptags
 M.install = a.sync(function()
-  log.debug 'packer.install: requiring modules'
-
   local fs_state = fsstate.get_fs_state(_G.packer_plugins)
   local missing_plugins = vim.tbl_values(fs_state.missing)
   if #missing_plugins == 0 then
