@@ -12,7 +12,7 @@ local record M
     rev      : string
     tag      : string
     commit   : string
-    keys     : string|{{string,string}}
+    keys     : string|{string|{string,string}}
     event    : string|{string}
     ft       : string|{string}
     cmd      : string|{string}
@@ -120,11 +120,15 @@ local function normcond(x: string|{string}): {string}
   return x as {string}
 end
 
-local function normkeys(x: string|{{string,string}}): {{string,string}}
-  if x is string then
+local function normkeys(x: string|{string|{string,string}}): {{string,string}}
+  if type(x) == 'string' then
     return {{ '', x as string }}
   end
-  return x as {{string,string}}
+  local r: {{string,string}} = {}
+  for _, v in ipairs(x as {string|{string,string}})do
+    r[#r+1] = v is string and  { '', v } or v
+  end
+  return r
 end
 
 local function normrun(x: string|function|{string|function}): {string|function}
