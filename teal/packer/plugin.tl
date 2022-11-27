@@ -212,7 +212,6 @@ function M.process_spec(
   end
 
   plugin.install_path = util.join_paths(plugin.opt and config.opt_dir or config.start_dir, name)
-  plugin.loaded = not plugin.opt and vim.loop.fs_stat(plugin.install_path) ~= nil
 
   if spec.requires then
     if required_by then

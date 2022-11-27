@@ -5,7 +5,7 @@ local Config = config.Config
 local M = {}
 
 local function apply_config(plugin: Plugin)
-  if plugin.config and plugin.loaded then
+  if plugin.config then
     local c = plugin.config
     if c is function() then
       c()
@@ -15,13 +15,16 @@ local function apply_config(plugin: Plugin)
   end
 end
 
-local function loader(lplugins: {Plugin})
-  for _, plugin in ipairs(lplugins) do
+local function loader(plugins: {Plugin})
+  for _, plugin in ipairs(plugins) do
     if not plugin.loaded then
       -- Set the plugin as loaded before config is run in case something in the
       -- config tries to load this same plugin again
       plugin.loaded = true
-      vim.cmd.packadd(plugin.name)
+      if plugin.opt then
+        -- never packadd a start plugin
+        vim.cmd.packadd(plugin.name)
+      end
       apply_config(plugin)
     end
   end
@@ -41,32 +44,14 @@ end
 local function load_plugin_configs(plugins: {string:Plugin})
   local Handlers = require('packer.handlers')
 
-  local cond_plugins: {Handlers.Type:{string:Plugin}} = {}
-  local uncond_plugins: {string:Plugin} = {}
-
-  for name, plugin in pairs(plugins) do
-    local has_cond = false
-    for _, cond in ipairs(Handlers.types) do
-      if (plugin as {string:any})[cond] then
-        has_cond = true
-        cond_plugins[cond] = cond_plugins[cond] or {}
-        cond_plugins[cond][name] = plugin
-        break
-      end
+  for _, plugin in pairs(plugins) do
+    if not plugin.opt then
+      loader({plugin})
     end
-    if not has_cond then
-      uncond_plugins[name] = plugin
-    end
-  end
-
-  for _, plugin in pairs(uncond_plugins) do
-    apply_config(plugin)
   end
 
   for _, cond in ipairs(Handlers.types) do
-    if cond_plugins[cond] then
-      Handlers[cond](cond_plugins[cond], loader)
-    end
+    Handlers[cond](plugins, loader)
   end
 end
 

@@ -20,18 +20,20 @@ local function detect_ftdetect(plugin_path)
    return source_paths
 end
 
-return function(ft_plugins, loader)
+return function(plugins, loader)
    local fts = {}
 
    local ftdetect_paths = {}
 
-   for _, plugin in pairs(ft_plugins) do
-      for _, ft in ipairs(plugin.ft) do
-         fts[ft] = fts[ft] or {}
-         table.insert(fts[ft], plugin)
-      end
+   for _, plugin in pairs(plugins) do
+      if plugin.ft then
+         for _, ft in ipairs(plugin.ft) do
+            fts[ft] = fts[ft] or {}
+            table.insert(fts[ft], plugin)
+         end
 
-      vim.list_extend(ftdetect_paths, detect_ftdetect(plugin.install_path))
+         vim.list_extend(ftdetect_paths, detect_ftdetect(plugin.install_path))
+      end
    end
 
    for ft, fplugins in pairs(fts) do

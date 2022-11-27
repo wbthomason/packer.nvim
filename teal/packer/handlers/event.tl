@@ -1,10 +1,12 @@
-return function(event_plugins: {string:Plugin}, loader: function({Plugin}))
+return function(plugins: {string:Plugin}, loader: function({Plugin}))
   local events: {string:{Plugin}} = {}
 
-  for _, plugin in pairs(event_plugins) do
-    for _, event in ipairs(plugin.event) do
-      events[event] = events[event] or {}
-      table.insert(events[event], plugin)
+  for _, plugin in pairs(plugins) do
+    if plugin.event then
+      for _, event in ipairs(plugin.event) do
+        events[event] = events[event] or {}
+        table.insert(events[event], plugin)
+      end
     end
   end
 
