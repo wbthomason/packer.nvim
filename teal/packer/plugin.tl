@@ -16,7 +16,7 @@ local record M
     event    : string|{string}
     ft       : string|{string}
     cmd      : string|{string}
-    cond     : function(): boolean
+    cond     : boolean|function(): boolean
     run      : string|function|{string|function}
     config   : string|function()
     lock     : boolean
@@ -33,7 +33,7 @@ local record M
     event            : {string}
     ft               : {string}
     cmd              : {string}
-    cond             : function(): boolean
+    cond             : boolean|function(): boolean
     run              : {string | function}
     config           : string|function()
     requires         : {string}

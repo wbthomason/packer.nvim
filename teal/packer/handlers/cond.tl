@@ -6,7 +6,12 @@
 
 return function(cond_plugins: {string:Plugin}, loader: function({Plugin}))
   for _, plugin in pairs(cond_plugins) do
-    if type(plugin.cond) == 'function' and plugin.cond() then
+    local cond = plugin.cond
+    if cond is function(): boolean then
+      if cond() then
+        loader({plugin})
+      end
+    elseif cond then
       loader({plugin})
     end
   end
