@@ -115,7 +115,7 @@ local handle_checkouts = function(plugin: Plugin, disp: Display, opts: UpdateOpt
       plugin.tag = vim.split(data, '\n')[1]
     else
       log.warn(fmt(
-        'Wildcard expansion did not found any tag for plugin %s: defaulting to latest commit...',
+        'Wildcard expansion did not find any tag for plugin %s: defaulting to latest commit...',
         plugin.name
       ))
       plugin.tag = nil -- Wildcard is not found, then we bypass the tag
