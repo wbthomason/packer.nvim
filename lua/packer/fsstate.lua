@@ -22,12 +22,6 @@ local function guess_dir_type(dir)
    local globdir = fn.glob(dir)
    local dir_type = (uv.fs_lstat(globdir) or { type = 'noexist' }).type
 
-
-
-
-
-
-
    if dir_type == 'link' then
       return 'local'
    end
