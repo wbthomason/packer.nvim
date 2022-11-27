@@ -2,6 +2,7 @@ local api = vim.api
 local log = require('packer.log')
 local config = require('packer.config')
 local awrap = require('packer.async').wrap
+local packer_plugins = require('packer.plugin').plugins
 local fmt = string.format
 
 local Config = config.Config
@@ -812,7 +813,7 @@ display.final_results = vim.schedule_wrap(function(self, results, time, opts)
          table.insert(keymap_display_order, 2, 'toggle_update')
       end
       for plugin_name, result in pairs(results.updates) do
-         local plugin = _G.packer_plugins[plugin_name]
+         local plugin = packer_plugins[plugin_name]
          local message = {}
          local actual_update = true
          local failed_update = false
@@ -858,7 +859,7 @@ display.final_results = vim.schedule_wrap(function(self, results, time, opts)
 
    local lines = strip_newlines(raw_lines)
    set_lines(self, config.display.header_lines, -1, lines)
-   for plugin_name, plugin in pairs(_G.packer_plugins) do
+   for plugin_name, plugin in pairs(packer_plugins) do
       local item = {
          displayed = false,
          lines = {},

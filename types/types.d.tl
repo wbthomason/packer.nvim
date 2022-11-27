@@ -8,7 +8,5 @@ global unpack = table.unpack
 global Plugin = require'packer.plugin'.Plugin
 global UserSpec = require'packer.plugin'.UserSpec
 
-global packer_plugins: {string:Plugin}
-
 global jit = require('jit')
 global vim = require('vim')

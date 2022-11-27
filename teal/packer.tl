@@ -30,20 +30,21 @@ end
 -- Completion user plugins
 -- Intended to provide completion for PackerUpdate/Sync/Install command
 local function plugin_complete(lead: string, _:string): {string}
+  local plugins = require 'packer.plugin'.plugins
   local completion_list = vim.tbl_filter(function(name: string): boolean
     return vim.startswith(name, lead)
-  end, vim.tbl_keys(_G.packer_plugins))
+  end, vim.tbl_keys(plugins))
   table.sort(completion_list)
   return completion_list
 end
 
-local function load_plugin_configs()
+local function load_plugin_configs(plugins: {string:Plugin})
   local Handlers = require('packer.handlers')
 
   local cond_plugins: {Handlers.Type:{string:Plugin}} = {}
   local uncond_plugins: {string:Plugin} = {}
 
-  for name, plugin in pairs(_G.packer_plugins) do
+  for name, plugin in pairs(plugins) do
     local has_cond = false
     for _, cond in ipairs(Handlers.types) do
       if (plugin as {string:any})[cond] then
@@ -114,9 +115,11 @@ function M.startup(spec: SSpec)
 
   make_commands()
 
-  _G.packer_plugins = require 'packer.plugin'.process_spec(spec[1])
+  local plugin = require 'packer.plugin'
 
-  load_plugin_configs()
+  plugin.process_spec(spec[1])
+
+  load_plugin_configs(plugin.plugins)
 end
 
 return M
