@@ -22,6 +22,7 @@ local function loader(plugins)
 
          plugin.loaded = true
          if plugin.opt then
+
             vim.cmd.packadd(plugin.name)
          end
          apply_config(plugin)
