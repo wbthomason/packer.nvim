@@ -59,7 +59,11 @@ local record M
     messages: {string}
     err: {string}
   end
+
+  plugins: {string:Plugin}
 end
+
+M.plugins = {}
 
 local function guess_plugin_type(path: string): string, M.Plugin.Type
   if vim.fn.isdirectory(path) ~= 0 then
@@ -133,9 +137,8 @@ end
 --- The main logic for adding a plugin (and any dependencies) to the managed set
 -- Can be invoked with (1) a single plugin spec as a string, (2) a single plugin spec table, or (3)
 -- a list of plugin specs
-local function process_spec(
+function M.process_spec(
   spec0: string|M.UserSpec,
-  plugins: {string:M.Plugin},
   required_by: M.Plugin
 ): {string:M.Plugin}
   local spec = normspec(spec0)
@@ -143,7 +146,7 @@ local function process_spec(
   if #spec > 1 then
     local r: {string:M.Plugin} = {}
     for _, s in ipairs(spec) do
-      r = vim.tbl_extend('error', r, process_spec(s, plugins, required_by))
+      r = vim.tbl_extend('error', r, M.process_spec(s, required_by))
     end
     return r
   end
@@ -163,15 +166,15 @@ local function process_spec(
     return {}
   end
 
-  if plugins[name] then
+  if M.plugins[name] then
     if required_by then
-      plugins[name].required_by = plugins[name].required_by or {}
-      table.insert(plugins[name].required_by, required_by.name)
+      M.plugins[name].required_by = M.plugins[name].required_by or {}
+      table.insert(M.plugins[name].required_by, required_by.name)
     else
       log.warn(fmt('Plugin "%s" is specified more than once!', name))
     end
 
-    return {[name] = plugins[name]}
+    return {[name] = M.plugins[name]}
   end
 
   local url, ptype = guess_plugin_type(path)
@@ -197,7 +200,7 @@ local function process_spec(
     revs        = {}
   }
 
-  plugins[name] = plugin
+  M.plugins[name] = plugin
 
   if plugin.opt == nil then
     plugin.opt = plugin.keys ~= nil
@@ -221,18 +224,12 @@ local function process_spec(
       -- TODO(lewis6991): handle cyclic deps
       plugin.requires = {}
       for _, s in ipairs(r) do
-        vim.list_extend(plugin.requires, vim.tbl_keys(process_spec(s, plugins, plugin)))
+        vim.list_extend(plugin.requires, vim.tbl_keys(M.process_spec(s, plugin)))
       end
     end
   end
 
   return {[name] = plugin}
-end
-
-function M.process_spec(spec: M.UserSpec): {string:M.Plugin}
-  local plugins = {}
-  process_spec(spec, plugins)
-  return plugins
 end
 
 return M

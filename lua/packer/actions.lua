@@ -9,6 +9,8 @@ local fsstate = require('packer.fsstate')
 
 local display = require('packer.display')
 
+local packer_plugins = require('packer.plugin').plugins
+
 local Display = display.Display
 
 local M = {}
@@ -85,7 +87,7 @@ local function update_helptags(results)
    local paths = {}
    for plugin_name, r in pairs(results) do
       if not r.err then
-         paths[#paths + 1] = _G.packer_plugins[plugin_name].install_path
+         paths[#paths + 1] = packer_plugins[plugin_name].install_path
       end
    end
 
@@ -337,7 +339,7 @@ local function filter_opts_from_plugins(first, ...)
    if config.preview_updates then
       opts.preview_updates = true
    end
-   return opts, #args > 0 and args or vim.tbl_keys(_G.packer_plugins)
+   return opts, #args > 0 and args or vim.tbl_keys(packer_plugins)
 end
 
 
@@ -381,7 +383,7 @@ end, 4)
 
 
 M.install = a.sync(function()
-   local fs_state = fsstate.get_fs_state(_G.packer_plugins)
+   local fs_state = fsstate.get_fs_state(packer_plugins)
    local missing_plugins = vim.tbl_values(fs_state.missing)
    if #missing_plugins == 0 then
       log.info('All configured plugins are installed')
@@ -396,7 +398,7 @@ M.install = a.sync(function()
    local installs = {}
 
    local delta = measure(function()
-      local install_tasks = get_install_tasks(_G.packer_plugins, missing_plugins, disp, installs)
+      local install_tasks = get_install_tasks(packer_plugins, missing_plugins, disp, installs)
       run_tasks(install_tasks, disp)
 
       a.main()
@@ -412,9 +414,8 @@ end)
 
 
 M.update = a.void(function(first, ...)
-   local plugins = _G.packer_plugins
    local opts, update_plugins = filter_opts_from_plugins(first, ...)
-   local fs_state = fsstate.get_fs_state(plugins)
+   local fs_state = fsstate.get_fs_state(packer_plugins)
    local _, installed_plugins = util.partition(vim.tbl_values(fs_state.missing), update_plugins)
 
    local updates = {}
@@ -429,7 +430,7 @@ M.update = a.void(function(first, ...)
       a.main()
 
       log.debug('Gathering update tasks')
-      vim.list_extend(tasks, get_update_tasks(plugins, installed_plugins, disp, updates, opts))
+      vim.list_extend(tasks, get_update_tasks(packer_plugins, installed_plugins, disp, updates, opts))
 
       run_tasks(tasks, disp)
 
@@ -447,9 +448,9 @@ end)
 
 
 M.sync = a.void(function(first, ...)
-   local plugins = _G.packer_plugins
+   local plugins = packer_plugins
    local opts, update_plugins = filter_opts_from_plugins(first, ...)
-   local fs_state = fsstate.get_fs_state(plugins)
+   local fs_state = fsstate.get_fs_state(packer_plugins)
 
    local extra_plugins = util.partition(vim.tbl_values(fs_state.extra), update_plugins)
 
@@ -460,13 +461,13 @@ M.sync = a.void(function(first, ...)
       updates = {},
    }
 
-   fix_plugin_types(plugins, extra_plugins, results.moves, fs_state)
+   fix_plugin_types(packer_plugins, extra_plugins, results.moves, fs_state)
 
 
 
-   fs_state = fsstate.get_fs_state(plugins)
+   fs_state = fsstate.get_fs_state(packer_plugins)
 
-   do_clean(plugins, fs_state, results.removals)
+   do_clean(packer_plugins, fs_state, results.removals)
 
    local missing_plugins, installed_plugins = util.partition(vim.tbl_values(fs_state.missing), update_plugins)
 
@@ -495,18 +496,18 @@ M.sync = a.void(function(first, ...)
 end)
 
 M.status = a.sync(function()
-   if _G.packer_plugins == nil then
+   if packer_plugins == nil then
       log.warn('packer_plugins table is nil! Cannot run packer.status()!')
       return
    end
 
-   open_display():set_status(_G.packer_plugins)
+   open_display():set_status(packer_plugins)
 end)
 
 
 
 M.clean = a.void(function()
-   do_clean(_G.packer_plugins)
+   do_clean(packer_plugins)
 end)
 
 return M
