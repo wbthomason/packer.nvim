@@ -11,8 +11,7 @@ return function(plugins: {string:Plugin}, loader: function({Plugin}))
       if enable() then
         loader({plugin})
       end
-    elseif enable then
-      loader({plugin})
     end
+    -- else enable must be false
   end
 end

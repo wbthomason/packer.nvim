@@ -11,8 +11,7 @@ return function(plugins, loader)
          if enable() then
             loader({ plugin })
          end
-      elseif enable then
-         loader({ plugin })
       end
+
    end
 end

@@ -1,11 +1,11 @@
-return function(cmd_plugins: {string:Plugin}, loader: function({Plugin}))
+return function(plugins: {string:Plugin}, loader: function({Plugin}))
   local commands: {string:{Plugin}} = {}
-  for _, plugin in pairs(cmd_plugins) do
-    local cmds = plugin.cmd
-
-    for _, cmd in ipairs(cmds) do
-      commands[cmd] = commands[cmd] or {}
-      table.insert(commands[cmd], plugin)
+  for _, plugin in pairs(plugins) do
+    if plugin.cmd then
+      for _, cmd in ipairs(plugin.cmd) do
+        commands[cmd] = commands[cmd] or {}
+        table.insert(commands[cmd], plugin)
+      end
     end
   end
 

@@ -1,10 +1,12 @@
 
-return function(key_plugins: {string:Plugin}, loader: function({Plugin}))
+return function(plugins: {string:Plugin}, loader: function({Plugin}))
   local keymaps: {{string,string}:{Plugin}} = {}
-  for _, plugin in pairs(key_plugins) do
-    for _, keymap in ipairs(plugin.keys) do
-      keymaps[keymap] = keymaps[keymap] or {}
-      table.insert(keymaps[keymap], plugin)
+  for _, plugin in pairs(plugins) do
+    if plugin.keys then
+      for _, keymap in ipairs(plugin.keys) do
+        keymaps[keymap] = keymaps[keymap] or {}
+        table.insert(keymaps[keymap], plugin)
+      end
     end
   end
 
