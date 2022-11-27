@@ -38,7 +38,6 @@ end
 
 local function run_tasks(tasks, disp)
    if #tasks == 0 then
-      print('Nothing to do')
       log.info('Nothing to do!')
       return
    end
