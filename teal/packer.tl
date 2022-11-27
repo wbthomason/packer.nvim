@@ -77,7 +77,7 @@ local function make_commands()
   end
 end
 
-local record SSpec
+local record StartupSpec
   {UserSpec}
 
   config: Config
@@ -86,7 +86,7 @@ end
 -- Convenience function for simple setup
 -- spec can be a table with a table of plugin specifications as its first
 -- element, config overrides as another element.
-function M.startup(spec: SSpec)
+function M.startup(spec: StartupSpec)
   assert(type(spec) == 'table')
   assert(type(spec[1]) == 'table')
 
