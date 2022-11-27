@@ -22,6 +22,7 @@ function util.partition(sub, seq)
    return unpack(result)
 end
 
+
 if jit then
    util.is_windows = jit.os == 'Windows'
 else

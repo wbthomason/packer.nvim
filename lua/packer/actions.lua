@@ -64,7 +64,7 @@ local function helptags_stale(dir)
 
 
    local txts = glob(util.join_paths(dir, '*.txt'), true, true)
-   vim.list_extend(txts, fn.glob(util.join_paths(dir, '*.[a-z][a-z]x'), true, true))
+   vim.list_extend(txts, glob(util.join_paths(dir, '*.[a-z][a-z]x'), true, true))
 
    if #txts == 0 then
       return false
