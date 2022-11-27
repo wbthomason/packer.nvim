@@ -187,7 +187,7 @@ local function process_spec(
       event = normcond(spec.event),
       ft = normcond(spec.ft),
       cmd = normcond(spec.cmd),
-      cond = spec.cond,
+      enable = spec.enable ~= true and spec.enable or nil,
       run = normrun(spec.run),
       lock = spec.lock,
       url = remove_ending_git_url(url),
@@ -204,7 +204,7 @@ local function process_spec(
       plugin.ft ~= nil or
       plugin.cmd ~= nil or
       plugin.event ~= nil or
-      plugin.cond ~= nil or
+      plugin.enable ~= nil or
       (required_by or {}).opt
    end
 

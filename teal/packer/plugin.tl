@@ -16,7 +16,7 @@ local record M
     event    : string|{string}
     ft       : string|{string}
     cmd      : string|{string}
-    cond     : boolean|function(): boolean
+    enable   : boolean|function(): boolean
     run      : string|function|{string|function}
     config   : string|function()
     lock     : boolean
@@ -33,7 +33,7 @@ local record M
     event            : {string}
     ft               : {string}
     cmd              : {string}
-    cond             : boolean|function(): boolean
+    enable           : boolean|function(): boolean
     run              : {string | function}
     config           : string|function()
     requires         : {string}
@@ -187,7 +187,7 @@ local function process_spec(
     event       = normcond(spec.event),
     ft          = normcond(spec.ft   ),
     cmd         = normcond(spec.cmd  ),
-    cond        = spec.cond,
+    enable      = spec.enable ~= true and spec.enable or nil,  -- must be function or 'false'
     run         = normrun(spec.run),
     lock        = spec.lock,
     url         = remove_ending_git_url(url),
@@ -204,7 +204,7 @@ local function process_spec(
       or plugin.ft ~= nil
       or plugin.cmd ~= nil
       or plugin.event ~= nil
-      or plugin.cond ~= nil
+      or plugin.enable ~= nil
       or (required_by or {}).opt
   end
 
