@@ -124,11 +124,13 @@ local function normkeys(x: string|{string|{string,string}}): {{string,string}}
   if type(x) == 'string' then
     return {{ '', x as string }}
   end
-  local r: {{string,string}} = {}
-  for _, v in ipairs(x as {string|{string,string}})do
-    r[#r+1] = v is string and  { '', v } or v
+  if x then
+    local r: {{string,string}} = {}
+    for _, v in ipairs(x as {string|{string,string}})do
+      r[#r+1] = v is string and  { '', v } or v
+    end
+    return r
   end
-  return r
 end
 
 local function normrun(x: string|function|{string|function}): {string|function}
