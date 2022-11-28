@@ -129,7 +129,6 @@ local function load_plugin(plugin: Plugin)
 end
 
 local post_update_hook = a.sync(function(plugin: Plugin, disp: Display): {string}
-  local plugin_name = plugin.full_name
   if plugin.run or not plugin.opt then
     a.main()
     load_plugin(plugin)
@@ -139,7 +138,7 @@ local post_update_hook = a.sync(function(plugin: Plugin, disp: Display): {string
     return
   end
 
-  disp:task_update(plugin_name, 'running post update hooks...')
+  disp:task_update(plugin.full_name, 'running post update hooks...')
 
   for _, run_task in ipairs(plugin.run) do
     if run_task is function then
@@ -241,11 +240,10 @@ local function move_plugin(plugin: Plugin, moves: {string:Display.Result}, fs_st
 end
 
 local update_task = a.sync(function(plugin: Plugin, disp: Display, updates: {string:Display.Result}, opts: table): string, {string}
-  local plugin_name = plugin.full_name
-  disp:task_start(plugin_name, 'updating...')
+  disp:task_start(plugin.full_name, 'updating...')
 
   if plugin.lock then
-    disp:task_succeeded(plugin_name, 'locked')
+    disp:task_succeeded(plugin.full_name, 'locked')
     return
   end
 
@@ -259,7 +257,7 @@ local update_task = a.sync(function(plugin: Plugin, disp: Display, updates: {str
     if actual_update then
       msg = fmt('updated: %s...%s', revs[1], revs[2])
       if not opts.preview_updates then
-        log.debug(fmt('Updated %s', plugin_name))
+        log.debug(fmt('Updated %s', plugin.full_name))
         err = post_update_hook(plugin, disp)
       end
     else
@@ -268,14 +266,14 @@ local update_task = a.sync(function(plugin: Plugin, disp: Display, updates: {str
   end
 
   if not err then
-    disp:task_succeeded(plugin_name, msg)
+    disp:task_succeeded(plugin.full_name, msg)
   else
-    disp:task_failed(plugin_name, 'failed to update')
-    log.debug(fmt('Failed to update %s: %s', plugin_name, plugin.err))
+    disp:task_failed(plugin.full_name, 'failed to update')
+    log.debug(fmt('Failed to update %s: %s', plugin.full_name, plugin.err))
   end
 
-  updates[plugin_name] = { err = err }
-  return plugin_name, err
+  updates[plugin.name] = { err = err }
+  return plugin.name, err
 end, 4)
 
 local function get_update_tasks(
