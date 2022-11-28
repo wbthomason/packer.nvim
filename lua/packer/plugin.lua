@@ -124,11 +124,13 @@ local function normkeys(x)
    if type(x) == 'string' then
       return { { '', x } }
    end
-   local r = {}
-   for _, v in ipairs(x) do
-      r[#r + 1] = type(v) == "string" and { '', v } or v
+   if x then
+      local r = {}
+      for _, v in ipairs(x) do
+         r[#r + 1] = type(v) == "string" and { '', v } or v
+      end
+      return r
    end
-   return r
 end
 
 local function normrun(x)
