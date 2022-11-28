@@ -57,7 +57,7 @@ end
 
 local function hererocks_installer(disp)
   return async(function()
-    local hererocks_url = 'https://raw.githubusercontent.com/luarocks/hererocks/latest/hererocks.py'
+    local hererocks_url = 'https://raw.githubusercontent.com/luarocks/hererocks/master/hererocks.py'
     local hererocks_cmd
     await(a.main)
     vim.fn.mkdir(rocks_path, 'p')
@@ -90,8 +90,7 @@ local function hererocks_installer(disp)
       .. lua_version.jit
       .. ' -r latest '
       .. hererocks_install_dir
-    r
-      :and_then(await, jobs.run(luarocks_cmd, opts))
+    r:and_then(await, jobs.run(luarocks_cmd, opts))
       :map_ok(function()
         if disp then
           disp:task_succeeded('luarocks-hererocks', 'installed hererocks!')
@@ -258,17 +257,15 @@ local function install_packages(packages, results, disp)
     for _, package in ipairs(packages) do
       r:and_then(await, luarocks_install(package, results, disp))
     end
-    r
-      :map_ok(function()
-        if disp then
-          disp:task_succeeded('luarocks-install', 'rocks installed!')
-        end
-      end)
-      :map_err(function()
-        if disp then
-          disp:task_failed('luarocks-install', 'installing rocks failed!')
-        end
-      end)
+    r:map_ok(function()
+      if disp then
+        disp:task_succeeded('luarocks-install', 'rocks installed!')
+      end
+    end):map_err(function()
+      if disp then
+        disp:task_failed('luarocks-install', 'installing rocks failed!')
+      end
+    end)
     return r
   end)
 end
@@ -368,17 +365,15 @@ local function uninstall_packages(packages, results, disp)
       local name = type(package) == 'table' and package[1] or package
       r:and_then(await, luarocks_remove(name, results, disp))
     end
-    r
-      :map_ok(function()
-        if disp then
-          disp:task_succeeded('luarocks-remove', 'rocks cleaned!')
-        end
-      end)
-      :map_err(function()
-        if disp then
-          disp:task_failed('luarocks-remove', 'cleaning rocks failed!')
-        end
-      end)
+    r:map_ok(function()
+      if disp then
+        disp:task_succeeded('luarocks-remove', 'rocks cleaned!')
+      end
+    end):map_err(function()
+      if disp then
+        disp:task_failed('luarocks-remove', 'cleaning rocks failed!')
+      end
+    end)
     return r
   end)
 end
@@ -486,9 +481,10 @@ local function ensure_rocks(rocks, results, disp)
     local to_install = {}
     for _, rock in pairs(rocks) do
       if type(rock) == 'table' then
-        rock = rock[1]
+        to_install[rock[1]:lower()] = rock
+      else
+        to_install[rock:lower()] = true
       end
-      to_install[string.lower(rock)] = true
     end
 
     local r = result.ok()
@@ -551,16 +547,14 @@ local function handle_command(cmd, ...)
     local r = await(task)
     await(a.main)
     local package_names = vim.fn.escape(vim.inspect(packages), '"')
-    return r
-      :map_ok(function(data)
-        local operation_name = cmd:sub(1, 1):upper() .. cmd:sub(2)
-        log.info(fmt('%sed packages %s', operation_name, package_names))
-        return data
-      end)
-      :map_err(function(err)
-        log.error(fmt('Failed to %s packages %s: %s', cmd, package_names, vim.fn.escape(vim.inspect(err), '"\n')))
-        return err
-      end)
+    return r:map_ok(function(data)
+      local operation_name = cmd:sub(1, 1):upper() .. cmd:sub(2)
+      log.info(fmt('%sed packages %s', operation_name, package_names))
+      return data
+    end):map_err(function(err)
+      log.error(fmt('Failed to %s packages %s: %s', cmd, package_names, vim.fn.escape(vim.inspect(err), '"\n')))
+      return err
+    end)
   end)()
 end
 

@@ -22,22 +22,25 @@ local config_defaults = {
   transitive_opt = true,
   transitive_disable = true,
   auto_reload_compiled = true,
+  preview_updates = false,
   git = {
     mark_breaking_changes = true,
     cmd = 'git',
     subcommands = {
       update = 'pull --ff-only --progress --rebase=false',
+      update_head = 'merge FETCH_HEAD',
       install = 'clone --depth %i --no-single-branch --progress',
       fetch = 'fetch --depth 999999 --progress',
       checkout = 'checkout %s --',
       update_branch = 'merge --ff-only @{u}',
       current_branch = 'rev-parse --abbrev-ref HEAD',
-      diff = 'log --color=never --pretty=format:FMT --no-show-signature HEAD@{1}...HEAD',
+      diff = 'log --color=never --pretty=format:FMT --no-show-signature %s...%s',
       diff_fmt = '%%h %%s (%%cr)',
       git_diff_fmt = 'show --no-color --pretty=medium %s',
       get_rev = 'rev-parse --short HEAD',
       get_header = 'log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',
       get_bodies = 'log --color=never --pretty=format:"===COMMIT_START===%h%n%s===BODY_START===%b" --no-show-signature HEAD@{1}...HEAD',
+      get_fetch_bodies = 'log --color=never --pretty=format:"===COMMIT_START===%h%n%s===BODY_START===%b" --no-show-signature HEAD...FETCH_HEAD',
       submodules = 'submodule update --init --recursive --progress',
       revert = 'reset --hard HEAD@{1}',
       revert_to = 'reset --hard %s --',
@@ -49,6 +52,7 @@ local config_defaults = {
   },
   display = {
     non_interactive = false,
+    compact = false,
     open_fn = nil,
     open_cmd = '65vnew',
     working_sym = '⟳',
@@ -62,7 +66,15 @@ local config_defaults = {
     title = 'packer.nvim',
     show_all_info = true,
     prompt_border = 'double',
-    keybindings = { quit = 'q', toggle_info = '<CR>', diff = 'd', prompt_revert = 'r', retry = 'R' },
+    keybindings = {
+      quit = 'q',
+      toggle_update = 'u',
+      continue = 'c',
+      toggle_info = '<CR>',
+      diff = 'd',
+      prompt_revert = 'r',
+      retry = 'R',
+    },
   },
   luarocks = { python_cmd = 'python' },
   log = { level = 'warn' },
@@ -124,12 +136,15 @@ packer.init = function(user_config)
 
   local plugin_utils = require_and_configure 'plugin_utils'
   plugin_utils.ensure_dirs()
+
+  require_and_configure 'snapshot'
+
   if not config.disable_commands then
     packer.make_commands()
   end
 
   if vim.fn.mkdir(config.snapshot_path, 'p') ~= 1 then
-    vim.notify("Couldn't create " .. config.snapshot_path, vim.log.levels.WARN)
+    require_and_configure('log').warn("Couldn't create " .. config.snapshot_path)
   end
 end
 
@@ -137,7 +152,7 @@ packer.make_commands = function()
   vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.create PackerSnapshot  lua require('packer').snapshot(<f-args>)]]
   vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.rollback PackerSnapshotRollback  lua require('packer').rollback(<f-args>)]]
   vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.snapshot PackerSnapshotDelete lua require('packer.snapshot').delete(<f-args>)]]
-  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete  PackerInstall lua require('packer').install(<f-args>)]]
+  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerInstall lua require('packer').install(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)]]
   vim.cmd [[command! PackerClean             lua require('packer').clean()]]
@@ -261,10 +276,18 @@ manage = function(plugin_data)
   end
 
   -- Add the git URL for displaying in PackerStatus and PackerSync.
-  plugins[plugin_spec.short_name].url = plugin_spec.url:gsub('%.git', '')
+  plugins[plugin_spec.short_name].url = util.remove_ending_git_url(plugin_spec.url)
 
   if plugin_spec.requires and config.ensure_dependencies then
-    if type(plugin_spec.requires) == 'string' then
+    -- Handle single plugins given as strings or single plugin specs given as tables
+    if
+      type(plugin_spec.requires) == 'string'
+      or (
+        type(plugin_spec.requires) == 'table'
+        and not vim.tbl_islist(plugin_spec.requires)
+        and #plugin_spec.requires == 1
+      )
+    then
       plugin_spec.requires = { plugin_spec.requires }
     end
     for _, req in ipairs(plugin_spec.requires) do
@@ -367,10 +390,6 @@ packer.clean = function(results)
   end)()
 end
 
-local function args_or_all(...)
-  return util.nonempty_or({ ... }, vim.tbl_keys(plugins))
-end
-
 --- Install operation:
 -- Takes an optional list of plugin names as an argument. If no list is given, operates on all
 -- managed plugins.
@@ -443,11 +462,33 @@ packer.install = function(...)
   end)()
 end
 
+-- Filter out options specified as the first argument to update or sync
+-- returns the options table and the plugin names
+local filter_opts_from_plugins = function(...)
+  local args = { ... }
+  local opts = {}
+  if not vim.tbl_isempty(args) then
+    local first = args[1]
+    if type(first) == 'table' then
+      table.remove(args, 1)
+      opts = first
+    elseif first == '--preview' then
+      table.remove(args, 1)
+      opts = { preview_updates = true }
+    end
+  end
+  if opts.preview_updates == nil and config.preview_updates then
+    opts.preview_updates = true
+  end
+  return opts, util.nonempty_or(args, vim.tbl_keys(plugins))
+end
+
 --- Update operation:
 -- Takes an optional list of plugin names as an argument. If no list is given, operates on all
 -- managed plugins.
 -- Fixes plugin types, installs missing plugins, then updates installed plugins and updates helptags
 -- and rplugins
+-- Options can be specified in the first argument as either a table or explicit `'--preview'`.
 packer.update = function(...)
   local log = require_and_configure 'log'
   log.debug 'packer.update: requiring modules'
@@ -463,7 +504,7 @@ packer.update = function(...)
 
   manage_all_plugins()
 
-  local update_plugins = args_or_all(...)
+  local opts, update_plugins = filter_opts_from_plugins(...)
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
@@ -479,13 +520,18 @@ packer.update = function(...)
     local update_tasks
     log.debug 'Gathering update tasks'
     await(a.main)
-    update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
+    update_tasks, display_win = update(plugins, installed_plugins, display_win, results, opts)
     vim.list_extend(tasks, update_tasks)
     log.debug 'Gathering luarocks tasks'
     local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
     if luarocks_ensure_task ~= nil then
       table.insert(tasks, luarocks_ensure_task)
     end
+
+    if #tasks == 0 then
+      return
+    end
+
     table.insert(tasks, 1, function()
       return not display.status.running
     end)
@@ -510,7 +556,7 @@ packer.update = function(...)
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
-    display_win:final_results(results, delta)
+    display_win:final_results(results, delta, opts)
     packer.on_complete()
   end)()
 end
@@ -538,7 +584,7 @@ packer.sync = function(...)
 
   manage_all_plugins()
 
-  local sync_plugins = args_or_all(...)
+  local opts, sync_plugins = filter_opts_from_plugins(...)
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
@@ -560,17 +606,22 @@ packer.sync = function(...)
     local update_tasks
     log.debug 'Gathering update tasks'
     await(a.main)
-    update_tasks, display_win = update(plugins, installed_plugins, display_win, results)
+    update_tasks, display_win = update(plugins, installed_plugins, display_win, results, opts)
     vim.list_extend(tasks, update_tasks)
     log.debug 'Gathering luarocks tasks'
     local luarocks_clean_task = luarocks.clean(rocks, results, display_win)
     if luarocks_clean_task ~= nil then
       table.insert(tasks, luarocks_clean_task)
     end
+
     local luarocks_ensure_task = luarocks.ensure(rocks, results, display_win)
     if luarocks_ensure_task ~= nil then
       table.insert(tasks, luarocks_ensure_task)
     end
+    if #tasks == 0 then
+      return
+    end
+
     table.insert(tasks, 1, function()
       return not display.status.running
     end)
@@ -598,7 +649,7 @@ packer.sync = function(...)
     plugin_utils.update_helptags(install_paths)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
-    display_win:final_results(results, delta)
+    display_win:final_results(results, delta, opts)
     packer.on_complete()
   end)()
 end
@@ -704,7 +755,7 @@ packer.compile = function(raw_args, move_plugins)
     refresh_configs(plugins)
     -- NOTE: we copy the plugins table so the in memory value is not mutated during compilation
     local compiled_loader = compile(vim.deepcopy(plugins), output_lua, should_profile)
-    output_path = vim.fn.expand(output_path)
+    output_path = vim.fn.expand(output_path, true)
     vim.fn.mkdir(vim.fn.fnamemodify(output_path, ':h'), 'p')
     local output_file = io.open(output_path, 'w')
     output_file:write(compiled_loader)
@@ -724,11 +775,7 @@ packer.compile = function(raw_args, move_plugins)
         for _, config_line in ipairs(plugin_config) do
           local success, err = pcall(loadstring(config_line))
           if not success then
-            vim.notify(
-              'Error running config for ' .. plugin_name .. ': ' .. vim.inspect(err),
-              vim.log.levels.ERROR,
-              { title = 'packer.nvim' }
-            )
+            log.error('Error running config for ' .. plugin_name .. ': ' .. vim.inspect(err))
           end
         end
       end
@@ -818,7 +865,7 @@ packer.snapshot = function(snapshot_name, ...)
   log.debug(fmt('Taking snapshots of currently installed plugins to %s...', snapshot_name))
   if vim.fn.fnamemodify(snapshot_name, ':p') ~= snapshot_path then -- is not absolute path
     if config.snapshot_path == nil then
-      vim.notify('config.snapshot_path is not set', vim.log.levels.WARN)
+      log.warn 'config.snapshot_path is not set'
       return
     else
       snapshot_path = util.join_paths(config.snapshot_path, snapshot_path) -- set to default path
@@ -859,14 +906,13 @@ packer.snapshot = function(snapshot_name, ...)
     if write_snapshot then
       await(snapshot.create(snapshot_path, target_plugins))
         :map_ok(function(ok)
-          vim.notify(ok.message, vim.log.levels.INFO, { title = 'packer.nvim' })
-
+          log.info(ok.message)
           if next(ok.failed) then
-            vim.notify("Couldn't snapshot " .. vim.inspect(ok.failed), vim.log.levels.WARN, { title = 'packer.nvim' })
+            log.warn("Couldn't snapshot " .. vim.inspect(ok.failed))
           end
         end)
         :map_err(function(err)
-          vim.notify(err.message, vim.log.levels.WARN, { title = 'packer.nvim' })
+          log.warn(err.message)
         end)
     end
   end)()
@@ -896,7 +942,6 @@ packer.rollback = function(snapshot_name, ...)
     if snapshot_path == nil then
       local warn = fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name)
       log.warn(warn)
-      vim.notify(warn, vim.log.levels.WARN)
       return
     end
 
@@ -916,14 +961,14 @@ packer.rollback = function(snapshot_name, ...)
     await(snapshot.rollback(snapshot_path, target_plugins))
       :map_ok(function(ok)
         await(a.main)
-        vim.notify('Rollback to "' .. snapshot_path .. '" completed', vim.log.levels.INFO, { title = 'packer.nvim' })
+        log.info('Rollback to "' .. snapshot_path .. '" completed')
         if next(ok.failed) then
-          vim.notify("Couldn't rollback " .. vim.inspect(ok.failed), vim.log.levels.INFO, { title = 'packer.nvim' })
+          log.warn("Couldn't rollback " .. vim.inspect(ok.failed))
         end
       end)
       :map_err(function(err)
         await(a.main)
-        vim.notify(err, vim.log.levels.ERROR, { title = 'packer.nvim' })
+        log.error(err)
       end)
 
     packer.on_complete()
@@ -945,7 +990,7 @@ packer.config = config
 --  as another element, and an optional table of Luarocks rock specifications as another element:
 --  packer.startup({{'tjdevries/colorbuddy.vim'}, config = { ... }, rocks = { ... }})
 packer.startup = function(spec)
-  local log = require_and_configure 'log'
+  local log = require 'packer.log'
   local user_func = nil
   local user_config = nil
   local user_plugins = nil
@@ -971,6 +1016,7 @@ packer.startup = function(spec)
 
   packer.init(user_config)
   packer.reset()
+  log = require_and_configure 'log'
 
   if user_func then
     setfenv(user_func, vim.tbl_extend('force', getfenv(), { use = packer.use, use_rocks = packer.use_rocks }))
@@ -986,7 +1032,6 @@ packer.startup = function(spec)
     end
   end
 
-  require_and_configure 'snapshot' -- initialize snapshot config
   if config.snapshot ~= nil then
     packer.rollback(config.snapshot)
   end

@@ -99,19 +99,13 @@ log.new = function(config, standalone)
   local console_output = vim.schedule_wrap(function(level_config, info, nameupper, msg)
     local console_lineinfo = vim.fn.fnamemodify(info.short_src, ':t') .. ':' .. info.currentline
     local console_string = string.format('[%-6s%s] %s: %s', nameupper, os.date '%H:%M:%S', console_lineinfo, msg)
-
-    if config.highlights and level_config.hl then
-      vim.cmd(string.format('echohl %s', level_config.hl))
-    end
-
-    local split_console = vim.split(console_string, '\n')
-    for _, v in ipairs(split_console) do
-      vim.cmd(string.format([[echom "[%s] %s"]], config.plugin, vim.fn.escape(v, '"')))
-    end
-
-    if config.highlights and level_config.hl then
-      vim.cmd 'echohl NONE'
-    end
+    -- Heuristic to check for nvim-notify
+    local is_fancy_notify = type(vim.notify) == 'table'
+    vim.notify(
+      string.format([[%s%s]], is_fancy_notify and '' or ('[' .. config.plugin .. '] '), console_string),
+      vim.log.levels[level_config.name:upper()],
+      { title = config.plugin }
+    )
   end)
 
   local log_at_level = function(level, level_config, message_maker, ...)

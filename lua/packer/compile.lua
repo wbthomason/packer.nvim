@@ -33,6 +33,20 @@ vim.api.nvim_command('packadd packer.nvim')
 local no_errors, error_msg = pcall(function()
 ]]
 
+local enter_packer_compile = [[
+_G._packer = _G._packer or {}
+_G._packer.inside_compile = true
+]]
+
+local exit_packer_compile = [[
+
+_G._packer.inside_compile = false
+if _G._packer.needs_bufread == true then
+  vim.cmd("doautocmd BufRead")
+end
+_G._packer.needs_bufread = false
+]]
+
 local catch_errors = [[
 catch
   echohl ErrorMsg
@@ -56,23 +70,23 @@ end
 local profile_time = function(should_profile)
   return fmt(
     [[
-  local time
-  local profile_info
-  local should_profile = %s
-  if should_profile then
-    local hrtime = vim.loop.hrtime
-    profile_info = {}
-    time = function(chunk, start)
-      if start then
-        profile_info[chunk] = hrtime()
-      else
-        profile_info[chunk] = (hrtime() - profile_info[chunk]) / 1e6
-      end
+local time
+local profile_info
+local should_profile = %s
+if should_profile then
+  local hrtime = vim.loop.hrtime
+  profile_info = {}
+  time = function(chunk, start)
+    if start then
+      profile_info[chunk] = hrtime()
+    else
+      profile_info[chunk] = (hrtime() - profile_info[chunk]) / 1e6
     end
-  else
-    time = function(chunk, start) end
   end
-  ]],
+else
+  time = function(chunk, start) end
+end
+]],
     vim.inspect(should_profile)
   )
 end
@@ -90,8 +104,10 @@ local function save_profiles(threshold)
       results[i] = elem[1] .. ' took ' .. elem[2] .. 'ms'
     end
   end
+  if threshold then
+    table.insert(results, '(Only showing plugins that took longer than ' .. threshold .. ' ms ' .. 'to load)')
+  end
 
-  _G._packer = _G._packer or {}
   _G._packer.profile_output = results
 end
 ]]
@@ -294,7 +310,11 @@ local function make_loaders(_, plugins, output_lua, should_profile)
       if plugin.opt then
         plugin.simple_load = false
         loaders[name].after_files = detect_after_plugin(name, loaders[name].path)
-        loaders[name].needs_bufread = detect_bufread(loaders[name].path)
+        if plugin.bufread ~= nil then
+          loaders[name].needs_bufread = plugin.bufread
+        else
+          loaders[name].needs_bufread = detect_bufread(loaders[name].path)
+        end
       end
 
       if plugin.setup then
@@ -595,7 +615,9 @@ local function make_loaders(_, plugins, output_lua, should_profile)
     if plugins[pre].opt then
       loaders[pre].after = posts
     elseif plugins[pre].only_config then
-      loaders[pre] = { after = posts, only_sequence = true, only_config = true }
+      loaders[pre].after = posts
+      loaders[pre].only_sequence = true
+      loaders[pre].only_config = true
     end
 
     if plugins[pre].simple_load or plugins[pre].opt or plugins[pre].only_config then
@@ -688,6 +710,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
     table.insert(result, feature_guard)
     table.insert(result, 'lua << END')
   end
+  table.insert(result, enter_packer_compile)
   table.insert(result, profile_time(should_profile))
   table.insert(result, profile_output)
   timed_chunk(luarocks.generate_path_setup(), 'Luarocks path setup', result)
@@ -771,6 +794,8 @@ local function make_loaders(_, plugins, output_lua, should_profile)
 
     table.insert(result, 'vim.cmd("augroup END")')
   end
+
+  table.insert(result, exit_packer_compile)
 
   table.insert(result, conditionally_output_profile(config.threshold))
   if output_lua then

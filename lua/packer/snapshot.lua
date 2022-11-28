@@ -89,11 +89,8 @@ local function generate_snapshot(plugins)
       local rev = await(plugin.get_rev())
 
       if rev.err then
-        failed[plugin.short_name] = fmt(
-          "Snapshotting %s failed because of error '%s'",
-          plugin.short_name,
-          vim.inspect(rev.err)
-        )
+        failed[plugin.short_name] =
+          fmt("Snapshotting %s failed because of error '%s'", plugin.short_name, vim.inspect(rev.err))
       else
         completed[plugin.short_name] = { commit = rev.ok }
       end
@@ -199,7 +196,6 @@ snapshot.delete = function(snapshot_name)
   if snapshot_path == nil then
     local warn = fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name)
     log.warn(warn)
-    vim.notify(warn, vim.log.levels.WARN, { title = 'packer.nvim' })
     return
   end
 
@@ -207,11 +203,9 @@ snapshot.delete = function(snapshot_name)
   if vim.loop.fs_unlink(snapshot_path) then
     local info = 'Deleted ' .. snapshot_path
     log.info(info)
-    vim.notify(info, vim.log.levels.INFO, { title = 'packer.nvim' })
   else
     local warn = "Couldn't delete " .. snapshot_path
     log.warn(warn)
-    vim.notify(warn, vim.log.levels.WARN, { title = 'packer.nvim' })
   end
 end
 
