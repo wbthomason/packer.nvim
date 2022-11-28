@@ -13,7 +13,7 @@ Differences:
 3. [Quickstart](#quickstart)
 4. [Bootstrapping](#bootstrapping)
 5. [Usage](#usage)
-    1. [The startup function](#the-startup-function)
+    1. [The setup and add functions](#the-setup-and-add-function)
     2. [Custom Initialization](#custom-initialization)
     3. [Specifying Plugins](#specifying-plugins)
     4. [Performing plugin management operations](#performing-plugin-management-operations)
@@ -30,7 +30,7 @@ Differences:
 - Support for local plugins
 
 ## Requirements
-- **You need to be running Neovim v0.7.0+**
+- **You need to be running Neovim v0.8.0+**
 - If you are on Windows 10, you need developer mode enabled in order to use local plugins (creating
   symbolic links requires admin privileges on Windows - credit to @TimUntersberger for this note)
 
@@ -57,9 +57,9 @@ Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lu
 ```lua
 -- This file can be loaded by calling `lua require('plugins')` from your init.vim
 
-require('packer').startup({
+require('packer').add{
   -- Packer can manage itself
-  'lewis6991/packer.nvim';
+  'wbthomason/packer.nvim';
 
   -- Simple plugins can be specified as strings
   '9mm/vim-closer';
@@ -106,12 +106,12 @@ require('packer').startup({
   { 'lewis6991/gitsigns.nvim',
     config = function()
       require('gitsigns').setup()
-      end
+    end
   };
-})
+}
 ```
 
-`packer` provides the following commands after you've run and configured `packer` with `require('packer').startup(...)`:
+`packer` provides the following commands.
 
 ```vim
 " Remove any disabled or unused plugins
@@ -151,32 +151,28 @@ end
 
 local packer_bootstrap = ensure_packer()
 
-require('packer').startup{{
+require('packer').add{
   'wbthomason/packer.nvim';
   -- My plugins here
   -- 'foo1/bar1.nvim';
   -- 'foo2/bar2.nvim';
 
-}}
+}
 ```
 
 ## Usage
 
 The following is a more in-depth explanation of `packer`'s features and use.
 
-### The `startup` function
-`packer` provides `packer.startup(spec)`, which is used in the above examples.
-
-`startup` is a convenience function for simple setup and can be invoked as follows:
-- `spec` must be a table with another table as its first element and config overrides as another element:
-  `packer.startup({ 'tjdevries/colorbuddy.vim'}, config = { ... }})`
+### The `setup` and `add` functions
+`packer` provides`packer.add(spec)`, which is used in the above examples.
 
 ### Custom Initialization
-You may pass a table of configuration values to `packer.startup()` to customize its operation. The
-default configuration values (and structure of the configuration table) are:
+`packer.setup()` can be used to provide custom configuration.
+The default configuration values (and structure of the configuration table) are:
+
 ```lua
-require('packer').startup{{...}, config = {
-  ensure_dependencies = true, -- Should packer install plugin dependencies?
+require('packer').setup{
   package_root        = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
   plugin_package      = 'packer', -- The default package for plugins
   max_jobs            = nil, -- Limit the number of simultaneous jobs. nil means no limit
@@ -184,18 +180,12 @@ require('packer').startup{{...}, config = {
   preview_updates     = false, -- If true, always preview updates before choosing which plugins to update, same as `PackerUpdate --preview`.
   git = {
     cmd = 'git', -- The base command for git operations
-    subcommands = { -- Format strings for git subcommands
-      diff_fmt = '%%h %%s (%%cr)',
-    },
     depth = 1, -- Git clone depth
     clone_timeout = 60, -- Timeout, in seconds, for git clones
     default_url_format = 'https://github.com/%s' -- Lua format string used for "aaa/bbb" style plugins
   },
   display = {
     non_interactive = false, -- If true, disable display windows for all operations
-    compact         = false, -- If true, fold updates results by default
-    open_fn         = nil, -- An optional function to open a window for packer's display
-    open_cmd        = '65vnew \\[packer\\]', -- An optional command to open a window for packer's display
     working_sym     = '⟳', -- The symbol for a plugin being installed/updated
     error_sym       = '✗', -- The symbol for a plugin with an error in installation/updating
     done_sym        = '✓', -- The symbol for a plugin which has completed installation/updating
@@ -215,7 +205,7 @@ require('packer').startup{{...}, config = {
   },
   log = { level = 'warn' }, -- The default print log level. One of: "trace", "debug", "info", "warn", "error", "fatal".
   autoremove = false, -- Remove disabled or unused plugins without prompting the user
-}}
+}
 ```
 
 ### Specifying plugins
@@ -288,8 +278,6 @@ treated as a plugin location string and the corresponding plugin is added to the
 
 If `requires` is a list, it is treated as a list of plugin specifications following the format given
 above.
-
-If `ensure_dependencies` is true, the plugins specified in `requires` will be installed.
 
 Plugins specified in `requires` are removed when no active plugins require them.
 
