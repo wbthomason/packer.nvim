@@ -8,7 +8,6 @@ local record Config
     preview_updates : boolean
     non_interactive : boolean
     prompt_border   : string
-    compact         : boolean
     working_sym     : string
     error_sym       : string
     done_sym        : string
@@ -16,8 +15,6 @@ local record Config
     moved_sym       : string
     item_sym        : string
     header_sym      : string
-    header_lines    : integer
-    title           : string
     show_all_info   : boolean
     keybindings     : {string: string}
   end
@@ -68,7 +65,6 @@ local default_config: Config = {
   },
   display = {
     non_interactive = false,
-    compact = false,
     open_cmd = '65vnew',
     working_sym = '⟳',
     error_sym = '✗',
@@ -77,8 +73,6 @@ local default_config: Config = {
     moved_sym = '→',
     item_sym = '•',
     header_sym = '━',
-    header_lines = 2,
-    title = 'packer.nvim',
     show_all_info = true,
     prompt_border = 'double',
     keybindings = {

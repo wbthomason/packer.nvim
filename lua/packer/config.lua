@@ -51,9 +51,6 @@ local join_paths = util.join_paths
 
 
 
-
-
-
 local default_config = {
    package_root = join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
    max_jobs = nil,
@@ -68,7 +65,6 @@ local default_config = {
    },
    display = {
       non_interactive = false,
-      compact = false,
       open_cmd = '65vnew',
       working_sym = '⟳',
       error_sym = '✗',
@@ -77,8 +73,6 @@ local default_config = {
       moved_sym = '→',
       item_sym = '•',
       header_sym = '━',
-      header_lines = 2,
-      title = 'packer.nvim',
       show_all_info = true,
       prompt_border = 'double',
       keybindings = {
