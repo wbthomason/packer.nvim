@@ -65,6 +65,7 @@ local M = {UserSpec = {}, Plugin = {}, }
 
 
 
+
 M.plugins = {}
 
 local function guess_plugin_type(path)
@@ -194,6 +195,7 @@ function M.process_spec(
       rev = spec.rev,
       tag = spec.tag,
       commit = spec.commit,
+      opt = spec.opt,
       keys = normkeys(spec.keys),
       event = normcond(spec.event),
       ft = normcond(spec.ft),
@@ -211,7 +213,7 @@ function M.process_spec(
 
    M.plugins[name] = plugin
 
-   if plugin.opt == nil then
+   if not plugin.opt then
       plugin.opt = plugin.keys ~= nil or
       plugin.ft ~= nil or
       plugin.cmd ~= nil or
