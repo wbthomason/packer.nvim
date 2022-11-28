@@ -20,7 +20,6 @@ local record Config
   end
 
   record Git
-    mark_breaking_changes : boolean
     cmd                   : string
     depth                 : integer
     clone_timeout         : integer
@@ -57,7 +56,6 @@ local default_config: Config = {
   auto_clean = true,
   preview_updates = false,
   git = {
-    mark_breaking_changes = true,
     cmd = 'git',
     depth = 1,
     clone_timeout = 60,
