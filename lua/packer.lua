@@ -30,17 +30,6 @@ local function loader(plugins)
    end
 end
 
-
-
-local function plugin_complete(lead, _)
-   local plugins = require('packer.plugin').plugins
-   local completion_list = vim.tbl_filter(function(name)
-      return vim.startswith(name, lead)
-   end, vim.tbl_keys(plugins))
-   table.sort(completion_list)
-   return completion_list
-end
-
 local function load_plugin_configs(plugins)
    local Handlers = require('packer.handlers')
 
@@ -52,28 +41,6 @@ local function load_plugin_configs(plugins)
 
    for _, cond in ipairs(Handlers.types) do
       Handlers[cond](plugins, loader)
-   end
-end
-
-local function make_commands()
-   local actions = setmetatable({}, {
-      __index = function(_, k)
-         return function(...)
-            return (require('packer.actions'))[k](...)
-         end
-      end,
-   })
-
-   for _, cmd in ipairs({
-         { 'PackerInstall', '*', actions.install, plugin_complete },
-         { 'PackerUpdate', '*', actions.update, plugin_complete },
-         { 'PackerSync', '*', actions.sync },
-         { 'PackerClean', '*', actions.clean },
-         { 'PackerStatus', '*', actions.status },
-      }) do
-      vim.api.nvim_create_user_command(cmd[1], function(args)
-         cmd[3](unpack(args.fargs))
-      end, { nargs = cmd[2], complete = cmd[4] })
    end
 end
 
@@ -97,8 +64,6 @@ function M.startup(spec)
          vim.fn.mkdir(dir, 'p')
       end
    end
-
-   make_commands()
 
    local plugin = require('packer.plugin')
 
