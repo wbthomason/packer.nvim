@@ -9,7 +9,7 @@ local function plugin_complete(lead, _)
   return completion_list
 end
 
-for k, v in ipairs {
+for k, v in pairs {
   install = { 'PackerInstall', plugin_complete},
   update  = { 'PackerUpdate' , plugin_complete},
   sync    = { 'PackerSync'                    },
