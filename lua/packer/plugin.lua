@@ -221,6 +221,8 @@ function M.process_spec(
 
    if spec.requires then
       if required_by then
+
+
          log.warn(fmt('(%s) Nested requires are not support', name))
       else
          local sr = spec.requires
