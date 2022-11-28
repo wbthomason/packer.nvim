@@ -8,40 +8,42 @@ local record M
   record UserSpec
     {string}
 
-    branch   : string
-    rev      : string
-    tag      : string
-    commit   : string
-    keys     : string|{string|{string,string}}
-    event    : string|{string}
-    ft       : string|{string}
-    cmd      : string|{string}
-    enable   : boolean|function(): boolean
-    run      : string|function|{string|function}
-    config   : string|function()
-    lock     : boolean
-    requires : string|{string|UserSpec}
+    branch     : string
+    rev        : string
+    tag        : string
+    commit     : string
+    keys       : string|{string|{string,string}}
+    event      : string|{string}
+    ft         : string|{string}
+    cmd        : string|{string}
+    enable     : boolean|function(): boolean
+    run        : string|function|{string|function}
+    config_pre : string|function()
+    config     : string|function()
+    lock       : boolean
+    requires   : string|{string|UserSpec}
   end
 
   record Plugin
-    branch           : string
-    rev              : string
-    tag              : string
-    commit           : string
-    install_path     : string
-    keys             : {{string,string}}
-    event            : {string}
-    ft               : {string}
-    cmd              : {string}
-    enable           : boolean|function(): boolean
-    run              : {string | function}
-    config           : string|function()
-    requires         : {string}
+    branch       : string
+    rev          : string
+    tag          : string
+    commit       : string
+    install_path : string
+    keys         : {{string,string}}
+    event        : {string}
+    ft           : {string}
+    cmd          : {string}
+    enable       : boolean|function(): boolean
+    run          : {string|function}
+    config_pre   : string|function()
+    config       : string|function()
+    requires     : {string}
 
-    name             : string
-    full_name        : string -- Includes rev and branch
-    revs             : {string, string}
-    required_by      : {string}
+    name         : string
+    full_name    : string -- Includes rev and branch
+    revs         : {string, string}
+    required_by  : {string}
 
     enum Type
       'git'
@@ -201,6 +203,7 @@ function M.process_spec(
     lock        = spec.lock,
     url         = remove_ending_git_url(url),
     type        = ptype,
+    config_pre  = spec.config_pre,
     config      = spec.config,
     required_by = required_by and {required_by.name} or nil,
     revs        = {}
