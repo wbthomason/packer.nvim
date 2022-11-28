@@ -138,7 +138,7 @@ local handle_checkouts = function(plugin: Plugin, disp: Display, opts: UpdateOpt
     end
   end
 
-  return {}
+  return
 end
 
 local function split_messages(messages: {string}): {string}
