@@ -4,9 +4,9 @@ local Config = config.Config
 
 local M = {}
 
-local function apply_config(plugin: Plugin)
-  if plugin.config then
-    local c = plugin.config
+local function apply_config(plugin: Plugin, pre: boolean)
+  local c = pre and plugin.config_pre or plugin.config
+  if c then
     if c is function() then
       c()
     else
@@ -21,11 +21,12 @@ local function loader(plugins: {Plugin})
       -- Set the plugin as loaded before config is run in case something in the
       -- config tries to load this same plugin again
       plugin.loaded = true
+      apply_config(plugin, true)
       if plugin.opt then
         -- never packadd a start plugin
         vim.cmd.packadd(plugin.name)
       end
-      apply_config(plugin)
+      apply_config(plugin, false)
     end
   end
 end

@@ -4,9 +4,9 @@ local Config = config.Config
 
 local M = {}
 
-local function apply_config(plugin)
-   if plugin.config then
-      local c = plugin.config
+local function apply_config(plugin, pre)
+   local c = pre and plugin.config_pre or plugin.config
+   if c then
       if type(c) == "function" then
          c()
       else
@@ -21,11 +21,12 @@ local function loader(plugins)
 
 
          plugin.loaded = true
+         apply_config(plugin, true)
          if plugin.opt then
 
             vim.cmd.packadd(plugin.name)
          end
-         apply_config(plugin)
+         apply_config(plugin, false)
       end
    end
 end
