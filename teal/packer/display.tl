@@ -165,6 +165,9 @@ local record M
   display: Display
 end
 
+local HEADER_LINES <const> = 2
+local TITLE <const> = 'packer.nvim'
+
 local Display = M.Display
 
 --- Check if we have a valid display window
@@ -180,7 +183,7 @@ local function find_nearest_plugin(disp: Display): string, {integer}
 
   local current_cursor_pos = api.nvim_win_get_cursor(0)
   local nb_lines = api.nvim_buf_line_count(0)
-  local cursor_pos_y = math.max(current_cursor_pos[1], config.display.header_lines + 1)
+  local cursor_pos_y = math.max(current_cursor_pos[1], HEADER_LINES + 1)
   if cursor_pos_y > nb_lines then
     return
   end
@@ -558,10 +561,10 @@ display.task_start = vim.schedule_wrap(function(self: Display, plugin: string, m
     return
   end
   display.running = true
-  set_lines(self, config.display.header_lines, config.display.header_lines, {
+  set_lines(self, HEADER_LINES, HEADER_LINES, {
     fmt(' %s %s: %s', config.display.working_sym, plugin, message),
   })
-  self.marks[plugin] = set_extmark(self.buf, self.ns, nil, config.display.header_lines, 0)
+  self.marks[plugin] = set_extmark(self.buf, self.ns, nil, HEADER_LINES, 0)
 end)
 
 --- Decrement the count of active operations in the headline
@@ -619,10 +622,10 @@ display.update_headline_message = vim.schedule_wrap(function(self: Display, mess
   if not valid_display(self) then
     return
   end
-  local headline = config.display.title .. ' - ' .. message
+  local headline = TITLE .. ' - ' .. message
   local width = api.nvim_win_get_width(self.win) - 2
   local pad_width = math.max(math.floor((width - string.len(headline)) / 2.0), 0)
-  set_lines(self, 0, config.display.header_lines - 1, { string.rep(' ', pad_width) .. headline })
+  set_lines(self, 0, HEADER_LINES - 1, { string.rep(' ', pad_width) .. headline })
 end)
 
 --- Setup new syntax group links for the status window
@@ -695,7 +698,7 @@ display.set_status = vim.schedule_wrap(function(self: Display, plugins: {string:
   end
 
   table.sort(lines)
-  set_lines(self, config.display.header_lines, -1, lines)
+  set_lines(self, HEADER_LINES, -1, lines)
 end)
 
 function display:is_previewing(): boolean
@@ -724,19 +727,14 @@ local function show_all_info(disp: Display)
     return
   end
 
-  local line = config.display.header_lines + 1
+  local line = HEADER_LINES + 1
   for _, plugin_name in ipairs(disp.item_order) do
     local item = disp.items[plugin_name]
     if item and #item.lines > 0 then
       local next_line: integer
-      if config.display.compact then
-        next_line = line + 1
-        item.displayed = false
-      else
-        set_lines(disp, line, line, item.lines)
-        next_line = line + #item.lines + 1
-        item.displayed = true
-      end
+      set_lines(disp, line, line, item.lines)
+      next_line = line + #item.lines + 1
+      item.displayed = true
       disp.marks[plugin_name] = {
         start = set_extmark(disp.buf, disp.ns, nil, line - 1, 0),
         end_ = set_extmark(disp.buf, disp.ns, nil, next_line - 1, 0),
@@ -863,7 +861,7 @@ display.final_results = vim.schedule_wrap(function(self: Display, results: Displ
 
   -- Ensure there are no newlines
   local lines = strip_newlines(raw_lines)
-  set_lines(self, config.display.header_lines, -1, lines)
+  set_lines(self, HEADER_LINES, -1, lines)
   for plugin_name, plugin in pairs(packer_plugins) do
     local item = {
       displayed = false,
@@ -965,9 +963,9 @@ end
 --- Utility to make the initial display buffer header
 local function make_header(d: Display)
   local width = api.nvim_win_get_width(0)
-  local pad_width = math.floor((width - config.display.title:len()) / 2.0)
+  local pad_width = math.floor((width - TITLE:len()) / 2.0)
   api.nvim_buf_set_lines(d.buf, 0, 1, true, {
-    (' '):rep(pad_width) .. config.display.title,
+    (' '):rep(pad_width) .. TITLE,
     ' ' .. config.display.header_sym:rep(width - 2),
   })
 end
