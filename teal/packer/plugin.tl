@@ -221,6 +221,8 @@ function M.process_spec(
 
   if spec.requires then
     if required_by then
+      -- TODO(lewis6991): Allow nesting, but only allow a plugin to be specified
+      -- via a non-string spec once.
       log.warn(fmt('(%s) Nested requires are not support', name))
     else
       local sr = spec.requires
