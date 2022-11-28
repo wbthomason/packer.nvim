@@ -17,6 +17,6 @@ for k, v in pairs {
   status  = { 'PackerStatus'                  },
 } do
   vim.api.nvim_create_user_command(v[1], function(args)
-    return require('packer.'..k)(unpack(args.fargs))
+    return require('packer.actions')[k](unpack(args.fargs))
   end, { nargs = '*', complete = v[2] })
 end
