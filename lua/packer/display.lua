@@ -164,6 +164,7 @@ local M = {Display = {Item = {}, Result = {}, Results = {}, Callbacks = {}, }, }
 
 
 
+
 local Display = M.Display
 
 
@@ -542,6 +543,10 @@ local default_keymap_display_order = {
    'prompt_revert',
    'retry',
 }
+
+function display:check()
+   return not self.running
+end
 
 
 display.task_start = vim.schedule_wrap(function(self, plugin, message)

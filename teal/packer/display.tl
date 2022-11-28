@@ -140,6 +140,7 @@ local record M
     failed_update_list : {string}
 
     open                    : function(Display.Callbacks): Display
+    check                   : function(Display): boolean
     task_update             : function(Display, plugin: string, msg: string)
     task_start              : function(Display, plugin: string, msg: string)
     task_succeeded          : function(Display, plugin: string, msg: string)
@@ -542,6 +543,10 @@ local default_keymap_display_order = {
   'prompt_revert',
   'retry',
 }
+
+function display:check(): boolean
+  return not self.running
+end
 
 --- Start displaying a new task
 display.task_start = vim.schedule_wrap(function(self: Display, plugin: string, message: string)

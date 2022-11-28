@@ -43,7 +43,7 @@ local function run_tasks(tasks, disp, kind)
    end
 
    local function check()
-      return not disp.running
+      return disp:check()
    end
 
    local limit = config.max_jobs and config.max_jobs or #tasks

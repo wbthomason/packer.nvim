@@ -43,7 +43,7 @@ local function run_tasks(tasks: {a.Thunk}, disp: Display, kind: string): {any}
   end
 
   local function check(): boolean
-    return not disp.running
+    return disp:check()
   end
 
   local limit = config.max_jobs and config.max_jobs or #tasks
