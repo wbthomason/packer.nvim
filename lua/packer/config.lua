@@ -50,14 +50,12 @@ local join_paths = util.join_paths
 
 
 
-
 local default_config = {
    package_root = join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
    max_jobs = nil,
    auto_clean = true,
    preview_updates = false,
    git = {
-      mark_breaking_changes = true,
       cmd = 'git',
       depth = 1,
       clone_timeout = 60,

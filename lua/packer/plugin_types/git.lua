@@ -386,11 +386,9 @@ local function update(plugin, disp, opts)
 
       plugin.messages = jr.output.data.stdout
 
-      if config.git.mark_breaking_changes then
-         jr = mark_breaking_changes(plugin, disp, opts.preview_updates)
-         if not jr:ok() then
-            return jr.output.data.stderr
-         end
+      jr = mark_breaking_changes(plugin, disp, opts.preview_updates)
+      if not jr:ok() then
+         return jr.output.data.stderr
       end
    end
 
