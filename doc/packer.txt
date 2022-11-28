@@ -1,4 +1,4 @@
-*packer.txt*                      A use-package inspired Neovim plugin manager
+
 *packer.nvim*
 
 Author: Wil Thomason <wil.thomason@gmail.com>
@@ -56,7 +56,7 @@ Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lu
   -- Only if your version of Neovim doesn't have https://github.com/neovim/neovim/pull/12632 merged
   vim._update_package_paths()
 
-  return require('packer').startup({
+  return require('packer').add{
     -- Packer can manage itself as an optional plugin
     {'wbthomason/packer.nvim'},
 
@@ -92,9 +92,9 @@ Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lu
 
     -- Plugins can have post-install/update hooks
     {'iamcco/markdown-preview.nvim', run = 'cd app && yarn install', cmd = 'MarkdownPreview'}
-  })
+  }
 
-`packer` provides the following commands after you've run and configured `packer` with `require('packer').startup(...)`: *packer-default-commands* *packer-commands*
+`packer` provides the following commands: *packer-default-commands* *packer-commands*
 
 `PackerClean`                                   *packer-commands-clean*
 Remove any disabled or unused plugins.
@@ -121,22 +121,23 @@ detailed in this section.
 
 STARTUP                                        *packer-startup*
 
-The easiest way to use `packer` is via the |packer.startup()| function. In
-short, `startup` is a convenience function for simple setup, and is invoked as
-`packer.startup(spec)`, where:
+The easiest way to use `packer` is via the |packer.add()| function.
+`spec` should be a table containing a list of plugin specs: >lua
 
-- `spec` can be a function: >
-  packer.startup(function() use 'tjdevries/colorbuddy.vim' end)
-- `spec` can be a table with a function as its first element and config
-  overrides as another element: >
-  packer.startup({
-    function() use 'tjdevries/colorbuddy.vim' end, config = { ... }
-    })
+  packer.add{
+    {'tjdevries/colorbuddy.vim', config = { ... }}
+  }
+
+<
+
+Configuration can be provided via |packer.setup()|: >lua
+
+  packer.setup{
+    -- YOUR CONFIG HERE --
+  }
 
 See |packer-configuration| for the allowed configuration keys.
 
-`startup` will handle calling |packer.init()| and |packer.reset()| for you, as
-well as creating the commands given in |packer-commands|.
 
 CONFIGURATION                                  *packer-configuration*
 `packer` provides the following configuration variables, presented in the
@@ -146,59 +147,50 @@ default values: >
     package_root   = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
     plugin_package = 'packer', -- The default package for plugins
     max_jobs = nil, -- Limit the number of simultaneous jobs. nil means no limit
-    preview_updates = false, -- If true, always preview updates before choosing which plugins to update, same as `PackerUpdate --preview`.
     git = {
-      cmd = 'git', -- The base command for git operations
-      depth = 1, -- Git clone depth
-      clone_timeout = 60, -- Timeout, in seconds, for git clones
+      cmd                = 'git', -- The base command for git operations
+      depth              = 1, -- Git clone depth
+      clone_timeout      = 60, -- Timeout, in seconds, for git clones
       default_url_format = 'https://github.com/%s' -- Lua format string used for "aaa/bbb" style plugins
     },
     log = { level = 'warn' }, -- The default print log level. One of: "trace", "debug", "info", "warn", "error", "fatal".
     display = {
       non_interactive = false, -- If true, disable display windows for all operations
-      compact = false, -- If true, fold updates results by default
-      open_fn  = nil, -- An optional function to open a window for packer's display
-      open_cmd = '65vnew \\[packer\\]', -- An optional command to open a window for packer's display
-      working_sym = '⟳', -- The symbol for a plugin being installed/updated
-      error_sym = '✗', -- The symbol for a plugin with an error in installation/updating
-      done_sym = '✓', -- The symbol for a plugin which has completed installation/updating
-      removed_sym = '-', -- The symbol for an unused plugin which was removed
-      moved_sym = '→', -- The symbol for a plugin which was moved (e.g. from opt to start)
-      header_sym = '━', -- The symbol for the header line in packer's display
-      show_all_info = true, -- Should packer show all update details automatically?
-      prompt_border = 'double', -- Border style of prompt popups.
+      working_sym     = '⟳', -- The symbol for a plugin being installed/updated
+      error_sym       = '✗', -- The symbol for a plugin with an error in installation/updating
+      done_sym        = '✓', -- The symbol for a plugin which has completed installation/updating
+      removed_sym     = '-', -- The symbol for an unused plugin which was removed
+      moved_sym       = '→', -- The symbol for a plugin which was moved (e.g. from opt to start)
+      header_sym      = '━', -- The symbol for the header line in packer's display
+      show_all_info   = true, -- Should packer show all update details automatically?
+      prompt_border   = 'double', -- Border style of prompt popups.
       keybindings = { -- Keybindings for the display window
-        quit = 'q',
+        quit          = 'q',
         toggle_update = 'u', -- only in preview
-        continue = 'c', -- only in preview
-        toggle_info = '<CR>',
-        diff = 'd',
+        continue      = 'c', -- only in preview
+        toggle_info   = '<CR>',
+        diff          = 'd',
         prompt_revert = 'r',
       }
     }
   }
 
+<
+
 SPECIFYING PLUGINS                             *packer-specifying-plugins*
 `packer` is based around declarative specification of plugins. You can declare
-a plugin using the function |packer.use()|, which I highly recommend locally
-binding to `use` for conciseness.
+a plugin using the function |packer.add()|.
 
-`use` takes either a string or a table. If a string is provided, it is treated
-as a plugin location for a non-optional plugin with no additional
-configuration. Plugin locations may be specified as:
+`add` takes a list of plugin specifications (strings or tables)
+
+Plugin locations may be specified as:
   1. Absolute paths to a local plugin
   2. Full URLs (treated as plugins managed with `git`)
   3. `username/repo` paths (treated as Github `git` plugins)
 
-A table given to `use` can take two forms:
-  1. A list of plugin specifications (strings or tables)
-  2. A table specifying a single plugin. It must have a plugin location string
-  as its first element, and may additionally have a number of optional keyword
-  elements, detailed in |packer.use()|
-
 CONFIGURING PLUGINS                            *packer-plugin-configuration*
 `packer` allows you to configure plugins either before they are loaded (the
-`setup` key described in |packer.use()|) or after they are loaded (the
+`config_pre` key described in |packer.add()|) or after they are loaded (the
 `config` key described in |packer.use()|).
 If functions are given for these keys, the functions will be passed the plugin
 name and information table as arguments.
@@ -269,8 +261,39 @@ Setting any of its keys to `false` will disable the corresponding keybinding.
 ==============================================================================
 API                                            *packer-api*
 
-startup()                                                      *packer.startup()*
-    `startup` is a convenience function for simple setup. See |packer-startup|
-    for details.
+setup({config})                                                *packer.setup()*
+    Setup and configure packer.
+
+    If the user does not call this it will be called internally by
+    |packer.add()|.
+
+add({spec})                                                     *packer.spec()*
+    `use` allows you to add one or more plugins to the managed set. It can be
+    invoked as follows:
+    - With a single plugin location string, e.g. `use <STRING>`
+    - With a single plugin specification table, e.g. >
+      {
+        'myusername/example',        -- The plugin location string
+        -- The following keys are all optional
+        opt = boolean,               -- Manually marks a plugin as optional.
+        branch = string,             -- Specifies a git branch to use
+        tag = string,                -- Specifies a git tag to use. Supports '*' for "latest tag"
+        commit = string,             -- Specifies a git commit to use
+        lock = boolean,              -- Skip updating this plugin in updates/syncs. Still cleans.
+        run = string, function, or table  -- Post-update/install hook. See |packer-plugin-hooks|
+        requires = string or list    -- Specifies plugin dependencies. See |packer-plugin-dependencies|
+        config = string or function, -- Specifies code to run after this plugin is loaded.
+        -- The following keys all imply lazy-loading
+        cmd = string or list,        -- Specifies commands which load this plugin.  Can be an autocmd pattern.
+        ft = string or list,         -- Specifies filetypes which load this plugin.
+        keys = string or list,       -- Specifies maps which load this plugin. See |packer-plugin-keybindings|
+        event = string or list,      -- Specifies autocommand events which load this plugin.
+        fn = string or list          -- Specifies functions which load this plugin.
+      }
+    - With a list of plugins specified in either of the above two forms
+
+    For the *cmd* option, the command may be a full command, or an autocommand pattern. If the command contains any
+    non-alphanumeric characters, it is assumed to be a pattern, and instead of creating a stub command, it creates
+    a CmdUndefined autocmd to load the plugin when a command that matches the pattern is invoked.
 
  vim:tw=78:ts=2:ft=help:norl:
