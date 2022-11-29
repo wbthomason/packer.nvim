@@ -345,9 +345,9 @@ local do_clean = a.sync(function(plugins, fs_state, removals)
    fs_state = fs_state or fsstate.get_fs_state(plugins)
 
    log.debug('Starting clean')
-   local extra_plugins = fs_state.extra
+   local plugins_to_remove = vim.tbl_extend('force', fs_state.extra, fs_state.dirty)
 
-   if not next(extra_plugins) then
+   if not next(plugins_to_remove) then
       log.info('Already clean!')
       return
    end
@@ -355,24 +355,24 @@ local do_clean = a.sync(function(plugins, fs_state, removals)
    a.main()
 
    local lines = {}
-   for path, _ in pairs(extra_plugins) do
+   for path, _ in pairs(plugins_to_remove) do
       table.insert(lines, '  - ' .. path)
    end
 
    if config.autoremove or display.display.ask_user('Removing the following directories. OK? (y/N)', lines) then
       if removals then
-         for r, _ in pairs(extra_plugins) do
+         for r, _ in pairs(plugins_to_remove) do
             removals[#removals + 1] = r
          end
       end
-      for path, _ in pairs(extra_plugins) do
+      for path, _ in pairs(plugins_to_remove) do
          local result = vim.fn.delete(path, 'rf')
          if result == -1 then
             log.warn('Could not remove ' .. path)
          end
-         extra_plugins[path] = nil
+         plugins_to_remove[path] = nil
       end
-      log.debug('Removed ' .. vim.inspect(extra_plugins))
+      log.debug('Removed ' .. vim.inspect(plugins_to_remove))
    else
       log.warn('Cleaning cancelled!')
    end
