@@ -321,10 +321,11 @@ end
 
 -- Filter out options specified as the first argument to update or sync
 -- returns the options table and the plugin names
-local function filter_opts_from_plugins(first: table|string, ...: string): table, {string}
+local function filter_opts_from_plugins(...: string): table, {string}
   local args = { ... }
   local opts = {}
   if not vim.tbl_isempty(args) then
+    local first = select(1, ...) as string|table
     if first is table then
       table.remove(args, 1)
       opts = first
@@ -410,8 +411,8 @@ end)
 --- operates on all managed plugin then updates installed plugins and updates
 --- helptags. - Options can be specified in the first argument as either a table -
 --- or explicit `'--preview'`.
-M.update = a.void(function(first: string|table, ...:string)
-  local opts, update_plugins = filter_opts_from_plugins(first, ...)
+M.update = a.void(function(...:string)
+  local opts, update_plugins = filter_opts_from_plugins(...)
   local fs_state = fsstate.get_fs_state(packer_plugins)
   local _, installed_plugins = util.partition(vim.tbl_values(fs_state.missing), update_plugins)
 
@@ -444,9 +445,9 @@ end)
 --- plugins, then updates installed plugins and updates helptags and rplugins
 --- Options can be specified in the first argument as either a table
 --- or explicit `'--preview'`.
-M.sync = a.void(function(first: string|table, ...:string)
+M.sync = a.void(function(...:string)
   local plugins = packer_plugins
-  local opts, update_plugins = filter_opts_from_plugins(first, ...)
+  local opts, update_plugins = filter_opts_from_plugins(...)
   local fs_state = fsstate.get_fs_state(packer_plugins)
 
   local extra_plugins = util.partition(vim.tbl_values(fs_state.extra), update_plugins)

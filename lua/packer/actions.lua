@@ -321,10 +321,11 @@ end
 
 
 
-local function filter_opts_from_plugins(first, ...)
+local function filter_opts_from_plugins(...)
    local args = { ... }
    local opts = {}
    if not vim.tbl_isempty(args) then
+      local first = select(1, ...)
       if type(first) == "table" then
          table.remove(args, 1)
          opts = first
@@ -410,8 +411,8 @@ end)
 
 
 
-M.update = a.void(function(first, ...)
-   local opts, update_plugins = filter_opts_from_plugins(first, ...)
+M.update = a.void(function(...)
+   local opts, update_plugins = filter_opts_from_plugins(...)
    local fs_state = fsstate.get_fs_state(packer_plugins)
    local _, installed_plugins = util.partition(vim.tbl_values(fs_state.missing), update_plugins)
 
@@ -444,9 +445,9 @@ end)
 
 
 
-M.sync = a.void(function(first, ...)
+M.sync = a.void(function(...)
    local plugins = packer_plugins
-   local opts, update_plugins = filter_opts_from_plugins(first, ...)
+   local opts, update_plugins = filter_opts_from_plugins(...)
    local fs_state = fsstate.get_fs_state(packer_plugins)
 
    local extra_plugins = util.partition(vim.tbl_values(fs_state.extra), update_plugins)
