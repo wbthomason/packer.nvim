@@ -55,6 +55,10 @@ end
 -- spec can be a table with a table of plugin specifications as its first
 -- element, config overrides as another element.
 function M.startup(spec: StartupSpec)
+  local log = require 'packer.log'
+
+  log.debug('start')
+
   assert(type(spec) == 'table')
   assert(type(spec[1]) == 'table')
 

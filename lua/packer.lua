@@ -55,6 +55,10 @@ end
 
 
 function M.startup(spec)
+   local log = require('packer.log')
+
+   log.debug('start')
+
    assert(type(spec) == 'table')
    assert(type(spec[1]) == 'table')
 

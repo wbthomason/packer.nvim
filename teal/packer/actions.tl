@@ -249,31 +249,31 @@ local update_task = a.sync(function(plugin: Plugin, disp: Display, updates: {str
 
   local plugin_type = require'packer.plugin_types'[plugin.type]
 
-  local err = plugin_type.updater(plugin, disp, opts)
+  plugin.err = plugin_type.updater(plugin, disp, opts)
   local msg = 'up to date'
-  if not err and plugin.type == 'git' then
+  if not plugin.err and plugin.type == 'git' then
     local revs = plugin.revs
     local actual_update = revs[1] ~= revs[2]
     if actual_update then
       msg = fmt('updated: %s...%s', revs[1], revs[2])
       if not opts.preview_updates then
         log.debug(fmt('Updated %s', plugin.full_name))
-        err = post_update_hook(plugin, disp)
+        plugin.err = post_update_hook(plugin, disp)
       end
     else
       msg = 'already up to date'
     end
   end
 
-  if not err then
+  if not plugin.err then
     disp:task_succeeded(plugin.full_name, msg)
   else
     disp:task_failed(plugin.full_name, 'failed to update')
-    log.debug(fmt('Failed to update %s: %s', plugin.full_name, plugin.err))
+    log.debug(fmt('Failed to update %s: %s', plugin.full_name, table.concat(plugin.err, '\n')))
   end
 
-  updates[plugin.name] = { err = err }
-  return plugin.name, err
+  updates[plugin.name] = { err = plugin.err }
+  return plugin.name, plugin.err
 end, 4)
 
 local function get_update_tasks(

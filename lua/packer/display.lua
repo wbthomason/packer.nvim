@@ -606,6 +606,7 @@ end
 
 
 display.task_update = vim.schedule_wrap(function(self, plugin, message)
+   log.info(string.format('%s: %s', plugin, message))
    if not valid_display(self) then
       return
    end

@@ -277,11 +277,17 @@ local function file_lines(file)
    return text
 end
 
+local function log_err(plugin, msg, x)
+   local x1 = type(x) == "string" and x or table.concat(x, '\n')
+   log.debug(fmt('%s: $s: %s', plugin.name, msg, x1))
+end
+
 
 local function update(plugin, disp, opts)
    disp:task_update(plugin.full_name, 'checking current commit...')
    local current_commit, ccerr = get_ref(plugin, 'HEAD')
    if ccerr then
+      log_err(plugin, 'failed getting current commit', ccerr)
       return { ccerr }
    end
 
@@ -291,6 +297,7 @@ local function update(plugin, disp, opts)
 
    local current_branch, cberr = get_current_branch(plugin)
    if cberr then
+      log_err(plugin, 'failed getting current branch', cberr)
       return { cberr }
    end
 
@@ -325,6 +332,7 @@ local function update(plugin, disp, opts)
       local coerr = handle_checkouts(plugin, disp, opts)
 
       if coerr then
+         log_err(plugin, 'failed checkout', coerr)
          return coerr
       end
    end
@@ -352,7 +360,9 @@ local function update(plugin, disp, opts)
          cwd = plugin.install_path,
       })
       if not jr:ok() then
-         return jr.output.data.stderr
+         local err = jr.output.data.stderr
+         log_err(plugin, 'failed getting updates', err)
+         return err
       end
    end
 
@@ -363,6 +373,7 @@ local function update(plugin, disp, opts)
 
    local new_rev, crerr = get_ref(plugin, ref)
    if crerr then
+      log_err(plugin, 'failed getting new revision', crerr)
       return { crerr }
    end
 
@@ -381,14 +392,18 @@ local function update(plugin, disp, opts)
       })
 
       if not jr:ok() then
-         return jr.output.data.stderr
+         local err = jr.output.data.stderr
+         log_err(plugin, 'failed getting commit messages', err)
+         return err
       end
 
       plugin.messages = jr.output.data.stdout
 
       jr = mark_breaking_changes(plugin, disp, opts.preview_updates)
       if not jr:ok() then
-         return jr.output.data.stderr
+         local err = jr.output.data.stderr
+         log_err(plugin, 'failed marking breaking changes', err)
+         return err
       end
    end
 

@@ -606,6 +606,7 @@ end
 
 --- Update the status message of a task in progress
 display.task_update = vim.schedule_wrap(function(self: Display, plugin: string, message: string)
+  log.info(string.format('%s: %s', plugin, message))
   if not valid_display(self) then
     return
   end

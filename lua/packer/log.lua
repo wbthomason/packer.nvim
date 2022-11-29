@@ -1,3 +1,9 @@
+local packer_config = require('packer.config').log
+
+local start_time = vim.loop.hrtime()
+
+
+
 
 
 
@@ -25,7 +31,8 @@ local default_config = {
    level = 'debug',
 
 
-   active_levels = {
+
+   active_levels_console = {
       [1] = true,
       [2] = true,
       [3] = true,
@@ -34,6 +41,15 @@ local default_config = {
       [6] = true,
    },
 
+   active_levels_file = { [1] = true,
+[2] = true,
+[3] = true,
+[4] = true,
+[5] = true,
+[6] = true,
+   },
+
+   level_file = 'trace',
 }
 
 
@@ -78,33 +94,22 @@ local function make_string(...)
    return table.concat(t, ' ')
 end
 
-local console_output = vim.schedule_wrap(function(level_config, info, nameupper, msg)
-   local console_lineinfo = vim.fn.fnamemodify(info.short_src, ':t') .. ':' .. info.currentline
-   local console_string = string.format('[%-6s%s] %s: %s', nameupper, os.date('%H:%M:%S'), console_lineinfo, msg)
 
-   local is_fancy_notify = type(vim.notify) == 'table'
-   vim.notify(
-   string.format([[%s%s]], is_fancy_notify and '' or ('[packer.nvim'), console_string),
-   vim.log.levels[level_config.name:upper()],
-   { title = 'packer.nvim' })
+local config = vim.deepcopy(default_config)
 
-end)
+config.level = packer_config.level
 
-local min_active_level = level_ids[require('packer.config').log.level]
-
-
-local config = { active_levels = {} }
-
+local min_active_level = level_ids[config.level]
 if min_active_level then
    for i = min_active_level, 6 do
-      config.active_levels[i] = true
+      config.active_levels_console[i] = true
    end
 end
 
-config = vim.tbl_deep_extend('force', default_config, config)
+local cache_dir = vim.fn.stdpath('cache')
 
-local outfile = string.format('%s/packer.nvim.log', vim.fn.stdpath('cache'))
-vim.fn.mkdir(vim.fn.stdpath('cache'), 'p')
+local outfile = string.format('%s/packer.nvim.log', cache_dir)
+vim.fn.mkdir(cache_dir, 'p')
 
 local levels = {}
 
@@ -112,33 +117,56 @@ for i, v in ipairs(MODES) do
    levels[v.name] = i
 end
 
-local function log_at_level(level, level_config, message_maker, ...)
+local function log_at_level_console(level_config, message_maker, ...)
+   local msg = message_maker(...)
+   local info = debug.getinfo(4, 'Sl')
+   vim.schedule(function()
+      local console_lineinfo = vim.fn.fnamemodify(info.short_src, ':t') .. ':' .. info.currentline
+      local console_string = string.format(
+      '[%-6s%s] %s: %s',
+      level_config.name:upper(),
+      os.date('%H:%M:%S'),
+      console_lineinfo,
+      msg)
 
-   if level < levels[config.level] then
+
+      local is_fancy_notify = type(vim.notify) == 'table'
+      vim.notify(
+      string.format([[%s%s]], is_fancy_notify and '' or ('[packer.nvim'), console_string),
+      vim.log.levels[level_config.name:upper()],
+      { title = 'packer.nvim' })
+
+   end)
+end
+
+local function log_at_level_file(level_config, message_maker, ...)
+
+   local fp, err = io.open(outfile, 'a')
+   if not fp then
+      print(err)
       return
    end
-   local nameupper = level_config.name:upper()
 
-   local msg = message_maker(...)
-   local info = debug.getinfo(2, 'Sl')
+   local info = debug.getinfo(4, 'Sl')
    local lineinfo = info.short_src .. ':' .. info.currentline
 
+   fp:write(string.format(
+   '[%-6s%s %s] %s: %s\n',
+   level_config.name:upper(),
+   os.date('%H:%M:%S'),
+   vim.loop.hrtime() - start_time,
+   lineinfo,
+   message_maker(...)))
 
-   if config.active_levels[level] then
-      console_output(level_config, info, nameupper, msg)
+   fp:close()
+end
+
+local function log_at_level(level, level_config, message_maker, ...)
+   if level >= levels[config.level_file] and config.use_file and config.active_levels_file[level] then
+      log_at_level_file(level_config, message_maker, ...)
    end
-
-
-   if config.use_file and config.active_levels[level] then
-      local fp, err = io.open(outfile, 'a')
-      if not fp then
-         print(err)
-         return
-      end
-
-      local str = string.format('[%-6s%s %s] %s: %s\n', nameupper, os.date(), vim.loop.hrtime(), lineinfo, msg)
-      fp:write(str)
-      fp:close()
+   if level >= levels[config.level] and config.active_levels_console[level] then
+      log_at_level_console(level_config, message_maker, ...)
    end
 end
 
@@ -150,12 +178,10 @@ for i, x in ipairs(MODES) do
    end
 
    log[('fmt_%s'):format(x.name)] = function()
-      log_at_level(i, x, function(...)
-         local passed = { ... }
-         local fmt = table.remove(passed, 1)
+      log_at_level(i, x, function(fmt, ...)
          local inspected = {}
-         for _, v in ipairs(passed) do
-            table.insert(inspected, vim.inspect(v))
+         for _, v in ipairs({ ... }) do
+            inspected[#inspected + 1] = vim.inspect(v)
          end
          return fmt:format(unpack(inspected))
       end)
