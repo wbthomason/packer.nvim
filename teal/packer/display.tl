@@ -881,6 +881,7 @@ display.final_results = vim.schedule_wrap(function(self: Display, results: Displ
           table.insert(item.lines, '    ' .. line)
         end
       end
+      table.insert(item.lines, '')
     end
 
     if plugin.messages and #plugin.messages > 0 then
