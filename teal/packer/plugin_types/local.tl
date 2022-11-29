@@ -44,10 +44,22 @@ M.installer = a.sync(function(plugin: Plugin, disp: Display): {string}
   end
 end, 2)
 
+local sleep = a.wrap(function(ms: integer, cb: function())
+  vim.defer_fn(cb, ms)
+end, 2)
+
 M.updater = a.sync(function(plugin: Plugin, disp: Display): {string}
   local from = uv.fs_realpath(util.strip_trailing_sep(plugin.url))
   local to = util.strip_trailing_sep(plugin.install_path)
+
+  -- Put some artificial delays here, just so the user can see task updates in
+  -- display
+  -- TODO(lewis6991): remove when things are more stable
+  sleep(200)
+
   disp:task_update(plugin.full_name, 'checking symlink...')
+
+  sleep(200)
 
   local is_link = uv.fs_lstat(to).type == 'link'
   if not is_link then

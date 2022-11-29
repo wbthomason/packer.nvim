@@ -132,7 +132,12 @@ local record M
     items         : {string:Item}
     item_order    : {string}
 
-    marks         : {string:integer}
+    record MarkIDs
+      start: integer
+      end_: integer
+    end
+
+    marks: {string:MarkIDs}
 
     running: boolean
 
@@ -272,7 +277,11 @@ local function set_lines(disp: Display, start_idx: integer, end_idx: integer, li
     return
   end
   vim.bo[disp.buf].modifiable = true
-  api.nvim_buf_set_lines(disp.buf, start_idx, end_idx, true, lines)
+  local ok, err = pcall(api.nvim_buf_set_lines, disp.buf, start_idx, end_idx, true, lines) as boolean, string
+  if not ok then
+    print(vim.inspect(err))
+    error(string.format('Could not set lines %d-%d: %s\n%s', start_idx, end_idx, vim.inspect(err), debug.traceback()))
+  end
   vim.bo[disp.buf].modifiable = false
 end
 
@@ -290,7 +299,7 @@ local function toggle_update(disp: Display)
   item.ignore_update = not item.ignore_update
 
   local mark_ids = disp.marks[plugin_name]
-  local start_idx = api.nvim_buf_get_extmark_by_id(disp.buf, disp.ns, mark_ids, {})[1]
+  local start_idx = api.nvim_buf_get_extmark_by_id(disp.buf, disp.ns, mark_ids.start, {})[1]
   local symbol: string
   local status_msg: string
   if item.ignore_update then
@@ -303,7 +312,7 @@ local function toggle_update(disp: Display)
   set_lines(disp, start_idx, start_idx + 1,
     {make_update_msg(symbol, status_msg, plugin_name, item.plugin)})
   -- NOTE we need to reset the mark
-  disp.marks[plugin_name] = set_extmark(disp.buf, disp.ns, nil, start_idx, 0)
+  disp.marks[plugin_name].start = set_extmark(disp.buf, disp.ns, nil, start_idx, 0)
 end
 
 local function continue(disp: Display)
@@ -460,17 +469,11 @@ end
 
 local in_headless = #api.nvim_list_uis() == 0
 
-M.display = setmetatable({
-  marks = {},
-  plugins = {},
-  interactive = not config.display.non_interactive and not in_headless,
-  running = false,
-}, {
-  __index = Display
-})
+M.display = setmetatable({}, { __index = Display })
 
 local display = M.display
 
+display.interactive = not config.display.non_interactive and not in_headless
 display.ask_user = awrap(prompt_user, 3)
 
 local record Keymap
@@ -529,8 +532,10 @@ local keymaps: {string:Keymap} = {
     action = 'retry failed operations',
     rhs = function()
       if display.any_failed_install then
+        log.debug('retrying install')
         display.callbacks.install()
       elseif #display.failed_update_list > 0 then
+        log.debug(fmt('retrying updates for: %s', table.concat(display.failed_update_list, '\n')))
         display.callbacks.update(unpack(display.failed_update_list))
       end
     end
@@ -564,7 +569,9 @@ display.task_start = vim.schedule_wrap(function(self: Display, plugin: string, m
   set_lines(self, HEADER_LINES, HEADER_LINES, {
     fmt(' %s %s: %s', config.display.working_sym, plugin, message),
   })
-  self.marks[plugin] = set_extmark(self.buf, self.ns, nil, HEADER_LINES, 0)
+
+  self.marks[plugin] = self.marks[plugin] or {}
+  self.marks[plugin].start = set_extmark(self.buf, self.ns, nil, HEADER_LINES, 0)
 end)
 
 --- Decrement the count of active operations in the headline
@@ -586,10 +593,10 @@ local task_done = vim.schedule_wrap(function(self: Display, plugin: string, mess
   if not valid_display(self) then
     return
   end
-  local line = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin], {})
+  local line = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin].start, {})
   local icon = success and config.display.done_sym or config.display.error_sym
   set_lines(self, line[1], line[1] + 1, { fmt(' %s %s: %s', icon, plugin, message) })
-  api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin])
+  api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin].start)
   self.marks[plugin] = nil
   decrement_headline_count(self)
 end)
@@ -613,9 +620,9 @@ display.task_update = vim.schedule_wrap(function(self: Display, plugin: string, 
   if not self.marks[plugin] then
     return
   end
-  local line = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin], {})
-  set_lines(self, line[1], line[1] + 1, { fmt(' %s %s: %s', config.display.working_sym, plugin, message) })
-  set_extmark(self.buf, self.ns, self.marks[plugin], line[1], 0)
+  local line = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin].start, {})[1]
+  set_lines(self, line, line + 1, { fmt(' %s %s: %s', config.display.working_sym, plugin, message) })
+  set_extmark(self.buf, self.ns, self.marks[plugin].start, line, 0)
 end)
 
 --- Update the text of the headline message
@@ -738,8 +745,8 @@ local function show_all_info(disp: Display)
       item.displayed = true
       disp.marks[plugin_name] = {
         start = set_extmark(disp.buf, disp.ns, nil, line - 1, 0),
-        end_ = set_extmark(disp.buf, disp.ns, nil, next_line - 1, 0),
-      } as integer
+        end_  = set_extmark(disp.buf, disp.ns, nil, next_line - 1, 0),
+      }
       line = next_line
     else
       line = line + 1
@@ -966,7 +973,7 @@ end
 local function make_header(d: Display)
   local width = api.nvim_win_get_width(0)
   local pad_width = math.floor((width - TITLE:len()) / 2.0)
-  api.nvim_buf_set_lines(d.buf, 0, 1, true, {
+  set_lines(d, 0, 1, {
     (' '):rep(pad_width) .. TITLE,
     ' ' .. config.display.header_sym:rep(width - 2),
   })
@@ -1006,21 +1013,27 @@ end
 
 --- Open a new display window
 function display.open(cbs: Display.Callbacks): Display
-  if display.win and api.nvim_win_is_valid(display.win) then
-    api.nvim_win_close(display.win, true)
+  if not display.interactive then
+    return
   end
 
-  if display.interactive then
+  if not (display.win and api.nvim_win_is_valid(display.win)) then
     local opener = config.display.open_cmd
     vim.cmd(opener)
     display.win = api.nvim_get_current_win()
     display.buf = api.nvim_get_current_buf()
-
-    display.ns = api.nvim_create_namespace ''
-    display.callbacks = cbs
-    make_header(display)
+    display.ns = api.nvim_create_namespace 'packer_display'
     setup_display_buf(display.buf)
   end
+
+  display.callbacks = cbs
+  display.results   = nil
+  display.items     = nil
+  display.marks     = {}
+  display.running   = false
+
+  set_lines(display, 0, -1, {})
+  make_header(display)
 
   return display
 end
