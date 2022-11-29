@@ -1,7 +1,9 @@
 ---
 name: Feature request
 about: Suggest a feature for packer.nvim
+title: ''
 labels: enhancement
+assignees: ''
 
 ---
 
@@ -9,4 +11,3 @@ labels: enhancement
 <!-- If your issue is a general usage question, please create a GitHub discussions thread: https://github.com/wbthomason/packer.nvim/discussions -->
 
 ### Describe the feature
-

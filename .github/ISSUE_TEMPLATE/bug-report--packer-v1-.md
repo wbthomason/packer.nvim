@@ -1,7 +1,9 @@
 ---
-name: Bug report
-about: Report a bug in packer.nvim
-labels: bug
+name: Bug report (packer v1)
+about: Report a bug in packer.nvim, v1 (current master branch)
+title: ''
+labels: bug, v1
+assignees: ''
 
 ---
 
