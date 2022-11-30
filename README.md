@@ -17,7 +17,6 @@ Differences:
     2. [Custom Initialization](#custom-initialization)
     3. [Specifying Plugins](#specifying-plugins)
     4. [Performing plugin management operations](#performing-plugin-management-operations)
-    5. [Using a floating window](#using-a-floating-window)
 6. [Debugging](#debugging)
 
 ## Features
@@ -308,36 +307,6 @@ plugins":
 - `packer.update(plugins)`: Update the specified plugins, installing any that are missing
 - `packer.update(opts, plugins)`: First argument can be a table specifying options, such as `{preview_updates = true}` to preview potential changes before updating (same as `PackerUpdate --preview`).
 - `packer.clean()`: Remove any disabled or no longer managed plugins
-
-### Using a floating window
-You can configure Packer to use a floating window for command outputs by passing a utility
-function to `packer`'s config:
-```lua
-packer.startup{{
-  -- Your plugins here
-},
-config = {
-  display = {
-    open_fn = require('packer.util').float,
-  }
-}}
-```
-
-By default, this floating window will show doubled borders. If you want to customize the window
-appearance, you can pass a configuration to `float`, which is the same configuration that would be
-passed to `nvim_open_win`:
-```lua
-packer.startup{{
-  -- Your plugins here
-},
-config = {
-  display = {
-    open_fn = function()
-      return require('packer.util').float({ border = 'single' })
-    end
-  }
-}}
-```
 
 ## Debugging
 `packer.nvim` logs to `stdpath(cache)/packer.nvim.log`. Looking at this file is usually a good start

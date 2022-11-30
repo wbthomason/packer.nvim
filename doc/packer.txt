@@ -143,11 +143,9 @@ CONFIGURATION                                  *packer-configuration*
 structure of the `config` table expected by `startup` or `init`, with their
 default values: >
   {
-    ensure_dependencies   = true, -- Should packer install plugin dependencies?
     package_root   = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
     plugin_package = 'packer', -- The default package for plugins
     max_jobs = nil, -- Limit the number of simultaneous jobs. nil means no limit
-    auto_clean = true, -- During sync(), remove unused plugins
     preview_updates = false, -- If true, always preview updates before choosing which plugins to update, same as `PackerUpdate --preview`.
     git = {
       cmd = 'git', -- The base command for git operations
@@ -178,7 +176,6 @@ default values: >
         prompt_revert = 'r',
       }
     }
-    autoremove = false, -- Remove disabled or unused plugins without prompting the user
   }
 
 SPECIFYING PLUGINS                             *packer-specifying-plugins*
@@ -257,34 +254,6 @@ keybindings are specified under the `keys` key in a plugin specification
 either as a string (in which case they are treated as normal mode maps) or a
 table in the format `{mode, map}`.
 
-USING A FLOATING WINDOW                        *packer-floating-window*
-You can configure Packer to use a floating window for command outputs by
-passing a utility function to `packer`'s config: >
-
-  packer.startup({function()
-    -- Your plugins here
-  end,
-  config = {
-    display = {
-      open_fn = require('packer.util').float,
-    }
-  }})
-<
-By default, this floating window will show doubled borders. If you want to
-customize the window appearance, you can pass a configuration to `float`,
-which is the same configuration that would be passed to |nvim_open_win|: >
-
-  packer.startup({function()
-    -- Your plugins here
-  end,
-  config = {
-    display = {
-      open_fn = function()
-        return require('packer.util').float({ border = 'single' })
-      end
-    }
-  }})
-<
 RESULTS WINDOW KEYBINDINGS                     *packer-results-keybindings*
 Once an operation completes, the results are shown in the display window.
 `packer` sets up default keybindings for this window:
@@ -300,61 +269,8 @@ Setting any of its keys to `false` will disable the corresponding keybinding.
 ==============================================================================
 API                                            *packer-api*
 
-clean()                                                          *packer.clean()*
-    `clean` scans for and removes all disabled or no longer managed plugins.
-    It is invoked without arguments.
-
-install()                                                      *packer.install()*
-    `install` installs any missing plugins, runs post-update hooks, and
-    updates rplugins (|remote-plugin|) and helptags.
-
-    It can be invoked with no arguments or with a list of plugin names to
-    install. These plugin names must already be managed by `packer` via a call
-    to |packer.use()|.
-
 startup()                                                      *packer.startup()*
     `startup` is a convenience function for simple setup. See |packer-startup|
     for details.
-
-update()                                                        *packer.update()*
-    `update` installs any missing plugins, updates all installed plugins, runs
-    post-update hooks, and updates rplugins (|remote-plugin|) and helptags.
-
-    It can be invoked with no arguments or with a list of plugin names to
-    update. These plugin names must already be managed by `packer` via a call
-    to |packer.use()|.
-
-    Additionally, the first argument can be a table specifying options,
-    such as `update({preview_updates = true}, ...)` to preview potential
-    changes before updating (same as `PackerUpdate --preview`).
-
-use()                                                              *packer.use()*
-    `use` allows you to add one or more plugins to the managed set. It can be
-    invoked as follows:
-    - With a single plugin location string, e.g. `use <STRING>`
-    - With a single plugin specification table, e.g. >
-      {
-        'myusername/example',        -- The plugin location string
-        -- The following keys are all optional
-        opt = boolean,               -- Manually marks a plugin as optional.
-        branch = string,             -- Specifies a git branch to use
-        tag = string,                -- Specifies a git tag to use. Supports '*' for "latest tag"
-        commit = string,             -- Specifies a git commit to use
-        lock = boolean,              -- Skip updating this plugin in updates/syncs. Still cleans.
-        run = string, function, or table  -- Post-update/install hook. See |packer-plugin-hooks|
-        requires = string or list    -- Specifies plugin dependencies. See |packer-plugin-dependencies|
-        config = string or function, -- Specifies code to run after this plugin is loaded.
-        -- The following keys all imply lazy-loading
-        cmd = string or list,        -- Specifies commands which load this plugin.  Can be an autocmd pattern.
-        ft = string or list,         -- Specifies filetypes which load this plugin.
-        keys = string or list,       -- Specifies maps which load this plugin. See |packer-plugin-keybindings|
-        event = string or list,      -- Specifies autocommand events which load this plugin.
-        fn = string or list          -- Specifies functions which load this plugin.
-      }
-    - With a list of plugins specified in either of the above two forms
-
-    For the *cmd* option, the command may be a full command, or an autocommand pattern. If the command contains any
-    non-alphanumeric characters, it is assumed to be a pattern, and instead of creating a stub command, it creates
-    a CmdUndefined autocmd to load the plugin when a command that matches the pattern is invoked.
 
  vim:tw=78:ts=2:ft=help:norl:
