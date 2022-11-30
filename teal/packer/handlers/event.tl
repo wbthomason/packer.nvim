@@ -1,3 +1,5 @@
+local util = require 'packer.handlers.util'
+
 return function(plugins: {string:Plugin}, loader: function({Plugin}))
   local events: {string:{Plugin}} = {}
 
@@ -14,7 +16,7 @@ return function(plugins: {string:Plugin}, loader: function({Plugin}))
     -- Handle 'User Foo' events
     local ev, pattern = unpack(vim.split(event, '%s+'))
 
-    vim.api.nvim_create_autocmd(ev, {
+    local id = vim.api.nvim_create_autocmd(ev, {
       pattern = pattern,
       once = true,
       callback = function()
@@ -22,5 +24,10 @@ return function(plugins: {string:Plugin}, loader: function({Plugin}))
         vim.api.nvim_exec_autocmds(event, { modeline = false })
       end
     })
+
+    util.register_destructor(eplugins, function()
+      pcall(vim.api.nvim_del_autocmd, id)
+    end)
+
   end
 end

@@ -66,6 +66,9 @@ local M = {UserSpec = {}, Plugin = {}, }
 
 
 
+
+
+
 M.plugins = {}
 
 local function guess_plugin_type(path)
@@ -209,6 +212,11 @@ function M.process_spec(
       config = spec.config,
       required_by = required_by and { required_by.name } or nil,
       revs = {},
+
+
+
+
+      destructors = setmetatable({}, { __mode = 'kv' }),
    }
 
    M.plugins[name] = plugin

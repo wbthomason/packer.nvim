@@ -18,6 +18,10 @@ end
 local function loader(plugins)
    for _, plugin in ipairs(plugins) do
       if not plugin.loaded then
+         for _, d in pairs(plugin.destructors) do
+            d()
+         end
+
 
 
          plugin.loaded = true

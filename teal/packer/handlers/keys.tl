@@ -1,3 +1,4 @@
+local util = require 'packer.handlers.util'
 
 return function(plugins: {string:Plugin}, loader: function({Plugin}))
   local keymaps: {{string,string}:{Plugin}} = {}
@@ -15,8 +16,11 @@ return function(plugins: {string:Plugin}, loader: function({Plugin}))
       return e.name
     end, kplugins)
 
-    vim.keymap.set(keymap[1], keymap[2], function()
+    util.register_destructor(kplugins, function()
       vim.keymap.del(keymap[1], keymap[2])
+    end)
+
+    vim.keymap.set(keymap[1], keymap[2], function()
       loader(kplugins)
       vim.api.nvim_feedkeys(keymap[2], keymap[1], false)
     end, {

@@ -1,3 +1,5 @@
+local util = require 'packer.handlers.util'
+
 return function(plugins: {string:Plugin}, loader: function({Plugin}))
   local commands: {string:{Plugin}} = {}
   for _, plugin in pairs(plugins) do
@@ -10,10 +12,13 @@ return function(plugins: {string:Plugin}, loader: function({Plugin}))
   end
 
   for cmd, cplugins in pairs(commands) do
+
+    util.register_destructor(cplugins, function()
+      vim.api.nvim_del_user_command(cmd)
+    end)
+
     vim.api.nvim_create_user_command(cmd,
       function(args: vim.api.UserCmdParams)
-        vim.api.nvim_del_user_command(cmd)
-
         loader(cplugins)
 
         local lines = args.line1 == args.line2 and '' or (args.line1 .. ',' .. args.line2)
