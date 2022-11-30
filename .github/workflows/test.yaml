@@ -1,12 +1,19 @@
 ---
 name: CI
 on:
-  pull_request: ~
   push:
-    branches:
-      - master
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
+
+  commit_lint:
+    runs-on: ubuntu-latest
+    steps:
+      # Check commit messages
+      - uses: webiny/action-conventional-commits@v1.1.0
+
   build:
     name: Run tests
     runs-on: ubuntu-latest
@@ -14,20 +21,60 @@ jobs:
       fail-fast: true
       matrix:
         neovim_branch: ["v0.8.1", "nightly"]
+    env:
+      NEOVIM_BRANCH: ${{ matrix.neovim_branch }}
 
     steps:
-      # Checkout packer
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v3
 
-      # Prepare taken from telescope
-      - name: Prepare
-        run: |
-          mkdir -p _neovim
-          curl -sL https://github.com/neovim/neovim/releases/download/${{ matrix.neovim_branch }}/nvim-linux64.tar.gz | tar xzf - --strip-components=1 -C "${PWD}/_neovim"
+      - name: Install LuaJIT
+        uses: leafo/gh-actions-lua@v9
+        with:
+          luaVersion: "luajit-2.1.0-beta3"
 
-      - name: Run tests
+      - name: Install Luarocks
+        uses: leafo/gh-actions-luarocks@v4
+
+      - name: Get Neovim SHA
+        id: get-nvim-sha
         run: |
-          export PATH="${PWD}/_neovim/bin:${PATH}"
-          export VIM="${PWD}/_neovim/share/nvim/runtime"
-          nvim --version
-          make test
+          echo "sha=$(git ls-remote https://github.com/neovim/neovim ${{env.NEOVIM_BRANCH}} | cut -f1)" >> $GITHUB_OUTPUT
+
+      - name: Cache Deps
+        id: cache-deps
+        uses: actions/cache@v3
+        with:
+          path: deps
+          key: build-1-${{ steps.get-nvim-sha.outputs.sha }}
+
+      - name: Install Lua Deps
+        run: make lua_deps
+
+      - name: Check lua files are built from latest teal
+        run: make tl-ensure
+
+      - name: Install Neovim build dependencies
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          sudo apt update &&
+          sudo apt install -y \
+            autoconf \
+            automake \
+            cmake \
+            g++ \
+            gettext \
+            gperf \
+            libtool \
+            libtool-bin \
+            lua-bitop \
+            ninja-build \
+            pkg-config \
+            unzip
+
+      - name: Build Neovim
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: make test_deps
+
+      - name: Run Test
+        run: make test

@@ -4,72 +4,7 @@ local config = require('packer.config')
 
 local fmt = string.format
 
-local M = {UserSpec = {}, Plugin = {}, }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+local M = {}
 
 
 

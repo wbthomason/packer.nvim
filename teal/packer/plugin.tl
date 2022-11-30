@@ -5,73 +5,8 @@ local config = require('packer.config')
 local fmt = string.format
 
 local record M
-  record UserSpec
-    {string}
-
-    branch     : string
-    rev        : string
-    tag        : string
-    commit     : string
-    lazy       : boolean
-    start      : boolean
-    keys       : string|{string|{string,string}}
-    event      : string|{string}
-    ft         : string|{string}
-    cmd        : string|{string}
-    enable     : boolean|function(): boolean
-    run        : string|function|{string|function}
-    config_pre : string|function()
-    config     : string|function()
-    lock       : boolean
-    requires   : string|{string|UserSpec}
-  end
-
-  record Plugin
-    branch       : string
-    rev          : string
-    tag          : string
-    commit       : string
-    install_path : string
-    keys         : {{string,string}}
-    event        : {string}
-    ft           : {string}
-    cmd          : {string}
-    enable       : boolean|function(): boolean
-    run          : {string|function}
-    config_pre   : string|function()
-    config       : string|function()
-    requires     : {string}
-
-    name         : string
-    full_name    : string -- Includes rev and branch
-    revs         : {string, string}
-    required_by  : {string}
-
-    enum Type
-      'git'
-      'local'
-      'unknown'
-    end
-
-    type             : Type
-    url              : string
-    lock             : boolean
-    breaking_commits : {string}
-
-    -- Lazy loaded
-    lazy: boolean
-
-    -- Install as a 'start' plugin
-    start: boolean
-
-    loaded: boolean
-
-    -- Built from a simple plugin spec (a string)
-    simple: boolean
-
-    messages: {string}
-    err: {string}
-  end
+  UserSpec: UserSpec
+  Plugin: Plugin
 
   plugins: {string:Plugin}
 end
