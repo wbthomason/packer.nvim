@@ -18,6 +18,10 @@ end
 local function loader(plugins: {Plugin})
   for _, plugin in ipairs(plugins) do
     if not plugin.loaded then
+      for _, d in pairs(plugin.destructors) do
+        d()
+      end
+
       -- Set the plugin as loaded before config is run in case something in the
       -- config tries to load this same plugin again
       plugin.loaded = true

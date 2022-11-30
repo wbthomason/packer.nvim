@@ -106,6 +106,7 @@ local record M
   end
 
   nvim_create_autocmd: function(string|{string}, AutoCmdOpts): integer
+  nvim_del_autocmd: function(integer)
   nvim_del_current_line: function()
   nvim_del_keymap: function(string, string)
   nvim_del_var: function(string)

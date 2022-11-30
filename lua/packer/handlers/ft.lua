@@ -1,10 +1,12 @@
-local util = require('packer.util')
+local join_paths = require('packer.util').join_paths
+
+local util = require('packer.handlers.util')
 
 local function detect_ftdetect(plugin_path)
    local source_paths = {}
    for _, parts in ipairs({ { 'ftdetect' }, { 'after', 'ftdetect' } }) do
       parts[#parts + 1] = [[**/*.\(vim\|lua\)]]
-      local path = util.join_paths(plugin_path, unpack(parts))
+      local path = join_paths(plugin_path, unpack(parts))
       local ok, files = pcall(vim.fn.glob, path, false, true)
       if not ok then
          if string.find(files, 'E77') then
@@ -37,7 +39,7 @@ return function(plugins, loader)
    end
 
    for ft, fplugins in pairs(fts) do
-      vim.api.nvim_create_autocmd('FileType', {
+      local id = vim.api.nvim_create_autocmd('FileType', {
          pattern = ft,
          once = true,
          callback = function()
@@ -47,6 +49,11 @@ return function(plugins, loader)
             end
          end,
       })
+
+      util.register_destructor(fplugins, function()
+         pcall(vim.api.nvim_del_autocmd, id)
+      end)
+
    end
 
    if #ftdetect_paths > 0 then

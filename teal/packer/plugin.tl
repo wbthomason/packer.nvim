@@ -59,6 +59,9 @@ local record M
     opt              : boolean
     loaded           : boolean
 
+    -- Callbacks to destroy unused lazy-load handlers when a plugin is loaded
+    destructors      : {integer:function()}
+
     messages: {string}
     err: {string}
   end
@@ -208,7 +211,12 @@ function M.process_spec(
     config_pre  = spec.config_pre,
     config      = spec.config,
     required_by = required_by and {required_by.name} or nil,
-    revs        = {}
+    revs        = {},
+
+    -- Because a destructor can be shared across plugins, store the callbacks
+    -- as weak references. When they are removed from the handlers internal
+    -- table, they will be garbage collected.
+    destructors = setmetatable({}, { __mode = 'kv' })
   }
 
   M.plugins[name] = plugin
