@@ -1,3 +1,4 @@
+local log = require('packer.log')
 local config = require('packer.config')
 
 local Config = config.Config
@@ -5,19 +6,30 @@ local Config = config.Config
 local M = {}
 
 local function apply_config(plugin, pre)
-   local c = pre and plugin.config_pre or plugin.config
+   local c
+   if pre then
+      c = plugin.config_pre
+   else
+      c = plugin.config
+   end
+
    if c then
       if type(c) == "function" then
+         log.debug('Running fun config for ' .. plugin.name)
          c()
       else
-         loadstring(c, plugin.name .. '.config()')()
+         log.debug('Running str config for ' .. plugin.name)
+         local sfx = pre and '_pre()' or '()'
+         loadstring(c, plugin.name .. '.config' .. sfx)()
       end
    end
 end
 
 local function loader(plugins)
    for _, plugin in ipairs(plugins) do
-      if not plugin.loaded then
+      if plugin.loaded then
+         log.debug('Already loaded ' .. plugin.name)
+      else
          for _, d in pairs(plugin.destructors) do
             d()
          end
@@ -59,13 +71,12 @@ end
 
 
 function M.startup(spec)
-   local log = require('packer.log')
-
-   log.debug('start')
+   log.debug('STARTING')
 
    assert(type(spec) == 'table')
    assert(type(spec[1]) == 'table')
 
+   log.debug('PROCESSING CONFIG')
    config(spec.config)
 
    for _, dir in ipairs({ config.opt_dir, config.start_dir }) do
@@ -76,8 +87,10 @@ function M.startup(spec)
 
    local plugin = require('packer.plugin')
 
+   log.debug('PROCESSING PLUGIN SPEC')
    plugin.process_spec(spec[1])
 
+   log.debug('LOADING PLUGINS')
    load_plugin_configs(plugin.plugins)
 end
 
