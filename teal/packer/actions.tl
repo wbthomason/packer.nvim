@@ -365,6 +365,7 @@ local do_clean = a.sync(function(plugins: {string:Plugin}, fs_state: fsstate.FSS
         removals[#removals+1] = r
       end
     end
+    local removed = vim.deepcopy(plugins_to_remove)
     for path, _ in pairs(plugins_to_remove) do
       local result = vim.fn.delete(path, 'rf')
       if result == -1 then
@@ -372,7 +373,7 @@ local do_clean = a.sync(function(plugins: {string:Plugin}, fs_state: fsstate.FSS
       end
       plugins_to_remove[path] = nil
     end
-    log.debug('Removed ' .. vim.inspect(plugins_to_remove))
+    log.debug('Removed ' .. vim.inspect(removed))
   else
     log.warn 'Cleaning cancelled!'
   end
