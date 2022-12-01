@@ -81,6 +81,7 @@ end
 local plugin_keys_exclude: {string:boolean} = {
   full_name = true,
   name = true,
+  destructors = true,
 }
 
 local function is_plugin_line(line: string): boolean
