@@ -100,7 +100,7 @@ local function update_helptags(results: {string:Display.Result})
 end
 
 local function load_plugin(plugin: Plugin)
-  if plugin.opt then
+  if not plugin.start then
     vim.cmd.packadd(plugin.name)
     return
   end
@@ -129,7 +129,7 @@ local function load_plugin(plugin: Plugin)
 end
 
 local post_update_hook = a.sync(function(plugin: Plugin, disp: Display): {string}
-  if plugin.run or not plugin.opt then
+  if plugin.run or plugin.start then
     a.main()
     load_plugin(plugin)
   end
@@ -214,7 +214,7 @@ end
 local function move_plugin(plugin: Plugin, moves: {string:Display.Result}, fs_state: fsstate.FSState)
   local from: string
   local to: string
-  if plugin.opt then
+  if not plugin.start then
     from = util.join_paths(config.start_dir, plugin.name)
     to = util.join_paths(config.opt_dir, plugin.name)
   else
@@ -311,7 +311,7 @@ local function fix_plugin_types(
   -- NOTE: This function can only be run on plugins already installed
   for _, v in ipairs(extra_plugins) do
     local plugin = plugins[v]
-    local wrong_install_dir = util.join_paths(plugin.opt and config.start_dir or config.opt_dir, plugin.name)
+    local wrong_install_dir = util.join_paths(plugin.start and config.opt_dir or config.start_dir, plugin.name)
     if vim.loop.fs_stat(wrong_install_dir) then
       move_plugin(plugin, moves, fs_state)
     end
@@ -346,6 +346,9 @@ local do_clean = a.sync(function(plugins: {string:Plugin}, fs_state: fsstate.FSS
 
   log.debug 'Starting clean'
   local plugins_to_remove = vim.tbl_extend('force', fs_state.extra, fs_state.dirty)
+
+  log.debug('extra plugins', fs_state.extra)
+  log.debug('dirty plugins', fs_state.dirty)
 
   if not next(plugins_to_remove) then
     log.info 'Already clean!'

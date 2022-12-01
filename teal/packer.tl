@@ -30,6 +30,9 @@ local function loader(plugins: {Plugin})
     if plugin.loaded then
       log.debug('Already loaded '..plugin.name)
     else
+      log.debug('Running loader for '..plugin.name)
+
+      -- Tidy up any lazy-loading state
       for _, d in pairs(plugin.destructors) do
         d()
       end
@@ -37,12 +40,25 @@ local function loader(plugins: {Plugin})
       -- Set the plugin as loaded before config is run in case something in the
       -- config tries to load this same plugin again
       plugin.loaded = true
-      apply_config(plugin, true)
-      if plugin.opt then
+
+      apply_config(plugin, true) -- spec.config_pre()
+
+      if not plugin.start then
+        if plugin.requires then
+          log.debug('Loading dependencies of '..plugin.name)
+          local all_plugins = require'packer.plugin'.plugins
+          local rplugins = vim.tbl_map(function(n: string): Plugin
+            return all_plugins[n]
+          end, plugin.requires)
+          loader(rplugins)
+        end
+
         -- never packadd a start plugin
+        log.debug('Loading '..plugin.name)
         vim.cmd.packadd(plugin.name)
       end
-      apply_config(plugin, false)
+
+      apply_config(plugin, false) -- spec.config()
     end
   end
 end
@@ -51,7 +67,7 @@ local function load_plugin_configs(plugins: {string:Plugin})
   local Handlers = require('packer.handlers')
 
   for _, plugin in pairs(plugins) do
-    if not plugin.opt then
+    if not plugin.lazy then
       loader({plugin})
     end
   end

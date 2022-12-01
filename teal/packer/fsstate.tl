@@ -57,6 +57,13 @@ local function get_installed_plugins(): {string:string}, {string:string}
   return opt_plugins, start_plugins
 end
 
+local function toboolean(x: boolean): boolean
+  if x then
+    return true
+  end
+  return false
+end
+
 local function find_extra_plugins(
   plugins: {string:Plugin},
   -- Plugins installed in config.opt_dir
@@ -67,11 +74,11 @@ local function find_extra_plugins(
   local extra: {string:string} = {}
 
   for cond, p in pairs {
-    [false] = { plugins = opt_plugins  , dir = config.opt_dir  },
-    [true]  = { plugins = start_plugins, dir = config.start_dir},
+    [true]  = { plugins = opt_plugins  , dir = config.opt_dir  },
+    [false] = { plugins = start_plugins, dir = config.start_dir},
   } do
     for _, name in pairs(p.plugins) do
-      if not plugins[name] or plugins[name].opt == cond then
+      if not plugins[name] or cond == toboolean(plugins[name].start) then
         extra[util.join_paths(p.dir, name)] = name
       end
     end
@@ -93,7 +100,7 @@ local find_dirty_plugins = a.sync(function(
 
   for plugin_name, plugin in pairs(plugins) do
     local plugin_installed = false
-    for _, name in pairs(plugin.opt and opt_plugins or start_plugins) do
+    for _, name in pairs(plugin.start and start_plugins or opt_plugins) do
       if name == plugin_name then
         plugin_installed = true
         break

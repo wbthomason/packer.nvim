@@ -656,13 +656,13 @@ end
 
 local function load_state(plugin: Plugin): string
   if not plugin.loaded then
-    if not plugin.opt then
+    if plugin.start then
       return ' (not installed)'
     end
     return ' (not loaded)'
   end
 
-  if plugin.opt then
+  if plugin.lazy then
     return ' (manually loaded)'
   end
 
