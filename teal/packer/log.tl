@@ -139,6 +139,8 @@ local function log_at_level_console(level_config: LevelConfig, message_maker: (f
   end)
 end
 
+local HOME = vim.env.HOME
+
 local function log_at_level_file(level_config: LevelConfig, message_maker: (function(...:any): string), ...)
   -- Output to log file
   local fp, err = io.open(outfile, 'a')
@@ -148,7 +150,8 @@ local function log_at_level_file(level_config: LevelConfig, message_maker: (func
   end
 
   local info = debug.getinfo(4, 'Sl') as {string:string}
-  local lineinfo = info.short_src .. ':' .. info.currentline
+  local src = info.short_src:gsub(HOME, '~')
+  local lineinfo = src .. ':' .. info.currentline
 
   fp:write(string.format(
     '[%-6s%s %s] %s: %s\n',
