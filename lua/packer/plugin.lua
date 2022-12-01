@@ -69,6 +69,18 @@ local M = {UserSpec = {}, Plugin = {}, }
 
 
 
+
+
+
+
+
+
+
+
+
+
+local destructor_mt = { __mode = 'kv' }
+
 M.plugins = {}
 
 local function guess_plugin_type(path)
@@ -168,6 +180,7 @@ function M.process_spec(
 
    if id == nil then
       log.warn('No plugin name provided!')
+      log.debug('No plugin name provided for spec', spec)
       return {}
    end
 
@@ -178,15 +191,21 @@ function M.process_spec(
       return {}
    end
 
-   if M.plugins[name] then
-      if required_by then
-         M.plugins[name].required_by = M.plugins[name].required_by or {}
-         table.insert(M.plugins[name].required_by, required_by.name)
+   local existing = M.plugins[name]
+   local simple = type(spec0) == "string"
+
+   if existing then
+      if simple then
+         log.debug('Ignoring simple plugin spec' .. name)
+         return { [name] = existing }
       else
-         log.warn(fmt('Plugin "%s" is specified more than once!', name))
+         if not existing.simple then
+            log.warn(fmt('Plugin "%s" is specified more than once!', name))
+            return { [name] = existing }
+         end
       end
 
-      return { [name] = M.plugins[name] }
+      log.debug('Overriding simple plugin spec: ' .. name)
    end
 
    local url, ptype = guess_plugin_type(path)
@@ -198,7 +217,9 @@ function M.process_spec(
       rev = spec.rev,
       tag = spec.tag,
       commit = spec.commit,
-      opt = spec.opt,
+      lazy = spec.lazy,
+      start = spec.start,
+      simple = simple,
       keys = normkeys(spec.keys),
       event = normcond(spec.event),
       ft = normcond(spec.ft),
@@ -210,42 +231,44 @@ function M.process_spec(
       type = ptype,
       config_pre = spec.config_pre,
       config = spec.config,
-      required_by = required_by and { required_by.name } or nil,
       revs = {},
 
 
 
 
-      destructors = setmetatable({}, { __mode = 'kv' }),
+      destructors = setmetatable({}, destructor_mt),
    }
+
+   if required_by then
+      plugin.required_by = plugin.required_by or {}
+      table.insert(plugin.required_by, required_by.name)
+   end
+
+   if existing and existing.required_by then
+      plugin.required_by = plugin.required_by or {}
+      vim.list_extend(plugin.required_by, existing.required_by)
+   end
 
    M.plugins[name] = plugin
 
-   if not plugin.opt then
-      plugin.opt = plugin.keys ~= nil or
+   if not plugin.lazy then
+      plugin.lazy = plugin.keys ~= nil or
       plugin.ft ~= nil or
       plugin.cmd ~= nil or
       plugin.event ~= nil or
       plugin.enable ~= nil or
-      (required_by or {}).opt
+      (required_by or {}).lazy
    end
 
-   plugin.install_path = util.join_paths(plugin.opt and config.opt_dir or config.start_dir, name)
+   plugin.install_path = util.join_paths(plugin.start and config.start_dir or config.opt_dir, name)
 
    if spec.requires then
-      if required_by then
+      local sr = spec.requires
+      local r = type(sr) == "string" and { sr } or sr
 
-
-         log.warn(fmt('(%s) Nested requires are not support', name))
-      else
-         local sr = spec.requires
-         local r = type(sr) == "string" and { sr } or sr
-
-
-         plugin.requires = {}
-         for _, s in ipairs(r) do
-            vim.list_extend(plugin.requires, vim.tbl_keys(M.process_spec(s, plugin)))
-         end
+      plugin.requires = {}
+      for _, s in ipairs(r) do
+         vim.list_extend(plugin.requires, vim.tbl_keys(M.process_spec(s, plugin)))
       end
    end
 

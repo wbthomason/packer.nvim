@@ -30,6 +30,9 @@ local function loader(plugins)
       if plugin.loaded then
          log.debug('Already loaded ' .. plugin.name)
       else
+         log.debug('Running loader for ' .. plugin.name)
+
+
          for _, d in pairs(plugin.destructors) do
             d()
          end
@@ -37,11 +40,24 @@ local function loader(plugins)
 
 
          plugin.loaded = true
-         apply_config(plugin, true)
-         if plugin.opt then
 
+         apply_config(plugin, true)
+
+         if not plugin.start then
+            if plugin.requires then
+               log.debug('Loading dependencies of ' .. plugin.name)
+               local all_plugins = require('packer.plugin').plugins
+               local rplugins = vim.tbl_map(function(n)
+                  return all_plugins[n]
+               end, plugin.requires)
+               loader(rplugins)
+            end
+
+
+            log.debug('Loading ' .. plugin.name)
             vim.cmd.packadd(plugin.name)
          end
+
          apply_config(plugin, false)
       end
    end
@@ -51,7 +67,7 @@ local function load_plugin_configs(plugins)
    local Handlers = require('packer.handlers')
 
    for _, plugin in pairs(plugins) do
-      if not plugin.opt then
+      if not plugin.lazy then
          loader({ plugin })
       end
    end

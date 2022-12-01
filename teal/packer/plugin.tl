@@ -12,7 +12,8 @@ local record M
     rev        : string
     tag        : string
     commit     : string
-    opt        : boolean
+    lazy       : boolean
+    start      : boolean
     keys       : string|{string|{string,string}}
     event      : string|{string}
     ft         : string|{string}
@@ -56,8 +57,17 @@ local record M
     url              : string
     lock             : boolean
     breaking_commits : {string}
-    opt              : boolean
-    loaded           : boolean
+
+    -- Lazy loaded
+    lazy: boolean
+
+    -- Install as a 'start' plugin
+    start: boolean
+
+    loaded: boolean
+
+    -- Built from a simple plugin spec (a string)
+    simple: boolean
 
     -- Callbacks to destroy unused lazy-load handlers when a plugin is loaded
     destructors      : {integer:function()}
@@ -68,6 +78,8 @@ local record M
 
   plugins: {string:Plugin}
 end
+
+local destructor_mt = { __mode = 'kv' }
 
 M.plugins = {}
 
@@ -168,6 +180,7 @@ function M.process_spec(
 
   if id == nil then
     log.warn('No plugin name provided!')
+    log.debug('No plugin name provided for spec', spec)
     return {}
   end
 
@@ -178,15 +191,21 @@ function M.process_spec(
     return {}
   end
 
-  if M.plugins[name] then
-    if required_by then
-      M.plugins[name].required_by = M.plugins[name].required_by or {}
-      table.insert(M.plugins[name].required_by, required_by.name)
+  local existing = M.plugins[name]
+  local simple = spec0 is string
+
+  if existing then
+    if simple then
+      log.debug('Ignoring simple plugin spec'..name)
+      return {[name] = existing}
     else
-      log.warn(fmt('Plugin "%s" is specified more than once!', name))
+      if not existing.simple then
+        log.warn(fmt('Plugin "%s" is specified more than once!', name))
+        return {[name] = existing}
+      end
     end
 
-    return {[name] = M.plugins[name]}
+    log.debug('Overriding simple plugin spec: '..name)
   end
 
   local url, ptype = guess_plugin_type(path)
@@ -198,7 +217,9 @@ function M.process_spec(
     rev         = spec.rev,
     tag         = spec.tag,
     commit      = spec.commit,
-    opt         = spec.opt,
+    lazy        = spec.lazy,
+    start       = spec.start,
+    simple      = simple,
     keys        = normkeys(spec.keys),
     event       = normcond(spec.event),
     ft          = normcond(spec.ft   ),
@@ -210,42 +231,44 @@ function M.process_spec(
     type        = ptype,
     config_pre  = spec.config_pre,
     config      = spec.config,
-    required_by = required_by and {required_by.name} or nil,
     revs        = {},
 
     -- Because a destructor can be shared across plugins, store the callbacks
     -- as weak references. When they are removed from the handlers internal
     -- table, they will be garbage collected.
-    destructors = setmetatable({}, { __mode = 'kv' })
+    destructors = setmetatable({}, destructor_mt)
   }
+
+  if required_by then
+    plugin.required_by = plugin.required_by or {}
+    table.insert(plugin.required_by, required_by.name)
+  end
+
+  if existing and existing.required_by then
+    plugin.required_by = plugin.required_by or {}
+    vim.list_extend(plugin.required_by, existing.required_by)
+  end
 
   M.plugins[name] = plugin
 
-  if not plugin.opt then
-    plugin.opt = plugin.keys ~= nil
+  if not plugin.lazy then
+    plugin.lazy = plugin.keys ~= nil
       or plugin.ft ~= nil
       or plugin.cmd ~= nil
       or plugin.event ~= nil
       or plugin.enable ~= nil
-      or (required_by or {}).opt
+      or (required_by or {}).lazy
   end
 
-  plugin.install_path = util.join_paths(plugin.opt and config.opt_dir or config.start_dir, name)
+  plugin.install_path = util.join_paths(plugin.start and config.start_dir or config.opt_dir, name)
 
   if spec.requires then
-    if required_by then
-      -- TODO(lewis6991): Allow nesting, but only allow a plugin to be specified
-      -- via a non-string spec once.
-      log.warn(fmt('(%s) Nested requires are not support', name))
-    else
-      local sr = spec.requires
-      local r: {string|M.UserSpec} = sr is string and {sr} or  sr
+    local sr = spec.requires
+    local r: {string|M.UserSpec} = sr is string and {sr} or  sr
 
-      -- TODO(lewis6991): handle cyclic deps
-      plugin.requires = {}
-      for _, s in ipairs(r) do
-        vim.list_extend(plugin.requires, vim.tbl_keys(M.process_spec(s, plugin)))
-      end
+    plugin.requires = {}
+    for _, s in ipairs(r) do
+      vim.list_extend(plugin.requires, vim.tbl_keys(M.process_spec(s, plugin)))
     end
   end
 

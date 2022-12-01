@@ -36,6 +36,8 @@ local record M
   -- Assume result_type == 'indices'
   diff: function(string|{string}, string|{string}, table): {DiffResult}
 
+  env: {string:string}
+
   record json
     encode: function(any): string
     decode: function(string): any
