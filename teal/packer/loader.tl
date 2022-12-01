@@ -1,24 +1,29 @@
 local log  = require 'packer.log'
 local util = require 'packer.util'
 
-local function apply_config(plugin: Plugin, pre: boolean)
-  local c: function()|string
-  if pre then
-    c = plugin.config_pre
-  else
-    c = plugin.config
-  end
 
-  if c then
-    if c is function() then
-      log.debug('Running fun config for '..plugin.name)
-      c()
+local function apply_config(plugin: Plugin, pre: boolean)
+  xpcall(function()
+    local c: function()|string
+    if pre then
+      c = plugin.config_pre
     else
-      log.debug('Running str config for '..plugin.name)
-      local sfx = pre and '_pre()' or '()'
-      loadstring(c, plugin.name..'.config'..sfx)()
+      c = plugin.config
     end
-  end
+
+    if c then
+      if c is function() then
+        log.debug('Running fun config for '..plugin.name)
+        c()
+      else
+        log.debug('Running str config for '..plugin.name)
+        local sfx = pre and '_pre()' or '()'
+        loadstring(c, plugin.name..'.config'..sfx)()
+      end
+    end
+  end, function (x: string): string
+    log.error(string.format('Error running config for %s: %s', plugin.name, x))
+  end)
 end
 
 local function source_runtime(plugin: Plugin)
@@ -58,38 +63,48 @@ end
 function M.load_plugin(plugin: Plugin)
   if plugin.loaded then
     log.debug('Already loaded '..plugin.name)
-  else
-    log.debug('Running loader for '..plugin.name)
-
-    -- Tidy up any lazy-loading state
-    for _, d in pairs(plugin.destructors) do
-      d()
-    end
-
-    -- Set the plugin as loaded before config is run in case something in the
-    -- config tries to load this same plugin again
-    plugin.loaded = true
-
-    apply_config(plugin, true) -- spec.config_pre()
-
-    if not plugin.start then
-      if plugin.requires then
-        log.debug('Loading dependencies of '..plugin.name)
-        local all_plugins = require'packer.plugin'.plugins
-        local rplugins = vim.tbl_map(function(n: string): Plugin
-          return all_plugins[n]
-        end, plugin.requires)
-        load_plugins(rplugins)
-      end
-
-      -- never packadd a start plugin
-      log.debug('Loading '..plugin.name)
-      vim.cmd.packadd(plugin.name)
-      source_runtime(plugin)
-    end
-
-    apply_config(plugin, false) -- spec.config()
+    return
   end
+
+  log.debug('Running loader for '..plugin.name)
+
+  -- Tidy up any lazy-loading state
+  for _, d in pairs(plugin.destructors) do
+    d()
+  end
+
+  apply_config(plugin, true) -- spec.config_pre()
+
+  if not plugin.start then
+    -- never packadd a start plugin
+    log.debug('Loading '..plugin.name)
+
+    -- we don't use ':packadd!' as we need to load dependencies before
+    -- actually sourcing plugin files
+    vim.cmd.packadd(plugin.name)
+  end
+
+  -- Set the plugin as loaded before config is run in case something in the
+  -- config tries to load this same plugin again
+  plugin.loaded = true
+
+  if plugin.requires then
+    log.debug('Loading dependencies of '..plugin.name)
+    local all_plugins = require'packer.plugin'.plugins
+    local rplugins = vim.tbl_map(function(n: string): Plugin
+      return all_plugins[n]
+    end, plugin.requires)
+    load_plugins(rplugins)
+  end
+
+  if not plugin.start then
+    -- never packadd a start plugin
+    log.debug('Loading '..plugin.name)
+    vim.cmd.packadd(plugin.name)
+    source_runtime(plugin)
+  end
+
+  apply_config(plugin, false) -- spec.config()
 end
 
 function M.setup(plugins: {string:Plugin})
