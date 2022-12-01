@@ -99,39 +99,11 @@ local function update_helptags(results)
    end
 end
 
-local function load_plugin(plugin)
-   if not plugin.start then
-      vim.cmd.packadd(plugin.name)
-      return
-   end
-
-   vim.o.runtimepath = vim.o.runtimepath .. ',' .. plugin.install_path
-
-   for _, path in ipairs({
-         util.join_paths(plugin.install_path, 'plugin', '**', '*.vim'),
-         util.join_paths(plugin.install_path, 'plugin', '**', '*.lua'),
-         util.join_paths(plugin.install_path, 'after', 'plugin', '**', '*.vim'),
-         util.join_paths(plugin.install_path, 'after', 'plugin', '**', '*.lua'),
-      }) do
-      local ok, files = pcall(fn.glob, path, false, true)
-      if not ok then
-         if (files):find('E77') then
-            vim.cmd('silent exe "source ' .. path .. '"')
-         else
-            error(files)
-         end
-      else
-         for _, file in ipairs(files) do
-            vim.cmd.source({ file, mods = { silent = true } })
-         end
-      end
-   end
-end
-
 local post_update_hook = a.sync(function(plugin, disp)
    if plugin.run or plugin.start then
       a.main()
-      load_plugin(plugin)
+      local loader = require('packer.loader')
+      loader.load_plugin(plugin)
    end
 
    if not plugin.run then
