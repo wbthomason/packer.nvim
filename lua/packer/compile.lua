@@ -571,7 +571,9 @@ local function make_loaders(_, plugins, output_lua, should_profile)
     local command_line
     if string.match(command, '^%w+$') then
       command_line = fmt(
-        'pcall(vim.cmd, [[command -nargs=* -range -bang -complete=file %s lua require("packer.load")({%s}, { cmd = "%s", l1 = <line1>, l2 = <line2>, bang = <q-bang>, args = <q-args>, mods = "<mods>" }, _G.packer_plugins)]])',
+        [[pcall(vim.api.nvim_create_user_command, '%s', function(cmdargs)
+          require('packer.load')({%s}, { cmd = '%s', l1 = cmdargs.line1, l2 = cmdargs.line2, bang = cmdargs.bang, args = cmdargs.args, mods = cmdargs.mods }, _G.packer_plugins)
+        end, packer_cmd_opts)]],
         command,
         table.concat(names, ', '),
         command
@@ -749,6 +751,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   -- The command and keymap definitions
   if next(command_defs) then
     table.insert(result, '\n-- Command lazy-loads')
+    table.insert(result, "local packer_cmd_opts = {nargs='*', range=true, bang=true, complete='file'}")
     timed_chunk(command_defs, 'Defining lazy-load commands', result)
     table.insert(result, '')
   end

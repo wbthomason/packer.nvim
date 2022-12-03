@@ -80,7 +80,7 @@ end
 local function apply_cause_side_effcts(cause)
   if cause.cmd then
     local lines = cause.l1 == cause.l2 and '' or (cause.l1 .. ',' .. cause.l2)
-    cmd(fmt('%s %s%s%s %s', cause.mods or '', lines, cause.cmd, cause.bang, cause.args))
+    cmd(fmt('%s %s%s%s %s', cause.mods or '', lines, cause.cmd, cause.bang and '!' or '', cause.args))
   elseif cause.keys then
     local extra = ''
     while true do
