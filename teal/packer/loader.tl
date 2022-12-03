@@ -4,20 +4,18 @@ local util = require 'packer.util'
 
 local function apply_config(plugin: Plugin, pre: boolean)
   xpcall(function()
-    local c: function()|string
+    local c, sfx: function()|string, string
     if pre then
-      c = plugin.config_pre
+      c, sfx = plugin.config_pre, '_pre'
     else
-      c = plugin.config
+      c, sfx = plugin.config, ''
     end
 
     if c then
+      log.fmt_debug('Running config%s for %s', sfx, plugin.name)
       if c is function() then
-        log.debug('Running fun config for '..plugin.name)
         c()
       else
-        log.debug('Running str config for '..plugin.name)
-        local sfx = pre and '_pre()' or '()'
         loadstring(c, plugin.name..'.config'..sfx)()
       end
     end

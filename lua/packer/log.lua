@@ -85,7 +85,7 @@ local function make_string(...)
 
       if type(x) == 'number' then
          x = tostring(round(x, FLOAT_PRECISION))
-      else
+      elseif type(x) ~= 'string' then
          x = vim.inspect(x)
       end
 
@@ -180,11 +180,16 @@ for i, x in ipairs(MODES) do
       log_at_level(i, x, make_string, ...)
    end
 
-   log[('fmt_%s'):format(x.name)] = function()
-      log_at_level(i, x, function(fmt, ...)
+   log[('fmt_%s'):format(x.name)] = function(fmt, ...)
+      local args = { ... }
+      log_at_level(i, x, function()
          local inspected = {}
-         for _, v in ipairs({ ... }) do
-            inspected[#inspected + 1] = vim.inspect(v)
+         for _, v in ipairs(args) do
+            if type(v) == 'string' then
+               inspected[#inspected + 1] = v
+            else
+               inspected[#inspected + 1] = vim.inspect(v)
+            end
          end
          return fmt:format(unpack(inspected))
       end)
