@@ -267,10 +267,10 @@ setup({config})                                                *packer.setup()*
     If the user does not call this it will be called internally by
     |packer.add()|.
 
-add({spec})                                                     *packer.spec()*
-    `use` allows you to add one or more plugins to the managed set. It can be
+
+add({spec})                                                      *packer.add()*
+    `add` allows you to add one or more plugins to the managed set. It can be
     invoked as follows:
-    - With a single plugin location string, e.g. `use <STRING>`
     - With a single plugin specification table, e.g. >
       {
         'myusername/example',        -- The plugin location string
