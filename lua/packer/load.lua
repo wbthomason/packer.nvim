@@ -77,10 +77,18 @@ local function loader_apply_after(plugin, plugins, name)
   end
 end
 
-local function apply_cause_side_effcts(cause)
+local function apply_cause_side_effects(cause)
   if cause.cmd then
     local lines = cause.l1 == cause.l2 and '' or (cause.l1 .. ',' .. cause.l2)
-    cmd(fmt('%s %s%s%s %s', cause.mods or '', lines, cause.cmd, cause.bang, cause.args))
+    -- This is a hack to deal with people who haven't recompiled after updating to the new command
+    -- creation logic
+    local bang = ''
+    if type(cause.bang) == 'string' then
+      bang = cause.bang
+    elseif type(cause.bang) == 'boolean' and cause.bang then
+      bang = '!'
+    end
+    cmd(fmt('%s %s%s%s %s', cause.mods or '', lines, cause.cmd, bang, cause.args))
   elseif cause.keys then
     local extra = ''
     while true do
@@ -161,7 +169,7 @@ packer_load = function(names, cause, plugins, force)
     end
   end
   -- Retrigger cmd/keymap...
-  apply_cause_side_effcts(cause)
+  apply_cause_side_effects(cause)
 end
 
 local function load_wrapper(names, cause, plugins, force)
