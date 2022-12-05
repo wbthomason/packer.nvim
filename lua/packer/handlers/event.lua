@@ -1,33 +1,30 @@
-local util = require('packer.handlers.util')
+local event_plugins = {}
 
 return function(plugins, loader)
-   local events = {}
-
+   local new_events = {}
    for _, plugin in pairs(plugins) do
       if plugin.event then
          for _, event in ipairs(plugin.event) do
-            events[event] = events[event] or {}
-            table.insert(events[event], plugin)
+            if not event_plugins[event] then
+               event_plugins[event] = {}
+               new_events[#new_events + 1] = event
+            end
+
+            table.insert(event_plugins[event], plugin)
          end
       end
    end
 
-   for event, eplugins in pairs(events) do
+   for _, event in ipairs(new_events) do
 
       local ev, pattern = unpack(vim.split(event, '%s+'))
-
-      local id = vim.api.nvim_create_autocmd(ev, {
+      vim.api.nvim_create_autocmd(ev, {
          pattern = pattern,
          once = true,
          callback = function()
-            loader(eplugins)
+            loader(event_plugins[event])
             vim.api.nvim_exec_autocmds(event, { modeline = false })
          end,
       })
-
-      util.register_destructor(eplugins, function()
-         pcall(vim.api.nvim_del_autocmd, id)
-      end)
-
    end
 end

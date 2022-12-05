@@ -76,11 +76,6 @@ local M = {UserSpec = {}, Plugin = {}, }
 
 
 
-
-
-
-local destructor_mt = { __mode = 'kv' }
-
 M.plugins = {}
 
 local function guess_plugin_type(path)
@@ -232,11 +227,6 @@ function M.process_spec(
       config_pre = spec.config_pre,
       config = spec.config,
       revs = {},
-
-
-
-
-      destructors = setmetatable({}, destructor_mt),
    }
 
    if required_by then

@@ -66,11 +66,6 @@ function M.load_plugin(plugin: Plugin)
 
   log.debug('Running loader for '..plugin.name)
 
-  -- Tidy up any lazy-loading state
-  for _, d in pairs(plugin.destructors) do
-    d()
-  end
-
   apply_config(plugin, true) -- spec.config_pre()
 
   if not plugin.start then

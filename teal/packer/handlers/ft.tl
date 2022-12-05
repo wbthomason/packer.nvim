@@ -1,12 +1,10 @@
-local join_paths = require 'packer.util'.join_paths
-
-local util = require 'packer.handlers.util'
+local util = require 'packer.util'
 
 local function detect_ftdetect(plugin_path: string): {string}
   local source_paths = {}
   for _, parts in ipairs{ { 'ftdetect' }, { 'after', 'ftdetect' } } do
     parts[#parts+1] = [[**/*.\(vim\|lua\)]]
-    local path = join_paths(plugin_path, unpack(parts))
+    local path = util.join_paths(plugin_path, unpack(parts))
     local ok, files = pcall(vim.fn.glob, path, false, true)
     if not ok then
       if string.find(files as string, 'E77') then
@@ -22,38 +20,37 @@ local function detect_ftdetect(plugin_path: string): {string}
   return source_paths
 end
 
+local ft_plugins: {string:{Plugin}} = {}
+
 return function(plugins: {string:Plugin}, loader: function({Plugin}))
-  local fts: {string:{Plugin}} = {}
-
+  local new_fts: {string} = {}
   local ftdetect_paths = {}
-
   for _, plugin in pairs(plugins) do
     if plugin.ft then
       for _, ft in ipairs(plugin.ft) do
-        fts[ft] = fts[ft] or {}
-        table.insert(fts[ft], plugin)
+        if not ft_plugins[ft] then
+          ft_plugins[ft] = {}
+          new_fts[#new_fts + 1] = ft
+        end
+
+        table.insert(ft_plugins[ft], plugin)
       end
 
       vim.list_extend(ftdetect_paths, detect_ftdetect(plugin.install_path))
     end
   end
 
-  for ft, fplugins in pairs(fts) do
-    local id = vim.api.nvim_create_autocmd('FileType', {
+  for _, ft in ipairs(new_fts) do
+    vim.api.nvim_create_autocmd('FileType', {
       pattern = ft,
       once = true,
       callback = function()
-        loader(fplugins)
+        loader(ft_plugins[ft])
         for _, group in ipairs{'filetypeplugin', 'filetypeindent', 'syntaxset'} do
           vim.api.nvim_exec_autocmds('FileType', { group = group, pattern = ft, modeline = false })
         end
       end
     })
-
-    util.register_destructor(fplugins, function()
-      pcall(vim.api.nvim_del_autocmd, id)
-    end)
-
   end
 
   if #ftdetect_paths > 0 then

@@ -66,11 +66,6 @@ function M.load_plugin(plugin)
 
    log.debug('Running loader for ' .. plugin.name)
 
-
-   for _, d in pairs(plugin.destructors) do
-      d()
-   end
-
    apply_config(plugin, true)
 
    if not plugin.start then
