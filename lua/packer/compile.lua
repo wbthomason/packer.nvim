@@ -570,17 +570,8 @@ local function make_loaders(_, plugins, output_lua, should_profile)
   for command, names in pairs(commands) do
     local command_line
     if string.match(command, '^%w+$') then
-      -- Better command completions here are due to @folke
       command_line = fmt(
-        [[pcall(vim.api.nvim_create_user_command, '%s', function(cmdargs)
-          require('packer.load')({%s}, { cmd = '%s', l1 = cmdargs.line1, l2 = cmdargs.line2, bang = cmdargs.bang, args = cmdargs.args, mods = cmdargs.mods }, _G.packer_plugins)
-        end,
-        {nargs = '*', range = true, bang = true, complete = function()
-          require('packer.load')({%s}, { cmd = '%s' }, _G.packer_plugins)
-          vim.api.nvim_input('<space><bs><tab>')
-      end})]],
-        command,
-        table.concat(names, ', '),
+        'pcall(vim.cmd, [[command -nargs=* -range -bang -complete=file %s lua require("packer.load")({%s}, { cmd = "%s", l1 = <line1>, l2 = <line2>, bang = <q-bang>, args = <q-args>, mods = "<mods>" }, _G.packer_plugins)]])',
         command,
         table.concat(names, ', '),
         command
