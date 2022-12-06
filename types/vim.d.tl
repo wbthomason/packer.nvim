@@ -17,6 +17,7 @@ local record M
         silent: boolean
       end
       mods: Mods
+      bang: boolean
     end
 
     packadd: function(string|Opts, Opts)

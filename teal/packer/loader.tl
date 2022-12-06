@@ -1,6 +1,28 @@
 local log  = require 'packer.log'
 local util = require 'packer.util'
 
+local vimenter_configs: {function()} = {}
+local vimenter_autocmd_id: integer
+
+local function create_vimenter_autocmd(): integer
+  return vim.api.nvim_create_autocmd('VimEnter', {
+    once = true,
+    callback = function()
+      for _, cfg in ipairs(vimenter_configs) do
+        cfg()
+      end
+      vimenter_configs = {}
+    end
+  })
+end
+
+local function add_vimenter_config(cfg: function())
+  if not vimenter_autocmd_id then
+    vimenter_autocmd_id = create_vimenter_autocmd()
+  end
+
+  vimenter_configs[#vimenter_configs+1] = cfg
+end
 
 local function apply_config(plugin: Plugin, pre: boolean)
   xpcall(function()
@@ -24,14 +46,9 @@ local function apply_config(plugin: Plugin, pre: boolean)
   end)
 end
 
-local function source_runtime(plugin: Plugin)
-  for _, parts in ipairs {
-    {'plugin', '**', '*.vim'},
-    {'plugin', '**', '*.lua'},
-    {'after', 'plugin', '**', '*.vim'},
-    {'after', 'plugin', '**', '*.lua'},
-  } do
-    local path = util.join_paths(plugin.install_path, unpack(parts))
+local function source_after(install_path: string)
+  for _, kind in ipairs {'*.vim', '*.lua'} do
+    local path = util.join_paths(install_path, 'after', 'plugin', '**', kind)
     local ok, files = pcall(vim.fn.glob, path, false, true)
     if not ok then
       if (files as string):find('E77') then  -- E77: Too many file names
@@ -60,29 +77,33 @@ end
 
 function M.load_plugin(plugin: Plugin)
   if plugin.loaded then
-    log.debug('Already loaded '..plugin.name)
+    log.fmt_debug('Already loaded %s', plugin.name)
     return
   end
 
-  log.debug('Running loader for '..plugin.name)
+  if not vim.loop.fs_stat(plugin.install_path) then
+    log.fmt_error('%s is not installed', plugin.name)
+    return
+  end
+
+  log.fmt_debug('Running loader for %s', plugin.name)
 
   apply_config(plugin, true) -- spec.config_pre()
-
-  if not plugin.start then
-    -- never packadd a start plugin
-    log.debug('Loading '..plugin.name)
-
-    -- we don't use ':packadd!' as we need to load dependencies before
-    -- actually sourcing plugin files
-    vim.cmd.packadd(plugin.name)
-  end
 
   -- Set the plugin as loaded before config is run in case something in the
   -- config tries to load this same plugin again
   plugin.loaded = true
 
+  if not plugin.start and vim.v.vim_did_enter == 0 then
+    -- Add plugin to rtp before we load any dependencies
+    -- prepend since we are likely going to require modules from it in the
+    -- config
+    -- TODO(lewis6991): we may want to fully populate rtp before loading any plugins
+    vim.o.runtimepath = plugin.install_path..','..vim.o.runtimepath
+  end
+
   if plugin.requires then
-    log.debug('Loading dependencies of '..plugin.name)
+    log.fmt_debug('Loading dependencies of %s', plugin.name)
     local all_plugins = require'packer.plugin'.plugins
     local rplugins = vim.tbl_map(function(n: string): Plugin
       return all_plugins[n]
@@ -90,14 +111,23 @@ function M.load_plugin(plugin: Plugin)
     load_plugins(rplugins)
   end
 
-  if not plugin.start then
-    -- never packadd a start plugin
-    log.debug('Loading '..plugin.name)
-    vim.cmd.packadd(plugin.name)
-    source_runtime(plugin)
-  end
+  log.fmt_debug('Loading %s', plugin.name)
+  if vim.v.vim_did_enter == 0 then
+    if not plugin.start then
+      vim.cmd.packadd{plugin.name, bang = true}
+    end
 
-  apply_config(plugin, false) -- spec.config()
+    add_vimenter_config(function()
+      apply_config(plugin, false) -- spec.config()
+    end)
+  else
+    if not plugin.start then
+      vim.cmd.packadd(plugin.name)
+      source_after(plugin.install_path)
+    end
+
+    apply_config(plugin, false) -- spec.config()
+  end
 end
 
 function M.setup(plugins: {string:Plugin})
