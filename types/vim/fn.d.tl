@@ -17,6 +17,7 @@ local record M
   filereadable: function(string): integer
   foldclosed: function(integer): integer
   foldclosedend: function(integer): integer
+  getcompletion : function(string, string): {string}
   getcwd: function(): string
   glob: function(string, boolean): string
   glob: function(string, boolean, boolean): {string}

@@ -16,22 +16,27 @@ return function(plugins: {string:Plugin}, loader: function({Plugin}))
   end
 
   for _, cmd in ipairs(new_commands) do
-
     vim.api.nvim_create_user_command(cmd,
       function(args: vim.api.UserCmdParams)
         vim.api.nvim_del_user_command(cmd)
         loader(command_plugins[cmd])
-        local lines = args.line1 == args.line2 and '' or (args.line1 .. ',' .. args.line2)
         vim.cmd(string.format(
           '%s %s%s%s %s',
           args.mods or '',
-          lines,
+          args.line1 == args.line2 and '' or args.line1 .. ',' .. args.line2,
           cmd,
           args.bang and '!' or '',
           args.args
         ))
-      end,
-      { complete = 'file', bang = true, nargs = '*' }
+      end, {
+        bang = true,
+        nargs = '*',
+        complete = function(): {string}
+          vim.api.nvim_del_user_command(cmd)
+          loader(command_plugins[cmd])
+          return vim.fn.getcompletion(cmd..' ', 'cmdline')
+        end
+      }
     )
   end
 end
