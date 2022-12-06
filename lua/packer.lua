@@ -773,7 +773,7 @@ packer.compile = function(raw_args, move_plugins)
       vim.cmd('source ' .. output_path)
       for plugin_name, plugin_config in pairs(configs_to_run) do
         for _, config_line in ipairs(plugin_config) do
-          local success, err = pcall(loadstring(config_line))
+          local success, err = pcall(loadstring(config_line), plugin_name, _G.packer_plugins[plugin_name])
           if not success then
             log.error('Error running config for ' .. plugin_name .. ': ' .. vim.inspect(err))
           end
