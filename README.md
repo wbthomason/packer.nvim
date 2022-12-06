@@ -165,10 +165,11 @@ require('packer').add{
 The following is a more in-depth explanation of `packer`'s features and use.
 
 ### The `setup` and `add` functions
-`packer` provides`packer.add(spec)`, which is used in the above examples.
+`packer` provides`packer.add(spec)`, which is used in the above examples
+where `spec` is a table specifying a single or multiple plugins.
 
 ### Custom Initialization
-`packer.setup()` can be used to provide custom configuration.
+`packer.setup()` can be used to provide custom configuration (note that this is optional).
 The default configuration values (and structure of the configuration table) are:
 
 ```lua
