@@ -112,14 +112,6 @@ function M.load_plugin(plugin)
 
    plugin.loaded = true
 
-   if not plugin.start and vim.v.vim_did_enter == 0 then
-
-
-
-
-      vim.o.runtimepath = plugin.install_path .. ',' .. vim.o.runtimepath
-   end
-
    if plugin.requires then
       log.fmt_debug('Loading dependencies of %s', plugin.name)
       local all_plugins = require('packer.plugin').plugins

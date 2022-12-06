@@ -112,14 +112,6 @@ function M.load_plugin(plugin: Plugin)
   -- config tries to load this same plugin again
   plugin.loaded = true
 
-  if not plugin.start and vim.v.vim_did_enter == 0 then
-    -- Add plugin to rtp before we load any dependencies
-    -- prepend since we are likely going to require modules from it in the
-    -- config
-    -- TODO(lewis6991): we may want to fully populate rtp before loading any plugins
-    vim.o.runtimepath = plugin.install_path..','..vim.o.runtimepath
-  end
-
   if plugin.requires then
     log.fmt_debug('Loading dependencies of %s', plugin.name)
     local all_plugins = require'packer.plugin'.plugins
