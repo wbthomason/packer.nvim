@@ -16,11 +16,16 @@ return function(plugins: {string:Plugin}, loader: function({Plugin}))
   end
 
   for _, event in ipairs(new_events) do
+    local names = vim.tbl_map(function(e: Plugin): string
+      return e.name
+    end, event_plugins[event])
+
     -- Handle 'User Foo' events
     local ev, pattern = unpack(vim.split(event, '%s+'))
     vim.api.nvim_create_autocmd(ev, {
       pattern = pattern,
       once = true,
+      desc = 'packer.nvim lazy load: '..table.concat(names, ', '),
       callback = function()
         loader(event_plugins[event])
         vim.api.nvim_exec_autocmds(event, { modeline = false })
