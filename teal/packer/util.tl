@@ -47,4 +47,11 @@ function util.join_paths(...: string): string
   return table.concat({ ... }, util.get_separator())
 end
 
+function util.measure(f: function()): number
+  local start_time = vim.loop.hrtime()
+  f()
+  return (vim.loop.hrtime() - start_time) / 1e9
+end
+
+
 return util

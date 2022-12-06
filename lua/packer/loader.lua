@@ -35,11 +35,14 @@ local function apply_config(plugin, pre)
 
       if c then
          log.fmt_debug('Running config%s for %s', sfx, plugin.name)
+         local c0
          if type(c) == "function" then
-            c()
+            c0 = c
          else
-            loadstring(c, plugin.name .. '.config' .. sfx)()
+            c0 = loadstring(c, plugin.name .. '.config' .. sfx)
          end
+         local delta = util.measure(c0)
+         log.fmt_debug('config%s for %s took %fms', sfx, plugin.name, delta * 1000)
       end
    end, function(x)
       log.error(string.format('Error running config for %s: %s', plugin.name, x))

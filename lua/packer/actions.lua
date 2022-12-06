@@ -53,12 +53,6 @@ local function run_tasks(tasks, disp, kind)
    return a.join(limit, check, tasks)
 end
 
-local function measure(f)
-   local start_time = vim.loop.hrtime()
-   f()
-   return (vim.loop.hrtime() - start_time) / 1e9
-end
-
 local function helptags_stale(dir)
    local glob = fn.glob
 
@@ -371,7 +365,7 @@ M.install = a.sync(function()
    local disp = open_display()
    local installs = {}
 
-   local delta = measure(function()
+   local delta = util.measure(function()
       local install_tasks = get_install_tasks(packer_plugins, missing_plugins, disp, installs)
       run_tasks(install_tasks, disp, 'installing')
 
@@ -398,7 +392,7 @@ M.update = a.void(function(...)
 
    local disp = open_display()
 
-   local delta = measure(function()
+   local delta = util.measure(function()
       local tasks = {}
 
       a.main()
@@ -449,7 +443,7 @@ M.sync = a.void(function(...)
 
    local disp = open_display()
 
-   local delta = measure(function()
+   local delta = util.measure(function()
       local tasks = {}
 
       log.debug('Gathering install tasks')
