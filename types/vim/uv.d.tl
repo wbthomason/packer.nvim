@@ -118,6 +118,16 @@ local record M
   fs_readdir: function(DirT, nil): {DirResult}
   fs_readdir: function(DirT, function): FsT
 
+  fs_scandir: function(string, function(string, FsT)): FsT
+
+  enum FileType
+    "file"
+    "directory"
+    "link"
+  end
+
+  fs_scandir_next: function(FsT): string, FileType
+
   fs_symlink: function(path:string, new_path:string, flags: table, callback: function(string, boolean)): FsT
   fs_symlink: function(path:string, new_path:string, flags: table, nil): boolean
 
