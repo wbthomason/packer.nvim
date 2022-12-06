@@ -49,23 +49,38 @@ local function apply_config(plugin, pre)
    end)
 end
 
-local function source_after(install_path)
-   for _, kind in ipairs({ '*.vim', '*.lua' }) do
-      local path = util.join_paths(install_path, 'after', 'plugin', '**', kind)
-      local ok, files = pcall(vim.fn.glob, path, false, true)
-      if not ok then
-         if (files):find('E77') then
-            vim.cmd('silent exe "source ' .. path .. '"')
-         else
-            error(files)
-         end
-      else
-         for _, file in ipairs(files) do
-            log.debug('sourcing ' .. file)
-            vim.cmd.source({ file, mods = { silent = true } })
-         end
+local FileType = vim.loop.FileType
+
+local function ls(path, fn)
+   local handle = vim.loop.fs_scandir(path)
+   while handle do
+      local name, t = vim.loop.fs_scandir_next(handle)
+      if not name then
+         break
+      end
+      if fn(path .. "/" .. name, name, t) == false then
+         break
       end
    end
+end
+
+local function walk(path, fn)
+   ls(path, function(child, name, ftype)
+      if ftype == "directory" then
+         walk(child, fn)
+      end
+      fn(child, name, ftype)
+   end)
+end
+
+local function source_after(install_path)
+   walk(util.join_paths(install_path, 'after', 'plugin'), function(path, _, t)
+      local ext = path:sub(-4)
+      if t == "file" and (ext == ".lua" or ext == ".vim") then
+         log.fmt_debug('sourcing %s', path)
+         vim.cmd.source({ path, mods = { silent = true } })
+      end
+   end)
 end
 
 local M = {}

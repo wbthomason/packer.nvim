@@ -49,23 +49,38 @@ local function apply_config(plugin: Plugin, pre: boolean)
   end)
 end
 
-local function source_after(install_path: string)
-  for _, kind in ipairs {'*.vim', '*.lua'} do
-    local path = util.join_paths(install_path, 'after', 'plugin', '**', kind)
-    local ok, files = pcall(vim.fn.glob, path, false, true)
-    if not ok then
-      if (files as string):find('E77') then  -- E77: Too many file names
-        vim.cmd('silent exe "source ' .. path .. '"')
-      else
-        error(files)
-      end
-    else
-      for _, file in ipairs(files) do
-        log.debug('sourcing '..file)
-        vim.cmd.source{file, mods = {silent=true}}
-      end
+local FileType = vim.loop.FileType
+
+local function ls(path: string, fn: function(string, string, FileType): boolean)
+  local handle = vim.loop.fs_scandir(path)
+  while handle do
+    local name, t = vim.loop.fs_scandir_next(handle)
+    if not name then
+      break
+    end
+    if fn(path .. "/" .. name, name, t) == false then
+      break
     end
   end
+end
+
+local function walk(path: string, fn: function(string, string, FileType))
+  ls(path, function(child: string, name: string, ftype: FileType): boolean
+    if ftype == "directory" then
+      walk(child, fn)
+    end
+    fn(child, name, ftype)
+  end)
+end
+
+local function source_after(install_path: string)
+  walk(util.join_paths(install_path, 'after', 'plugin'), function(path: string, _: string, t: FileType)
+    local ext = path:sub(-4)
+    if t == "file" and (ext == ".lua" or ext == ".vim") then
+      log.fmt_debug('sourcing %s', path)
+      vim.cmd.source{path, mods = {silent=true}}
+    end
+  end)
 end
 
 local record M
