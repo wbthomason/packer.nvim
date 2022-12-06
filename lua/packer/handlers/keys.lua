@@ -24,7 +24,11 @@ return function(plugins, loader)
       vim.keymap.set(keymap[1], keymap[2], function()
          vim.keymap.del(keymap[1], keymap[2])
          loader(kplugins)
-         vim.api.nvim_feedkeys(keymap[2], keymap[1], false)
+         if keymap[1] == 'n' then
+            vim.api.nvim_input(keymap[2])
+         else
+            vim.api.nvim_feedkeys(keymap[2], keymap[1], false)
+         end
       end, {
          desc = 'packer.nvim lazy load: ' .. table.concat(names, ', '),
          silent = true,
