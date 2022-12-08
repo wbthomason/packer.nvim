@@ -247,6 +247,7 @@ Plugin specs can take two forms:
   ft    = string or string[],     -- Specifies filetypes which load this plugin.
   keys  = string or string[],     -- Specifies maps which load this plugin. See "Keybindings".
   event = string or string[],     -- Specifies autocommand events which load this plugin.
+  cond  = boolean or function,    -- Specifies custom loader
 }
 ```
 
@@ -287,6 +288,30 @@ Plugins specified in `requires` are removed when no active plugins require them.
 
 Plugins may be lazy-loaded on the use of keybindings/maps.
 Individual keybindings are specified either as a string (in which case they are treated as normal mode maps) or a table in the format `{mode, map}`.
+
+#### Custom loader
+
+A custom loader for a plugin may be specified via `cond`.
+This is a function which has a function as its first argument.
+When this function argument is called, the plugin is loaded.
+
+For example, the following plugin is lazy-loaded on the key mapping `ga`:
+
+```lua
+packer.add{
+  {"my/plugin", cond = function(load_plugin)
+    vim.keymap.set('n', 'ga', function()
+      vim.keymap.del('n', 'ga')
+      loader()
+      vim.api.nvim_input('ga')
+    end)
+  end}
+
+  -- equivalent to --
+
+  {"my/plugin", keys = 'ga'},
+}
+```
 
 ### Performing plugin management operations
 

@@ -5,6 +5,8 @@ local config = require('packer.config')
 local fmt = string.format
 
 local record M
+  type Loader = function(function()): boolean
+
   record UserSpec
     {string}
 
@@ -18,7 +20,7 @@ local record M
     event      : string|{string}
     ft         : string|{string}
     cmd        : string|{string}
-    enable     : boolean|function(): boolean
+    cond       : boolean|Loader|{Loader}
     run        : string|function|{string|function}
     config_pre : string|function()
     config     : string|function()
@@ -36,7 +38,7 @@ local record M
     event        : {string}
     ft           : {string}
     cmd          : {string}
-    enable       : boolean|function(): boolean
+    cond         : boolean|Loader|{Loader}
     run          : {string|function}
     config_pre   : string|function()
     config       : string|function()
@@ -219,7 +221,7 @@ function M.process_spec(
     event       = normcond(spec.event),
     ft          = normcond(spec.ft   ),
     cmd         = normcond(spec.cmd  ),
-    enable      = spec.enable ~= true and spec.enable or nil,  -- must be function or 'false'
+    cond        = spec.cond ~= true and spec.cond or nil,  -- must be function or 'false'
     run         = normrun(spec.run),
     lock        = spec.lock,
     url         = remove_ending_git_url(url),
@@ -246,7 +248,7 @@ function M.process_spec(
       or plugin.ft ~= nil
       or plugin.cmd ~= nil
       or plugin.event ~= nil
-      or plugin.enable ~= nil
+      or plugin.cond ~= nil
       or (required_by or {}).lazy
   end
 
