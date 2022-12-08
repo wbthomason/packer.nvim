@@ -76,6 +76,8 @@ local M = {UserSpec = {}, Plugin = {}, }
 
 
 
+
+
 M.plugins = {}
 
 local function guess_plugin_type(path)
@@ -219,7 +221,7 @@ function M.process_spec(
       event = normcond(spec.event),
       ft = normcond(spec.ft),
       cmd = normcond(spec.cmd),
-      enable = spec.enable ~= true and spec.enable or nil,
+      cond = spec.cond ~= true and spec.cond or nil,
       run = normrun(spec.run),
       lock = spec.lock,
       url = remove_ending_git_url(url),
@@ -246,7 +248,7 @@ function M.process_spec(
       plugin.ft ~= nil or
       plugin.cmd ~= nil or
       plugin.event ~= nil or
-      plugin.enable ~= nil or
+      plugin.cond ~= nil or
       (required_by or {}).lazy
    end
 

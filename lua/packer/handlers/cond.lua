@@ -4,12 +4,28 @@
 
 
 
+
+
+
+
+
 return function(plugins, loader)
    for _, plugin in pairs(plugins) do
-      local enable = plugin.enable
-      if type(enable) == "function" then
-         if enable() then
-            loader({ plugin })
+      local cond = plugin.cond
+
+      local function load_plugin()
+         loader({ plugin })
+      end
+
+      if type(cond) == "table" then
+         for _, c in ipairs(cond) do
+            if c(load_plugin) then
+               load_plugin()
+            end
+         end
+      elseif type(cond) == "function" then
+         if cond(load_plugin) then
+            load_plugin()
          end
       end
 
