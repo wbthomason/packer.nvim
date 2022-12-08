@@ -18,7 +18,7 @@ M.types = {
    'event',
    'ft',
    'cmd',
-   'enable',
+   'cond',
 }
 
 return setmetatable(M, {
@@ -31,8 +31,8 @@ return setmetatable(M, {
          return require('packer.handlers.ft')
       elseif cond == 'cmd' then
          return require('packer.handlers.cmd')
-      elseif cond == 'enable' then
-         return require('packer.handlers.enable')
+      elseif cond == 'cond' then
+         return require('packer.handlers.cond')
       end
    end,
 })
