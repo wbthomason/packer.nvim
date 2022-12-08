@@ -58,7 +58,7 @@ local function ls(path: string, fn: function(string, string, FileType): boolean)
     if not name then
       break
     end
-    if fn(path .. "/" .. name, name, t) == false then
+    if fn(util.join_paths(path, name), name, t) == false then
       break
     end
   end
