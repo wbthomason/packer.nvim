@@ -1,6 +1,6 @@
 # 🚧 WIP 🚧
 
-Fork that aims to de-scope and refactor
+Packer v2
 
 Differences:
 - heavily refactored
