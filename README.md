@@ -302,7 +302,7 @@ packer.add{
   {"my/plugin", cond = function(load_plugin)
     vim.keymap.set('n', 'ga', function()
       vim.keymap.del('n', 'ga')
-      loader()
+      load_plugin()
       vim.api.nvim_input('ga')
     end)
   end}
