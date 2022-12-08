@@ -68,8 +68,8 @@ require('packer').add{
   -- Load on specific commands
   {'tpope/vim-dispatch', cmd = {'Dispatch', 'Make', 'Focus', 'Start'}};
 
-  -- Load on an autocommand event
-  {'andymass/vim-matchup', event = 'VimEnter'};
+  -- Load on specific keymap
+  {'tpope/vim-commentary', keys = 'gc'},
 
   -- Load on a combination of conditions: specific filetypes or commands
   -- Also run code after load (see the "config" key)
@@ -86,7 +86,8 @@ require('packer').add{
   {'iamcco/markdown-preview.nvim', run = 'cd app && yarn install', cmd = 'MarkdownPreview'};
 
   -- Post-install/update hook with neovim command
-  { 'nvim-treesitter/nvim-treesitter', run = ':TSUpdate' };
+  -- Install plugin as a 'start' plugin
+  { 'nvim-treesitter/nvim-treesitter', run = ':TSUpdate', start = true };
 
   -- Post-install/update hook with call of vimscript function with argument
   { 'glacambre/firenvim', run = function()
@@ -102,12 +103,11 @@ require('packer').add{
     end
   };
 
-  -- Use dependency and run lua function after load
-  { 'lewis6991/gitsigns.nvim',
-    config = function()
-      require('gitsigns').setup()
-    end
-  };
+  -- Run config *before* the plugin is loaded
+  {'whatyouhide/vim-lengthmatters', config_pre = function()
+    vim.g.lengthmatters_highlight_one_column = 1
+    vim.g.lengthmatters_excluded = {'packer'}
+  end},
 }
 ```
 
@@ -138,18 +138,24 @@ If you want to automatically install and set up `packer.nvim` on any machine you
 add the following snippet (which is due to @Iron-E and @khuedoan) somewhere in your config **before** your first usage of `packer`:
 
 ```lua
-local function ensure_packer()
-  local fn = vim.fn
-  local install_path = fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
-  if fn.empty(fn.glob(install_path)) > 0 then
-    fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
-    vim.cmd.packadd'packer.nvim'
-    return true
+local function bootstrap_packer()
+  if not pcall(require, 'packer') then
+    if vim.fn.input("Download Packer? (y for yes): ") ~= "y" then
+      return
+    end
+
+    print("Downloading packer.nvim...")
+    print(fn.system{
+     'git',
+     'clone',
+     '--depth', '1',
+     'https://github.com/wbthomason/packer.nvim',
+     fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
+    })
   end
-  return false
 end
 
-local packer_bootstrap = ensure_packer()
+bootstrap_packer()
 
 require('packer').add{
   'wbthomason/packer.nvim';
@@ -233,6 +239,7 @@ Plugin specs can take two forms:
   lock     = boolean,             -- Skip updating this plugin in updates/syncs. Still cleans.
   run      = string, function or table,  -- Post-update/install hook. See "update/install hooks".
   requires = string or string[],  -- Specifies plugin dependencies. See "dependencies".
+  config_pre = string or function,  -- Specifies code to run before this plugin is loaded.
   config   = string or function,  -- Specifies code to run after this plugin is loaded.
 
   -- The following keys all imply lazy-loading and imply opt = true
@@ -244,17 +251,11 @@ Plugin specs can take two forms:
 ```
 
 #### Checking plugin statuses
-You can check whether or not a particular plugin is installed with `packer` as well as if that plugin is loaded.
-To do this you can check for the plugin's name in the `packer_plugins` global table.
-Plugins in this table are saved using only the last section of their names
-e.g. `tpope/vim-fugitive` if installed will be under the key `vim-fugitive`.
 
-```lua
-if packer_plugins["vim-fugitive"] and packer_plugins["vim-fugitive"].loaded then
-  print("Vim fugitive is loaded")
-  -- other custom logic
-end
-```
+**TODO**
+
+Currently main plugin table is accessed via `require'packer.plugin'.plugins` but
+the format for this table is not API stable.
 
 #### Update/install hooks
 
@@ -282,12 +283,20 @@ above.
 
 Plugins specified in `requires` are removed when no active plugins require them.
 
+**TODO**: explain that plugins can only be specified as a table once.
+
 #### Keybindings
 
 Plugins may be lazy-loaded on the use of keybindings/maps.
 Individual keybindings are specified either as a string (in which case they are treated as normal mode maps) or a table in the format `{mode, map}`.
 
 ### Performing plugin management operations
+
+**TODO**
+
+API here will be similar to what it was before with the only exception being the
+final argument to every command will be a callback which is called when the operation finishes.
+
 `packer` exposes the following functions for common plugin management operations. In all of the
 below, `plugins` is an optional table of plugin names; if not provided, the default is "all managed
 plugins":
