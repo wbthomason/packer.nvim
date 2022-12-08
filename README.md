@@ -252,9 +252,7 @@ Plugin specs can take two forms:
 
 #### Checking plugin statuses
 
-**TODO**
-
-Currently main plugin table is accessed via `require'packer.plugin'.plugins` but
+> 🚧 **TODO**: Currently main plugin table is accessed via `require'packer.plugin'.plugins` but
 the format for this table is not API stable.
 
 #### Update/install hooks
@@ -283,7 +281,7 @@ above.
 
 Plugins specified in `requires` are removed when no active plugins require them.
 
-**TODO**: explain that plugins can only be specified as a table once.
+> 🚧 **TODO**: explain that plugins can only be specified as a table once.
 
 #### Keybindings
 
@@ -292,10 +290,10 @@ Individual keybindings are specified either as a string (in which case they are 
 
 ### Performing plugin management operations
 
-**TODO**
-
-API here will be similar to what it was before with the only exception being the
-final argument to every command will be a callback which is called when the operation finishes.
+> 🚧 **TODO**:
+>
+> API here will be similar to what it was before with the only exception being the
+> final argument to every command will be a callback which is called when the operation finishes.
 
 `packer` exposes the following functions for common plugin management operations. In all of the
 below, `plugins` is an optional table of plugin names; if not provided, the default is "all managed
