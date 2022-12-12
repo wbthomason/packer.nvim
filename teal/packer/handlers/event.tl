@@ -28,7 +28,8 @@ return function(plugins: {string:Plugin}, loader: function({Plugin}))
       desc = 'packer.nvim lazy load: '..table.concat(names, ', '),
       callback = function()
         loader(event_plugins[event])
-        vim.api.nvim_exec_autocmds(event, { modeline = false })
+        -- TODO(lewis6991): should we re-issue the event? (#1163)
+        -- vim.api.nvim_exec_autocmds(event, { modeline = false })
       end
     })
   end
