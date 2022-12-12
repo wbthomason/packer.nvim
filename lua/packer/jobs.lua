@@ -100,7 +100,7 @@ end
 local function setup_pipe(kind, callbacks, output)
    local handle, uv_err = uv.new_pipe(false)
    if uv_err then
-      log.error(string.format('Failed to open %s pipe: %s', kind, uv_err))
+      log.fmt_error('Failed to open %s pipe: %s', kind, uv_err)
       return uv_err
    end
 

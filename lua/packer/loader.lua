@@ -45,7 +45,7 @@ local function apply_config(plugin, pre)
          log.fmt_debug('config%s for %s took %fms', sfx, plugin.name, delta * 1000)
       end
    end, function(x)
-      log.error(string.format('Error running config for %s: %s', plugin.name, x))
+      log.fmt_error('Error running config for %s: %s', plugin.name, x)
    end)
 end
 

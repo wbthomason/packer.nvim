@@ -3,8 +3,6 @@ local log = require 'packer.log'
 local util = require 'packer.util'
 local Display = require 'packer.display'.Display
 
-local fmt = string.format
-
 local uv = vim.loop
 
 local record M
@@ -63,22 +61,22 @@ M.updater = a.sync(function(plugin: Plugin, disp: Display): {string}
 
   local is_link = uv.fs_lstat(to).type == 'link'
   if not is_link then
-    log.debug(fmt('%s: %s is not a link', plugin.name, to))
+    log.fmt_debug('%s: %s is not a link', plugin.name, to)
     return {to..' is not a link'}
   end
 
   if uv.fs_realpath(to) ~= from then
-    disp:task_update(plugin.full_name, fmt('updating symlink from %s to %s', from, to))
+    disp:task_update(plugin.full_name, string.format('updating symlink from %s to %s', from, to))
     local err, success = unlink(to)
     if err then
-      log.debug(fmt('%s: failed to unlink %s: %s', plugin.name, to, err))
+      log.fmt_debug('%s: failed to unlink %s: %s', plugin.name, to, err)
       return err
     end
     assert(success)
-    log.debug(fmt('%s: did unlink', plugin.name))
+    log.fmt_debug('%s: did unlink', plugin.name)
     err = symlink(from, to, { dir = true })
     if err then
-      log.debug(fmt('%s: failed to link from %s to %s: %s', plugin.name, from, to, err))
+      log.fmt_debug('%s: failed to link from %s to %s: %s', plugin.name, from, to, err)
       return { err }
     end
   end

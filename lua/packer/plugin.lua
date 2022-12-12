@@ -2,8 +2,6 @@ local util = require('packer.util')
 local log = require('packer.log')
 local config = require('packer.config')
 
-local fmt = string.format
-
 local M = {UserSpec = {}, Plugin = {}, }
 
 
@@ -184,7 +182,7 @@ function M.process_spec(
    local name, path = get_plugin_name(id)
 
    if name == '' then
-      log.warn(fmt('"%s" is an invalid plugin name!', id))
+      log.fmt_warn('"%s" is an invalid plugin name!', id)
       return {}
    end
 
@@ -197,7 +195,7 @@ function M.process_spec(
          return { [name] = existing }
       else
          if not existing.simple then
-            log.warn(fmt('Plugin "%s" is specified more than once!', name))
+            log.fmt_warn('Plugin "%s" is specified more than once!', name)
             return { [name] = existing }
          end
       end

@@ -114,9 +114,9 @@ local handle_checkouts = function(plugin, disp, opts)
          local data = jr.output.data.stdout[1]
          plugin.tag = vim.split(data, '\n')[1]
       else
-         log.warn(fmt(
+         log.fmt_warn(
          'Wildcard expansion did not find any tag for plugin %s: defaulting to latest commit...',
-         plugin.name))
+         plugin.name)
 
          plugin.tag = nil
          return jr.output.data.stderr
@@ -282,7 +282,7 @@ end
 
 local function log_err(plugin, msg, x)
    local x1 = type(x) == "string" and x or table.concat(x, '\n')
-   log.debug(fmt('%s: $s: %s', plugin.name, msg, x1))
+   log.fmt_debug('%s: $s: %s', plugin.name, msg, x1)
 end
 
 
@@ -450,24 +450,24 @@ M.revert_last = async(function(plugin)
    })
 
    if not jr:ok() then
-      log.error(fmt('Reverting update for %s failed!', plugin.full_name))
+      log.fmt_error('Reverting update for %s failed!', plugin.full_name)
       return jr.output.data.stderr
    end
 
    if (plugin.tag or plugin.commit or plugin.branch) ~= nil then
       local coerr = handle_checkouts(plugin, nil, {})
       if coerr then
-         log.error(fmt('Reverting update for %s failed!', plugin.full_name))
+         log.fmt_error('Reverting update for %s failed!', plugin.full_name)
          return coerr
       end
    end
-   log.info('Reverted update for ' .. plugin.full_name)
+   log.fmt_info('Reverted update for %s', plugin.full_name)
 end, 1)
 
 
 M.revert_to = async(function(plugin, commit)
    assert(type(commit) == 'string', fmt("commit: string expected but '%s' provided", type(commit)))
-   require('packer.log').debug(fmt("Reverting '%s' to commit '%s'", plugin.name, commit))
+   log.fmt_debug("Reverting '%s' to commit '%s'", plugin.name, commit)
    local jr = git_run({ 'reset', '--hard', commit, '--' }, {
       cwd = plugin.install_path,
    })

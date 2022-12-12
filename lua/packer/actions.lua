@@ -87,7 +87,7 @@ local function update_helptags(results)
    for _, dir in ipairs(paths) do
       local doc_dir = util.join_paths(dir, 'doc')
       if helptags_stale(doc_dir) then
-         log.info('Updating helptags for ' .. doc_dir)
+         log.fmt_info('Updating helptags for %s', doc_dir)
          vim.cmd('silent! helptags ' .. fn.fnameescape(doc_dir))
       end
    end
@@ -144,10 +144,10 @@ local install_task = a.sync(function(plugin, disp, installs)
 
    if not err then
       disp:task_succeeded(plugin.full_name, 'installed')
-      log.debug(fmt('Installed %s', plugin.full_name))
+      log.fmt_debug('Installed %s', plugin.full_name)
    else
       disp:task_failed(plugin.full_name, 'failed to install')
-      log.debug(fmt('Failed to install %s: %s', plugin.full_name, vim.inspect(err)))
+      log.fmt_debug('Failed to install %s: %s', plugin.full_name, vim.inspect(err))
       disp.items[plugin.name] = {
          displayed = false,
          lines = err,
@@ -198,10 +198,10 @@ local function move_plugin(plugin, moves, fs_state)
 
    local success, msg = os.rename(from, to)
    if not success then
-      log.error(fmt('Failed to move %s to %s: %s', from, to, msg))
+      log.fmt_error('Failed to move %s to %s: %s', from, to, msg)
       moves[plugin.name] = { err = { msg } }
    else
-      log.debug(fmt('Moved %s from %s to %s', plugin.name, from, to))
+      log.fmt_debug('Moved %s from %s to %s', plugin.name, from, to)
    end
 end
 
@@ -223,7 +223,7 @@ local update_task = a.sync(function(plugin, disp, updates, opts)
       if actual_update then
          msg = fmt('updated: %s...%s', revs[1], revs[2])
          if not opts.preview_updates then
-            log.debug(fmt('Updated %s', plugin.full_name))
+            log.fmt_debug('Updated %s', plugin.full_name)
             plugin.err = post_update_hook(plugin, disp)
          end
       else
@@ -235,7 +235,7 @@ local update_task = a.sync(function(plugin, disp, updates, opts)
       disp:task_succeeded(plugin.full_name, msg)
    else
       disp:task_failed(plugin.full_name, 'failed to update')
-      log.debug(fmt('Failed to update %s: %s', plugin.full_name, table.concat(plugin.err, '\n')))
+      log.fmt_debug('Failed to update %s: %s', plugin.full_name, table.concat(plugin.err, '\n'))
    end
 
    updates[plugin.name] = { err = plugin.err }
@@ -253,7 +253,7 @@ local function get_update_tasks(
    for _, v in ipairs(update_plugins) do
       local plugin = plugins[v]
       if not plugin then
-         log.error(fmt('Unknown plugin: %s', v))
+         log.fmt_error('Unknown plugin: %s', v)
       end
       if plugin and not plugin.lock then
          tasks[#tasks + 1] = a.curry(update_task, plugin, disp, updates, opts)
@@ -338,11 +338,11 @@ local do_clean = a.sync(function(plugins, fs_state, removals)
       for path, _ in pairs(plugins_to_remove) do
          local result = vim.fn.delete(path, 'rf')
          if result == -1 then
-            log.warn('Could not remove ' .. path)
+            log.fmt_warn('Could not remove %s', path)
          end
          plugins_to_remove[path] = nil
       end
-      log.debug('Removed ' .. vim.inspect(removed))
+      log.debug('Removed', removed)
    else
       log.warn('Cleaning cancelled!')
    end

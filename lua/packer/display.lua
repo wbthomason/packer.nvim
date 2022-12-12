@@ -367,7 +367,7 @@ local function toggle_info(disp)
       set_lines(disp, cursor_pos[1], cursor_pos[1], pad(item.lines))
       item.displayed = true
    else
-      log.info('No further information for ' .. plugin_name)
+      log.fmt_info('No further information for %s', plugin_name)
    end
 
    api.nvim_win_set_cursor(0, cursor_pos)
@@ -464,7 +464,7 @@ local function prompt_revert(disp)
          end
       end)
    else
-      log.warn(plugin_name .. " wasn't updated; can't revert!")
+      log.fmt_warn("%s wasn't updated; can't revert!", plugin_name)
    end
 end
 
@@ -536,7 +536,7 @@ local keymaps = {
             log.debug('retrying install')
             display.callbacks.install()
          elseif #display.failed_update_list > 0 then
-            log.debug(fmt('retrying updates for: %s', table.concat(display.failed_update_list, '\n')))
+            log.fmt_debug('retrying updates for: %s', table.concat(display.failed_update_list, '\n'))
             display.callbacks.update(unpack(display.failed_update_list))
          end
       end,
@@ -614,7 +614,7 @@ end
 
 
 display.task_update = vim.schedule_wrap(function(self, plugin, message)
-   log.info(string.format('%s: %s', plugin, message))
+   log.fmt_info('%s: %s', plugin, message)
    if not valid_display(self) then
       return
    end
@@ -907,7 +907,7 @@ display.final_results = vim.schedule_wrap(function(self, results, time, opts)
       if plugin.breaking_commits and #plugin.breaking_commits > 0 then
          vim.cmd('syntax match packerBreakingChange "' .. plugin_name .. '" containedin=packerStatusSuccess')
          for _, commit_hash in ipairs(plugin.breaking_commits) do
-            log.warn('Potential breaking change in commit ' .. commit_hash .. ' of ' .. plugin_name)
+            log.fmt_warn('Potential breaking change in commit %s of %s', commit_hash, plugin_name)
             vim.cmd('syntax match packerBreakingChange "' .. commit_hash .. '" containedin=packerHash')
          end
       end
