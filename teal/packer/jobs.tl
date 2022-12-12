@@ -57,7 +57,7 @@ local function spawn(cmd: string, options: uv.SpawnOpts, callback: function(inte
     local check = uv.new_check()
     assert(check)
     check:start(function()
-      for _, pipe in ipairs(options.stdio) do
+      for _, pipe in pairs(options.stdio as {integer:uv.Pipe}) do
         if not pipe:is_closing() then
           return
         end

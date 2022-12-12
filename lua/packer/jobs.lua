@@ -57,7 +57,7 @@ local function spawn(cmd, options, callback)
       local check = uv.new_check()
       assert(check)
       check:start(function()
-         for _, pipe in ipairs(options.stdio) do
+         for _, pipe in pairs(options.stdio) do
             if not pipe:is_closing() then
                return
             end
