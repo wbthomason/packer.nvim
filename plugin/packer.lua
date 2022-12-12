@@ -20,3 +20,5 @@ for k, v in pairs {
     return require('packer.actions')[k](unpack(args.fargs))
   end, { nargs = '*', complete = v[2] })
 end
+
+require'packer.plugin_config'.run()

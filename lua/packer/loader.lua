@@ -2,29 +2,6 @@ local log = require('packer.log')
 local util = require('packer.util')
 local Plugin = require('packer.plugin').Plugin
 
-local vimenter_configs = {}
-local vimenter_autocmd_id
-
-local function create_vimenter_autocmd()
-   return vim.api.nvim_create_autocmd('VimEnter', {
-      once = true,
-      callback = function()
-         for _, cfg in ipairs(vimenter_configs) do
-            cfg()
-         end
-         vimenter_configs = {}
-      end,
-   })
-end
-
-local function add_vimenter_config(cfg)
-   if not vimenter_autocmd_id then
-      vimenter_autocmd_id = create_vimenter_autocmd()
-   end
-
-   vimenter_configs[#vimenter_configs + 1] = cfg
-end
-
 local function apply_config(plugin, pre)
    xpcall(function()
       local c, sfx
@@ -128,7 +105,7 @@ function M.load_plugin(plugin)
          vim.cmd.packadd({ plugin.name, bang = true })
       end
 
-      add_vimenter_config(function()
+      require('packer.plugin_config').add(function()
          apply_config(plugin, false)
       end)
    else
