@@ -1,3 +1,5 @@
+local Plugin = require'packer.plugin'.Plugin
+
 local keymap_plugins: {{string,string}:{Plugin}} = {}
 
 return function(plugins: {string:Plugin}, loader: function({Plugin}))

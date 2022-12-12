@@ -1,3 +1,5 @@
+local Plugin = require('packer.plugin').Plugin
+
 local M = {}
 
 

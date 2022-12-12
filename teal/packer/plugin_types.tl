@@ -1,4 +1,5 @@
 local Display = require 'packer.display'.Display
+local Plugin = require'packer.plugin'.Plugin
 
 local record PluginHandler
   installer   : function(Plugin, Display): {string}

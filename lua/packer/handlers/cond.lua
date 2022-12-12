@@ -7,6 +7,8 @@
 
 
 
+local Plugin = require('packer.plugin').Plugin
+
 
 
 return function(plugins, loader)

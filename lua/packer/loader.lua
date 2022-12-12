@@ -1,5 +1,6 @@
 local log = require('packer.log')
 local util = require('packer.util')
+local Plugin = require('packer.plugin').Plugin
 
 local vimenter_configs = {}
 local vimenter_autocmd_id

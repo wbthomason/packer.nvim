@@ -1,5 +1,9 @@
 local log = require('packer.log')
 local config = require('packer.config')
+local plugin = require('packer.plugin')
+local loader = require('packer.loader')
+
+local UserSpec = plugin.UserSpec
 
 local Config = config.Config
 
@@ -25,9 +29,6 @@ function M.add(spec)
    if not did_setup then
       setup()
    end
-
-   local plugin = require('packer.plugin')
-   local loader = require('packer.loader')
 
    log.debug('PROCESSING PLUGIN SPEC')
    plugin.process_spec(spec)

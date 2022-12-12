@@ -7,6 +7,8 @@
 -- The main use case for this is for users of vscode-neovim who load some
 -- plugins only in normal Nvim and not in embedded Nvim
 
+local Plugin = require'packer.plugin'.Plugin
+
 local type Loader = function(function()): boolean
 
 return function(plugins: {string:Plugin}, loader: function({Plugin}))

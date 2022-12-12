@@ -4,6 +4,7 @@ local jobs   = require 'packer.jobs'
 local log    = require 'packer.log'
 local util   = require 'packer.util'
 local Display = require 'packer.display'.Display
+local Plugin = require'packer.plugin'.Plugin
 
 local async = a.sync
 

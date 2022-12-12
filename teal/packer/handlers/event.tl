@@ -1,3 +1,5 @@
+local Plugin = require'packer.plugin'.Plugin
+
 local event_plugins: {string:{Plugin}} = {}
 
 return function(plugins: {string:Plugin}, loader: function({Plugin}))

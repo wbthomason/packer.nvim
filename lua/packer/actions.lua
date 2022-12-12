@@ -7,6 +7,7 @@ local log = require('packer.log')
 local util = require('packer.util')
 local fsstate = require('packer.fsstate')
 
+local Plugin = require('packer.plugin').Plugin
 local display = require('packer.display')
 
 local packer_plugins = require('packer.plugin').plugins

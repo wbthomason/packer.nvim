@@ -1,3 +1,4 @@
+local Plugin = require'packer.plugin'.Plugin
 local util = require 'packer.util'
 
 local function detect_ftdetect(plugin_path: string): {string}

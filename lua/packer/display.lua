@@ -5,6 +5,8 @@ local awrap = require('packer.async').wrap
 local packer_plugins = require('packer.plugin').plugins
 local fmt = string.format
 
+local Plugin = require('packer.plugin').Plugin
+
 local Config = config.Config
 
 local function set_extmark(buf, ns, id, line, col)
