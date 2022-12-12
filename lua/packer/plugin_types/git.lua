@@ -262,6 +262,9 @@ local function get_ref(plugin, ref)
    local ref1, er
    if jr:ok() then
       ref1 = jr.output.data.stdout[1]
+      if not ref1 then
+         er = string.format("'git rev-parse --short %s' did not return a result", ref)
+      end
    else
       er = table.concat(jr.output.data.stderr, '\n')
    end
