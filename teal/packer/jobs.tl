@@ -31,12 +31,22 @@ local record M
   run: function(task: string|{string}, opts: M.Opts): M.JobResult
 end
 
+local function trace(cmd: string, options: uv.SpawnOpts)
+  log.fmt_trace(
+    "Running job: cmd = %s, args = %s, cwd = %s",
+    cmd,
+    vim.inspect(options.args),
+    options.cwd
+  )
+end
+
 --- Wrapper for vim.loop.spawn. Takes a command, options, and callback just like
 --- vim.loop.spawn, but ensures that all output from the command has been
 --- flushed before calling the callback.
 local function spawn(cmd: string, options: uv.SpawnOpts, callback: function(integer, string))
   local handle = nil as uv.Process
   local timer = nil as uv.Timer
+  trace(cmd, options)
   handle = uv.spawn(cmd, options, function(exit_code: integer, signal: string)
     handle:close()
     if timer then

@@ -78,7 +78,7 @@ local function round(x: number, increment: integer): number
   return (x > 0 and math.floor(x + 0.5) or math.ceil(x - 0.5)) * increment
 end
 
-local function make_string(...): string
+local function stringify(...): {string}
   local t: {string} = {}
   for i = 1, select('#', ...) do
     local x = select(i, ...)
@@ -91,9 +91,8 @@ local function make_string(...): string
 
     t[#t + 1] = x
   end
-  return table.concat(t, ' ')
+  return t
 end
-
 
 local config = vim.deepcopy(default_config)
 
@@ -173,27 +172,36 @@ local function log_at_level(level: integer, level_config: LevelConfig, message_m
   end
 end
 
+local record Log
+  trace     : function(...: any)
+  debug     : function(...: any)
+  info      : function(...: any)
+  warn      : function(...: any)
+  error     : function(...: any)
+  fatal     : function(...: any)
+
+  fmt_trace : function(fmt: string, ...: any)
+  fmt_debug : function(fmt: string, ...: any)
+  fmt_info  : function(fmt: string, ...: any)
+  fmt_warn  : function(fmt: string, ...: any)
+  fmt_error : function(fmt: string, ...: any)
+  fmt_fatal : function(fmt: string, ...: any)
+end
+
 local log: {string:function} = {}
 
 for i, x in ipairs(MODES) do
   log[x.name] = function(...)
-    log_at_level(i, x, make_string, ...)
+    log_at_level(i, x, function(...): string
+      return table.concat(stringify(...), ' ')
+    end, ...)
   end
 
-  log[('fmt_%s'):format(x.name)] = function(fmt: string, ...)
-    local args = {...}
-    log_at_level(i, x, function(): string
-      local inspected = {}
-      for _, v in ipairs(args) do
-        if type(v) == 'string' then
-          inspected[#inspected+1] = v
-        else
-          inspected[#inspected+1] = vim.inspect(v)
-        end
-      end
-      return fmt:format(unpack(inspected))
-    end)
+  log['fmt_'..x.name] = function(fmt: string, ...)
+    log_at_level(i, x, function(...): string
+      return fmt:format(unpack(stringify(...)))
+    end, ...)
   end
 end
 
-return log
+return log as Log

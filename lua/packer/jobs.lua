@@ -31,12 +31,22 @@ local M = {JobOutput = {E = {}, }, JobResult = {}, Opts = {}, }
 
 
 
+local function trace(cmd, options)
+   log.fmt_trace(
+   "Running job: cmd = %s, args = %s, cwd = %s",
+   cmd,
+   vim.inspect(options.args),
+   options.cwd)
+
+end
+
 
 
 
 local function spawn(cmd, options, callback)
    local handle = nil
    local timer = nil
+   trace(cmd, options)
    handle = uv.spawn(cmd, options, function(exit_code, signal)
       handle:close()
       if timer then
