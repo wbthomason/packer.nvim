@@ -380,8 +380,18 @@ git.setup = function(plugin)
         options = { env = git.job_env },
       }
 
+      -- If a tag is specified, name its refspec on the update
+      -- or fetch command line with a leading plus-sign ('+') to ensure that
+      -- upstream commits are pull/fetch-ed even if upstream force-pushed.
+      -- Not needed for branches, because in that case pulling force-pushed
+      -- commits is the default.
+      local explicit_refspec = ''
+      if plugin.tag then
+        explicit_refspec = fmt(' origin +refs/tags/%s', plugin.tag)
+      end
+
       if needs_checkout then
-        r:and_then(await, jobs.run(config.exec_cmd .. config.subcommands.fetch, update_opts))
+        r:and_then(await, jobs.run(fetch_cmd .. explicit_refspec, update_opts))
         r:and_then(await, handle_checkouts(plugin, install_to, disp, opts))
         local function merge_output(res)
           if res.output ~= nil then
@@ -406,13 +416,13 @@ git.setup = function(plugin)
 
       if opts.preview_updates then
         disp:task_update(plugin_name, 'fetching updates...')
-        r:and_then(await, jobs.run(fetch_cmd, update_opts))
+        r:and_then(await, jobs.run(fetch_cmd .. explicit_refspec, update_opts))
       elseif opts.pull_head then
         disp:task_update(plugin_name, 'pulling updates from head...')
         r:and_then(await, jobs.run(update_head_cmd, update_opts))
       else
         disp:task_update(plugin_name, 'pulling updates...')
-        r:and_then(await, jobs.run(update_cmd, update_opts)):and_then(await, jobs.run(submodule_cmd, update_opts))
+        r:and_then(await, jobs.run(update_cmd .. explicit_refspec, update_opts)):and_then(await, jobs.run(submodule_cmd, update_opts))
       end
       r:map_err(function(err)
         plugin.output = { err = vim.list_extend(update_info.err, update_info.output), data = {} }
