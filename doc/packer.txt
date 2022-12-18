@@ -49,12 +49,12 @@ FEATURES                                         *packer-intro-features*
 ==============================================================================
 QUICKSTART                                       *packer-intro-quickstart*
 
-To get started, first clone this repository to somewhere on your `packpath`, e.g.: >
+To get started, first clone this repository to somewhere on your `packpath`, e.g.: >sh
   git clone https://github.com/wbthomason/packer.nvim\
    ~/.local/share/nvim/site/pack/packer/opt/packer.nvim
 
 
-Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lua/plugins.lua`): >
+Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lua/plugins.lua`): >lua
 
   -- This file can be loaded by calling `lua require('plugins')` from your init.vim
 
@@ -152,16 +152,16 @@ The easiest way to use `packer` is via the |packer.startup()| function. In
 short, `startup` is a convenience function for simple setup, and is invoked as
 `packer.startup(spec)`, where:
 
-- `spec` can be a function: >
+- `spec` can be a function: >lua
   packer.startup(function() use 'tjdevries/colorbuddy.vim' end)
 - `spec` can be a table with a function as its first element and config
-  overrides as another element: >
+  overrides as another element: >lua
   packer.startup({
     function() use 'tjdevries/colorbuddy.vim' end, config = { ... }
     })
 - `spec` can be a table with a table of plugin specifications as its first
   element, config overrides as another element, and optional rock
-  specifications as another element: >
+  specifications as another element: >lua
   packer.startup({{'tjdevries/colorbuddy.vim'}, config = { ... }, rocks = { ... }})
 
 See |packer-configuration| for the allowed configuration keys.
@@ -185,7 +185,7 @@ a table of configuration values like that which can be passed to `startup`.
 
 If you use custom initialization, you'll probably want to define commands to
 load `packer` and perform common package management operations. The following
-commands work well for this purpose: >
+commands work well for this purpose: >vim
 
   command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete  PackerInstall lua require('packer').install(<f-args>)
   command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)
@@ -197,7 +197,7 @@ commands work well for this purpose: >
 CONFIGURATION                                  *packer-configuration*
 `packer` provides the following configuration variables, presented in the
 structure of the `config` table expected by `startup` or `init`, with their
-default values: >
+default values: >lua
   {
     ensure_dependencies   = true, -- Should packer install plugin dependencies?
     package_root   = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
@@ -288,7 +288,7 @@ well as if that plugin is loaded. To do this you can check for the plugin's
 name in the `packer_plugins` global table. Plugins in this table are saved
 using only the last section of their names e.g. `tpope/vim-fugitive` if
 installed will be under the key `vim-fugitive`.
->
+>lua
   if packer_plugins["vim-fugitive"] and packer_plugins["vim-fugitive"].loaded then
   print("Vim fugitive is loaded")
   -- other custom logic
@@ -379,7 +379,7 @@ alias is its name.
 
 The set of plugins specified in a plugin's `after` key must *all* be loaded
 before the plugin using `after` will be loaded. For example, in the
-specification >
+specification >lua
   use {'FooBar/Baz', ft = 'bax'}
   use {'Something/Else', after = 'Baz'}
 
@@ -414,7 +414,7 @@ the lazy-loader file!
 
 USING A FLOATING WINDOW                        *packer-floating-window*
 You can configure Packer to use a floating window for command outputs by
-passing a utility function to `packer`'s config: >
+passing a utility function to `packer`'s config: >lua
 
   packer.startup({function()
     -- Your plugins here
@@ -427,7 +427,7 @@ passing a utility function to `packer`'s config: >
 <
 By default, this floating window will show doubled borders. If you want to
 customize the window appearance, you can pass a configuration to `float`,
-which is the same configuration that would be passed to |nvim_open_win|: >
+which is the same configuration that would be passed to |nvim_open_win|: >lua
 
   packer.startup({function()
     -- Your plugins here
@@ -446,7 +446,7 @@ profiling functionality.
 In order to use this functionality you must either enable profiling in your config, or pass in an argument
 when running packer compile.
 
-Setup via config >
+Setup via config >lua
   config = {
     profile = {
       enable = true,
@@ -456,7 +456,7 @@ Setup via config >
 <
 
 Using the packer compile command
->
+>vim
   :PackerCompile profile=true
   " or
   :PackerCompile profile=false
@@ -575,7 +575,7 @@ use()		                                       *packer.use()*
 `use` allows you to add one or more plugins to the managed set. It can be
 invoked as follows:
 - With a single plugin location string, e.g. `use <STRING>`
-- With a single plugin specification table, e.g. >
+- With a single plugin specification table, e.g. >lua
   use {
     'myusername/example',        -- The plugin location string
     -- The following keys are all optional
