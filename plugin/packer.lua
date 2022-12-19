@@ -1,24 +1,15 @@
--- Completion user plugins
--- Intended to provide completion for PackerUpdate/Sync/Install command
-local function plugin_complete(lead, _)
-  local plugins = require 'packer.plugin'.plugins
-  local completion_list = vim.tbl_filter(function(name)
-    return vim.startswith(name, lead)
-  end, vim.tbl_keys(plugins))
-  table.sort(completion_list)
-  return completion_list
-end
 
-for k, v in pairs {
-  install = { 'PackerInstall', plugin_complete},
-  update  = { 'PackerUpdate' , plugin_complete},
-  sync    = { 'PackerSync'                    },
-  clean   = { 'PackerClean'                   },
-  status  = { 'PackerStatus'                  },
-} do
-  vim.api.nvim_create_user_command(v[1], function(args)
-    return require('packer.actions')[k](unpack(args.fargs))
-  end, { nargs = '*', complete = v[2] })
-end
+vim.api.nvim_create_user_command(
+  'Packer',
+  function(args)
+    return require('packer.cli').run(args)
+  end, {
+    nargs = '*',
+    complete = function(arglead, line)
+      return require('packer.cli').complete(arglead, line)
+    end
+  }
+)
 
+-- Run 'config' keys in user spec.
 require'packer.plugin_config'.run()
