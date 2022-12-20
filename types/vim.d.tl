@@ -239,6 +239,10 @@ local record M
   end
 
   is_thread: function(): boolean
+
+  record fs
+    dirname: function(string): string
+  end
 end
 
 return M

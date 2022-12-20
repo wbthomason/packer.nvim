@@ -50,6 +50,11 @@ local join_paths = util.join_paths
 
 
 
+
+
+
+
+
 local default_config = {
    package_root = join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
    max_jobs = nil,
@@ -83,7 +88,10 @@ local default_config = {
          retry = 'R',
       },
    },
-   log = { level = 'warn' },
+   log = { level = 'info' },
+   lockfile = {
+      path = util.join_paths(vim.fn.stdpath('config'), 'packer', 'lockfile.lua'),
+   },
    autoremove = false,
 }
 

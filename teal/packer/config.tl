@@ -33,6 +33,10 @@ local record Config
     level: Level
   end
 
+  record Lockfile
+    path: string
+  end
+
   package_root    : string
   pack_dir        : string
   max_jobs        : integer
@@ -44,6 +48,7 @@ local record Config
   display         : Display
   git             : Git
   log             : Log
+  lockfile        : Lockfile
 
   Config: Config
 
@@ -83,7 +88,10 @@ local default_config: Config = {
       retry = 'R',
     },
   },
-  log = { level = 'warn' },
+  log = { level = 'info' },
+  lockfile = {
+    path = util.join_paths(vim.fn.stdpath 'config', 'packer', 'lockfile.lua')
+  },
   autoremove = false,
 }
 

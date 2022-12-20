@@ -17,6 +17,7 @@ local M = {}
 
 
 
+
 local symlink_fn
 if util.is_windows then
    symlink_fn = function(path, new_path, flags, callback)
@@ -82,6 +83,10 @@ M.updater = a.sync(function(plugin, disp)
       end
    end
 end, 1)
+
+M.revert_to = function(_, _)
+   log.warn("Can't revert a local plugin!")
+end
 
 M.revert_last = function(_)
    log.warn("Can't revert a local plugin!")

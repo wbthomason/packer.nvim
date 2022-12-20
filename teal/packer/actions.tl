@@ -20,6 +20,8 @@ local record M
   update  : function(string|table, ...: string)
   sync    : function(string|table, ...: string)
   status  : function()
+  restore : function()
+  lock    : function()
 end
 
 local function open_display(): Display
@@ -44,13 +46,17 @@ local function run_tasks(tasks: {a.Thunk}, disp: Display, kind: string): {any}
   end
 
   local function check(): boolean
-    return disp:check()
+    if disp then
+      return disp:check()
+    end
   end
 
   local limit = config.max_jobs and config.max_jobs or #tasks
 
-  log.debug 'Running tasks'
-  disp:update_headline_message(string.format('%s %d / %d plugins', kind, #tasks, #tasks))
+  log.fmt_debug('Running tasks: %s', kind)
+  if disp then
+    disp:update_headline_message(string.format('%s %d / %d plugins', kind, #tasks, #tasks))
+  end
   return a.join(limit, check, tasks)
 end
 
@@ -88,7 +94,7 @@ local function update_helptags(results: {string:Display.Result})
   for _, dir in ipairs(paths) do
     local doc_dir = util.join_paths(dir, 'doc')
     if helptags_stale(doc_dir) then
-      log.fmt_info('Updating helptags for %s', doc_dir)
+      log.fmt_debug('Updating helptags for %s', doc_dir)
       vim.cmd('silent! helptags ' .. fn.fnameescape(doc_dir))
     end
   end
@@ -477,6 +483,14 @@ end)
 -- Finds plugins present in the `packer` package but not in the managed set
 M.clean = a.void(function()
   do_clean(packer_plugins)
+end)
+
+M.lock = a.sync(function()
+  require'packer.lockfile'.lock()
+end)
+
+M.restore = a.sync(function()
+  require'packer.lockfile'.restore()
 end)
 
 return M
