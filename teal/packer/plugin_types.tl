@@ -5,6 +5,7 @@ local record PluginHandler
   installer   : function(Plugin, Display): {string}
   updater     : function(Plugin, Display, opts: table): {string}
   revert_last : function(Plugin): {string}
+  revert_to   : function(Plugin, commit: string): {string}
   diff        : function(Plugin, commit: string, callback: function): {string}
   get_rev     : function(Plugin): string, string
 end

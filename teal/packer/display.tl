@@ -584,11 +584,13 @@ local decrement_headline_count = vim.schedule_wrap(function(disp: Display)
   end
   local headline = api.nvim_buf_get_lines(disp.buf, 0, 1, false)[1]
   local count_start, count_end = headline:find('%d+')
-  local count = tonumber(headline:sub(count_start, count_end))
-  local updated_headline = headline:sub(1, count_start - 1)
-  .. tostring(count - 1)
-  .. headline:sub(count_end + 1)
-  set_lines(disp, 0, 1, { updated_headline })
+  if count_start then
+    local count = tonumber(headline:sub(count_start, count_end))
+    local updated_headline = headline:sub(1, count_start - 1)
+      .. tostring(count - 1)
+      .. headline:sub(count_end + 1)
+    set_lines(disp, 0, 1, { updated_headline })
+  end
 end)
 
 --- Update a task as having successfully completed
@@ -616,7 +618,7 @@ end
 
 --- Update the status message of a task in progress
 display.task_update = vim.schedule_wrap(function(self: Display, plugin: string, message: string)
-  log.fmt_info('%s: %s', plugin, message)
+  log.fmt_debug('%s: %s', plugin, message)
   if not valid_display(self) then
     return
   end
