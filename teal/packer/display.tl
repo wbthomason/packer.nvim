@@ -846,7 +846,7 @@ display.final_results = vim.schedule_wrap(function(self: Display, results: Displ
         actual_update = false
         table.insert(display.failed_update_list, plugin_name)
         table.insert(item_order, plugin_name)
-        table.insert(message, fmt(' %s Failed to update %s', config.display.error_sym, plugin_name))
+        table.insert(message, fmt(' %s Failed to update %s: %s', config.display.error_sym, plugin_name, vim.inspect(result.err)))
       end
 
       if actual_update or failed_update then
