@@ -1023,10 +1023,20 @@ function display.open(cbs: Display.Callbacks): Display
   end
 
   if not (display.win and api.nvim_win_is_valid(display.win)) then
-    local opener = config.display.open_cmd
-    vim.cmd(opener)
-    display.win = api.nvim_get_current_win()
-    display.buf = api.nvim_get_current_buf()
+    local vpad = 6
+    local hpad = 10
+    local width = math.min(vim.o.columns - hpad * 2, 200)
+    local height = math.min(vim.o.lines - vpad * 2, 70)
+    display.buf = api.nvim_create_buf(false, true)
+    display.win = api.nvim_open_win(display.buf, true, {
+      relative = "editor",
+      style = "minimal",
+      width = width,
+      height = height,
+      noautocmd = true,
+      row = (vim.o.lines - height) / 2,
+      col = (vim.o.columns - width ) / 2
+    })
     display.ns = api.nvim_create_namespace 'packer_display'
     setup_display_buf(display.buf)
   end

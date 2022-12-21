@@ -4,7 +4,6 @@ local join_paths = util.join_paths
 
 local record Config
   record Display
-    open_cmd        : string
     preview_updates : boolean
     non_interactive : boolean
     prompt_border   : string
@@ -68,7 +67,6 @@ local default_config: Config = {
   },
   display = {
     non_interactive = false,
-    open_cmd = '65vnew',
     working_sym = '⟳',
     error_sym = '✗',
     done_sym = '✓',
