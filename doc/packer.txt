@@ -96,21 +96,27 @@ Then you can write your plugin specification in Lua, e.g. (in `~/.config/nvim/lu
 
 `packer` provides the following commands: *packer-default-commands* *packer-commands*
 
-`PackerClean`                                   *packer-commands-clean*
+`Packer clean`                                          *packer-commands-clean*
 Remove any disabled or unused plugins.
 
-`PackerInstall`                                 *packer-commands-install*
+`Packer install`                                      *packer-commands-install*
 Clean, then install missing plugins.
 
-`PackerUpdate`                                  *packer-commands-update*
+`Packer update`                                        *packer-commands-update*
 Update installed plugins.
 Supports the `--preview` flag as an optional first argument to preview
 updates.
 
-`PackerSync`                                    *packer-commands-sync*
+`Packer sync`                                            *packer-commands-sync*
 Clean, then update and install plugins.
 Supports the `--preview` flag as an optional first argument to preview
 updates.
+
+`Packer lock`                                            *packer-commands-sync*
+TODO
+
+`Packer restore`                                      *packer-commands-restore*
+TODO
 
 ==============================================================================
 USAGE                                          *packer-usage*
@@ -142,7 +148,7 @@ See |packer-configuration| for the allowed configuration keys.
 CONFIGURATION                                  *packer-configuration*
 `packer` provides the following configuration variables, presented in the
 structure of the `config` table expected by `startup` or `init`, with their
-default values: >
+default values: >lua
   {
     package_root   = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
     plugin_package = 'packer', -- The default package for plugins
@@ -201,7 +207,7 @@ well as if that plugin is loaded. To do this you can check for the plugin's
 name in the `packer_plugins` global table. Plugins in this table are saved
 using only the last section of their names e.g. `tpope/vim-fugitive` if
 installed will be under the key `vim-fugitive`.
->
+>lua
   if packer_plugins["vim-fugitive"] and packer_plugins["vim-fugitive"].loaded then
   print("Vim fugitive is loaded")
   -- other custom logic
@@ -271,7 +277,7 @@ setup({config})                                                *packer.setup()*
 add({spec})                                                      *packer.add()*
     `add` allows you to add one or more plugins to the managed set. It can be
     invoked as follows:
-    - With a single plugin specification table, e.g. >
+    - With a single plugin specification table, e.g. >lua
       {
         'myusername/example',        -- The plugin location string
         -- The following keys are all optional
@@ -290,6 +296,7 @@ add({spec})                                                      *packer.add()*
         event = string or list,      -- Specifies autocommand events which load this plugin.
         fn = string or list          -- Specifies functions which load this plugin.
       }
+>
     - With a list of plugins specified in either of the above two forms
 
     For the *cmd* option, the command may be a full command, or an autocommand pattern. If the command contains any

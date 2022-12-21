@@ -4,6 +4,7 @@ Packer v2
 
 Differences:
 - heavily refactored
+- lockfile support
 - no compilation
 - re-written in Teal
 
@@ -39,7 +40,7 @@ To get started, first clone this repository to somewhere on your `packpath`, e.g
 
 > Unix, Linux Installation
 
-```shell
+```bash
 git clone --depth 1 https://github.com/wbthomason/packer.nvim\
  ~/.local/share/nvim/site/pack/packer/start/packer.nvim
 ```
@@ -48,7 +49,7 @@ If you use Arch Linux, there is also [an AUR package](https://aur.archlinux.org/
 
 > Windows Powershell Installation
 
-```shell
+```bash
 git clone https://github.com/wbthomason/packer.nvim "$env:LOCALAPPDATA\nvim-data\site\pack\packer\start\packer.nvim"
 ```
 
@@ -115,21 +116,27 @@ require('packer').add{
 
 ```vim
 " Remove any disabled or unused plugins
-:PackerClean
+:Packer clean
 
 " Install missing plugins
-:PackerInstall
+:Packer install
 
 " Update installed plugins
 " supports the `--preview` flag as an optional first argument to preview updates
-:PackerUpdate
+:Packer update
 
 " Clean, fix, install then update
 " supports the `--preview` flag as an optional first argument to preview updates
-:PackerSync
+:Packer sync
 
 " View status of plugins
-:PackerStatus
+:Packer status
+
+" Create a lockfile of plugins with their current commits
+:Packer lock
+
+" Restore plugins using saved lockfile
+:Packer restore
 ```
 
 ## Bootstrapping
@@ -212,6 +219,9 @@ require('packer').setup{
   },
   log = { level = 'warn' }, -- The default print log level. One of: "trace", "debug", "info", "warn", "error", "fatal".
   autoremove = false, -- Remove disabled or unused plugins without prompting the user
+  lockfile = {
+    path = util.join_paths(vim.fn.stdpath('config', 'packer', 'lockfile.lua'))
+  }
 }
 ```
 
