@@ -3,18 +3,7 @@ local uv = vim.loop
 local a = require('packer.async')
 local log = require('packer.log')
 
-local M = {JobOutput = {E = {}, }, JobResult = {}, Opts = {}, }
-
-
-
-
-
-
-
-
-
-
-
+local M = {JobResult = {}, Opts = {}, }
 
 
 
@@ -94,65 +83,12 @@ end
 
 
 
-
-
-
-local function setup_pipe(kind, callbacks, output)
-   local handle, uv_err = uv.new_pipe(false)
-   if uv_err then
-      log.fmt_error('Failed to open %s pipe: %s', kind, uv_err)
-      return uv_err
-   end
-
-   callbacks[kind] = function(err, data)
-      if err then
-         table.insert(output.err[kind], vim.trim(err))
-      end
-      if data ~= nil then
-         local trimmed = vim.trim(data)
-         table.insert(output.data[kind], trimmed)
-      end
-   end
-
-   return handle
-end
-
-local function job_ok(self)
-   return self.exit_code == 0
-end
-
-
-
 M.run = a.wrap(function(task, opts, callback)
-   local job_result = {
-      exit_code = -1,
-      signal = -1,
-      ok = job_ok,
-   }
+   local stdout_data = {}
+   local stderr_data = {}
 
-   local output = {
-      err = { stdout = {}, stderr = {} },
-      data = { stdout = {}, stderr = {} },
-   }
-   local callbacks = {}
-
-   local stdout = setup_pipe('stdout', callbacks, output)
-
-   if type(stdout) == "string" then
-      callback(job_result)
-      return
-   end
-
-   stdout = stdout
-
-   local stderr = setup_pipe('stderr', callbacks, output)
-
-   if type(stderr) == "string" then
-      callback(job_result)
-      return
-   end
-
-   stderr = stderr
+   local stdout = uv.new_pipe(false)
+   local stderr = uv.new_pipe(false)
 
    if type(task) == "string" then
       local shell = os.getenv('SHELL') or vim.o.shell
@@ -170,17 +106,23 @@ M.run = a.wrap(function(task, opts, callback)
       env = opts.env,
       hide = true,
    }, function(exit_code, signal)
-      job_result.exit_code = exit_code
-      job_result.signal = signal
-      job_result.output = output
-      callback(job_result)
+      callback({
+         exit_code = exit_code,
+         signal = signal,
+         stdout = stdout_data,
+         stderr = stderr_data,
+      })
    end)
 
    for kind, pipe in pairs({ stdout = stdout, stderr = stderr }) do
-      if pipe and callbacks[kind] then
+      if pipe then
          pipe:read_start(function(err, data)
-            if data then
-               callbacks[kind](err, data)
+            if err then
+               log.error(err)
+            end
+            if data ~= nil then
+               local output = kind == 'stdout' and stdout_data or stderr_data
+               table.insert(output, vim.trim(data))
             else
                pipe:read_stop()
                pipe:close()

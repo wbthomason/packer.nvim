@@ -127,8 +127,8 @@ local post_update_hook = a.sync(function(plugin, disp)
          local jobs = require('packer.jobs')
          local jr = jobs.run(run_task, { cwd = plugin.install_path })
 
-         if not jr:ok() then
-            return { string.format('Error running post update hook: %s', table.concat(jr.output.data.stderr, '\n')) }
+         if jr.exit_code ~= 0 then
+            return { string.format('Error running post update hook: %s', table.concat(jr.stderr, '\n')) }
          end
       end
    end

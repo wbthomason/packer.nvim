@@ -83,11 +83,10 @@ local function git_run(args, opts)
    opts = opts or {}
    opts.env = opts.env or job_env
    local jr = jobs.run({ config.git.cmd, unpack(args) }, opts)
-   local data = jr.output.data
    return
-jr:ok(),
-   #data.stdout > 0 and data.stdout or nil,
-   #data.stderr > 0 and data.stderr or nil
+jr.exit_code == 0,
+   #jr.stdout > 0 and jr.stdout or nil,
+   #jr.stderr > 0 and jr.stderr or nil
 end
 
 local git_version
