@@ -59,7 +59,11 @@ local record M
   nvim_buf_clear_namespace   : function(integer, number, number, number)
   nvim_buf_del_extmark       : function(integer, number, number): boolean
   nvim_buf_delete            : function(integer, {string:boolean})
-  nvim_buf_get_extmark_by_id : function(integer, integer, integer, table): {integer}
+  record ExtmarkInfo
+    end_row: integer
+    end_col: integer
+  end
+  nvim_buf_get_extmark_by_id : function(integer, integer, integer, table): {integer, integer, ExtmarkInfo}
 
   record GetExtmarOpts
     limit: integer

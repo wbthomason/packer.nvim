@@ -9,13 +9,6 @@ local Plugin = require('packer.plugin').Plugin
 
 local Config = config.Config
 
-local function set_extmark(buf, ns, id, line, col)
-   if not api.nvim_buf_is_valid(buf) then
-      return
-   end
-   return api.nvim_buf_set_extmark(buf, ns, line, col, { id = id })
-end
-
 local function strip_newlines(raw_lines)
    local lines = {}
    for _, line in ipairs(raw_lines) do
@@ -100,12 +93,7 @@ local function is_plugin_line(line)
    return false
 end
 
-local M = {Display = {Item = {}, Result = {}, Results = {}, MarkIDs = {}, Callbacks = {}, }, }
-
-
-
-
-
+local M = {Display = {Item = {}, Result = {}, Results = {}, Callbacks = {}, }, }
 
 
 
@@ -275,17 +263,32 @@ local function make_update_msg(symbol, status, plugin_name, plugin)
 end
 
 
-local function set_lines(disp, start_idx, end_idx, lines)
+local function set_lines(disp, srow, erow, lines)
    if not valid_display(disp) then
       return
    end
    vim.bo[disp.buf].modifiable = true
-   local ok, err = pcall(api.nvim_buf_set_lines, disp.buf, start_idx, end_idx, true, lines), string
-   if not ok then
-      print(vim.inspect(err))
-      error(string.format('Could not set lines %d-%d: %s\n%s', start_idx, end_idx, vim.inspect(err), debug.traceback()))
-   end
+   api.nvim_buf_set_lines(disp.buf, srow, erow, true, lines)
    vim.bo[disp.buf].modifiable = false
+end
+
+local function update_task_lines(self, plugin, message)
+   self.marks[plugin] = self.marks[plugin] or
+   api.nvim_buf_set_extmark(self.buf, self.ns, HEADER_LINES, 0, {})
+
+   local mark = self.marks[plugin]
+
+   local info = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, mark, { details = true })
+
+   local srow = info[1]
+   local erow = info[3].end_row or srow
+
+   set_lines(self, srow, erow, message)
+
+   api.nvim_buf_set_extmark(self.buf, self.ns, srow, 0, {
+      end_row = srow + #message,
+      id = mark,
+   })
 end
 
 local function toggle_update(disp)
@@ -301,8 +304,6 @@ local function toggle_update(disp)
 
    item.ignore_update = not item.ignore_update
 
-   local mark_ids = disp.marks[plugin_name]
-   local start_idx = api.nvim_buf_get_extmark_by_id(disp.buf, disp.ns, mark_ids.start, {})[1]
    local symbol
    local status_msg
    if item.ignore_update then
@@ -312,10 +313,8 @@ local function toggle_update(disp)
       status_msg = 'Can update'
       symbol = config.display.done_sym
    end
-   set_lines(disp, start_idx, start_idx + 1,
+   update_task_lines(disp, plugin_name,
    { make_update_msg(symbol, status_msg, plugin_name, item.plugin) })
-
-   disp.marks[plugin_name].start = set_extmark(disp.buf, disp.ns, nil, start_idx, 0)
 end
 
 local function continue(disp)
@@ -564,17 +563,11 @@ display.task_start = vim.schedule_wrap(function(self, plugin, message)
    if not valid_display(self) then
       return
    end
-   if self.marks[plugin] then
-      self:task_update(plugin, message)
-      return
-   end
    display.running = true
-   set_lines(self, HEADER_LINES, HEADER_LINES, {
+
+   update_task_lines(self, plugin, {
       fmt(' %s %s: %s', config.display.working_sym, plugin, message),
    })
-
-   self.marks[plugin] = self.marks[plugin] or {}
-   self.marks[plugin].start = set_extmark(self.buf, self.ns, nil, HEADER_LINES, 0)
 end)
 
 
@@ -586,10 +579,13 @@ local decrement_headline_count = vim.schedule_wrap(function(disp)
    local count_start, count_end = headline:find('%d+')
    if count_start then
       local count = tonumber(headline:sub(count_start, count_end))
-      local updated_headline = headline:sub(1, count_start - 1) ..
-      tostring(count - 1) ..
-      headline:sub(count_end + 1)
-      set_lines(disp, 0, 1, { updated_headline })
+      local updated_headline = string.format(
+      '%s%s%s',
+      headline:sub(1, count_start - 1),
+      count - 1,
+      headline:sub(count_end + 1))
+
+      set_lines(disp, 0, HEADER_LINES - 1, { updated_headline })
    end
 end)
 
@@ -598,11 +594,9 @@ local task_done = vim.schedule_wrap(function(self, plugin, message, success)
    if not valid_display(self) then
       return
    end
-   local line = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin].start, {})
+
    local icon = success and config.display.done_sym or config.display.error_sym
-   set_lines(self, line[1], line[1] + 1, { fmt(' %s %s: %s', icon, plugin, message) })
-   api.nvim_buf_del_extmark(self.buf, self.ns, self.marks[plugin].start)
-   self.marks[plugin] = nil
+   update_task_lines(self, plugin, { fmt(' %s %s: %s', icon, plugin, message) })
    decrement_headline_count(self)
 end)
 
@@ -622,12 +616,19 @@ display.task_update = vim.schedule_wrap(function(self, plugin, message)
    if not valid_display(self) then
       return
    end
-   if not self.marks[plugin] then
-      return
+
+   local lines = {}
+
+   if type(message) == "string" then
+      lines[1] = fmt(' %s %s: %s', config.display.working_sym, plugin, message)
+   else
+      lines[1] = fmt(' %s %s:', config.display.working_sym, plugin)
+      vim.list_extend(lines, vim.tbl_map(function(x)
+         return '       ' .. x
+      end, message))
    end
-   local line = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, self.marks[plugin].start, {})[1]
-   set_lines(self, line, line + 1, { fmt(' %s %s: %s', config.display.working_sym, plugin, message) })
-   set_extmark(self.buf, self.ns, self.marks[plugin].start, line, 0)
+
+   update_task_lines(self, plugin, lines)
 end)
 
 
@@ -740,21 +741,11 @@ local function show_all_info(disp)
       return
    end
 
-   local line = HEADER_LINES + 1
    for _, plugin_name in ipairs(disp.item_order) do
       local item = disp.items[plugin_name]
       if item and #item.lines > 0 then
-         local next_line
-         set_lines(disp, line, line, item.lines)
-         next_line = line + #item.lines + 1
+         update_task_lines(disp, plugin_name, item.lines)
          item.displayed = true
-         disp.marks[plugin_name] = {
-            start = set_extmark(disp.buf, disp.ns, nil, line - 1, 0),
-            end_ = set_extmark(disp.buf, disp.ns, nil, next_line - 1, 0),
-         }
-         line = next_line
-      else
-         line = line + 1
       end
    end
 end
