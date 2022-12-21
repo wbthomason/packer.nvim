@@ -54,7 +54,6 @@ local join_paths = util.join_paths
 
 
 
-
 local default_config = {
    package_root = join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
    max_jobs = nil,
@@ -68,7 +67,6 @@ local default_config = {
    },
    display = {
       non_interactive = false,
-      open_cmd = '65vnew',
       working_sym = '⟳',
       error_sym = '✗',
       done_sym = '✓',
