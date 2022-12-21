@@ -1,6 +1,11 @@
 
 local M = {}
 
+local function command_complete()
+   local actions = require('packer.actions')
+   return vim.tbl_keys(actions)
+end
+
 
 
 local function plugin_complete(lead, _)
@@ -16,20 +21,11 @@ function M.complete(arglead, line)
    local words = vim.split(line, '%s+')
    local n = #words
 
-   local actions = require('packer.actions')
    local matches = {}
    if n == 2 then
-      matches = vim.tbl_keys(actions)
-
-
-
-
-
-
-
+      matches = command_complete()
    elseif n > 2 then
       matches = plugin_complete(arglead)
-
    end
    return matches
 end
