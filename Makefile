@@ -1,6 +1,7 @@
 
 .PHONY: build
 build:
+	rm -rf lua
 	cyan check teal/**/*.tl
 	cyan build
 

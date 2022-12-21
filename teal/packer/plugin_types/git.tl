@@ -239,23 +239,40 @@ M.installer = async(function(plugin: Plugin, disp: Display): {string}
   return plugin.err
 end, 2)
 
----@async
-local function get_current_branch(plugin: Plugin): string, string
-  -- local branch_cmd = {config.git.cmd, 'rev-parse', '--abbrev-ref', 'HEAD'}
-  local jr = git_run({ 'branch', '--show-current' }, {
-    cwd = plugin.install_path
-  })
-  local current_branch, er: string, string
-  if jr:ok() then
-    current_branch = jr.output.data.stdout[1]
-  else
-    er = table.concat(jr.output.data.stderr, '\n')
+local function file_lines(file: string): {string}
+  local text: {string} = {}
+  for line in io.lines(file) do
+    text[#text+1] = line
   end
-  return current_branch, er
+  return text
+end
+
+local function get_ref(plugin: Plugin, ...: string): string
+  return file_lines(util.join_paths(plugin.install_path, '.git', table.concat({...}, '/')))[1]
 end
 
 ---@async
-local function get_ref(plugin: Plugin, ref: string): string, string
+local function get_current_branch(plugin: Plugin): string, string
+  -- first try local HEAD
+  local remote_head = get_ref(plugin, 'refs/remotes/origin/HEAD')
+  if remote_head then
+    local branch = remote_head:match("ref: refs/remotes/origin/(.*)")
+    if branch then
+      return branch
+    end
+  end
+
+  -- then try local HEAD
+  local local_head = get_ref(plugin, 'HEAD')
+  if local_head then
+    return local_head:match("ref: refs/heads/(.*)")
+  end
+
+  return nil, 'failed to find current branch'
+end
+
+---@async
+local function get_rev(plugin: Plugin, ref: string): string, string
   local jr = git_run({ 'rev-parse', '--short', ref }, {
     cwd = plugin.install_path
   })
@@ -273,14 +290,6 @@ local function get_ref(plugin: Plugin, ref: string): string, string
   return ref1, er
 end
 
-local function file_lines(file: string): {string}
-  local text: {string} = {}
-  for line in io.lines(file) do
-    text[#text+1] = line
-  end
-  return text
-end
-
 local function log_err(plugin: Plugin, msg: string, x: string|{string})
   local x1 = x is string and x or table.concat(x as {string}, '\n')
   log.fmt_debug('%s: $s: %s', plugin.name, msg, x1)
@@ -289,21 +298,12 @@ end
 ---@async
 local function update(plugin: Plugin, disp: Display, opts: table): {string}
   disp:task_update(plugin.full_name, 'checking current commit...')
-  local current_commit, ccerr = get_ref(plugin, 'HEAD')
-  if ccerr then
-    log_err(plugin, 'failed getting current commit', ccerr)
-    return {ccerr}
-  end
+  local current_branch = get_current_branch(plugin)
+  local current_commit = get_ref(plugin, 'refs/heads', current_branch)
 
   plugin.revs[1] = current_commit
 
   disp:task_update(plugin.full_name, 'checking current branch...')
-
-  local current_branch, cberr = get_current_branch(plugin)
-  if cberr then
-    log_err(plugin, 'failed getting current branch', cberr)
-    return {cberr}
-  end
 
   local needs_checkout = (plugin.tag or plugin.commit or plugin.branch) ~= nil
 
@@ -370,15 +370,13 @@ local function update(plugin: Plugin, disp: Display, opts: table): {string}
     end
   end
 
-  -- NOTE that any tag wildcard should already been expanded to a specific commit at this point
-  local ref = plugin.tag ~= nil and fmt('%s^{}', plugin.tag) or 'FETCH_HEAD'
-
   disp:task_update(plugin.full_name, 'checking updated commit...')
 
-  local new_rev, crerr = get_ref(plugin, ref)
-  if crerr then
-    log_err(plugin, 'failed getting new revision', crerr)
-    return {crerr}
+  local new_rev: string
+  if plugin.tag then
+    new_rev = get_ref(plugin, 'refs/tags', plugin.tag)
+  else
+    new_rev = get_ref(plugin, "refs/heads", current_branch)
   end
 
   plugin.revs[2] = new_rev
@@ -480,7 +478,7 @@ end, 2)
 
 --- Returns HEAD's short hash
 M.get_rev = async(function(plugin: Plugin): string, string
-  return get_ref(plugin, 'HEAD')
+  return get_rev(plugin, 'HEAD')
 end, 1)
 
 return M
