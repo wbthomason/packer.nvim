@@ -217,7 +217,7 @@ local function checkout(plugin, disp)
       target = 'tags/' .. tag
    else
       local branch = plugin.branch or get_current_branch(plugin)
-      target = get_ref(plugin, 'remotes', 'origin', branch) or
+      target = get_ref(plugin, 'refs', 'remotes', 'origin', branch) or
       get_ref(plugin, 'refs', 'heads', branch)
    end
 
