@@ -24,6 +24,14 @@ local M = {}
 
 
 
+
+
+
+
+
+
+
+
 local function open_display()
    return display.display.open({
       diff = function(plugin, commit, callback)
@@ -34,8 +42,6 @@ local function open_display()
          local plugin_type = require('packer.plugin_types')[plugin.type]
          plugin_type.revert_last(plugin)
       end,
-      update = M.update,
-      install = M.install,
    })
 end
 
@@ -153,13 +159,8 @@ local install_task = a.sync(function(plugin, disp, installs)
       disp:task_succeeded(plugin.full_name, 'installed')
       log.fmt_debug('Installed %s', plugin.full_name)
    else
-      disp:task_failed(plugin.full_name, 'failed to install')
+      disp:task_failed(plugin.full_name, 'failed to install', err)
       log.fmt_debug('Failed to install %s: %s', plugin.full_name, vim.inspect(err))
-      disp.items[plugin.name] = {
-         displayed = false,
-         lines = err,
-         plugin = plugin,
-      }
    end
 
    installs[plugin.name] = { err = err }
@@ -221,28 +222,42 @@ local update_task = a.sync(function(plugin, disp, updates, opts)
    end
 
    local plugin_type = require('packer.plugin_types')[plugin.type]
+   local actual_update = false
 
    plugin.err = plugin_type.updater(plugin, disp, opts)
-   local msg = 'up to date'
    if not plugin.err and plugin.type == 'git' then
       local revs = plugin.revs
-      local actual_update = revs[1] ~= revs[2]
+      actual_update = revs[1] ~= revs[2]
       if actual_update then
-         msg = fmt('updated: %s...%s', revs[1], revs[2])
          if not opts.preview_updates then
             log.fmt_debug('Updated %s', plugin.full_name)
             plugin.err = post_update_hook(plugin, disp)
          end
-      else
-         msg = 'already up to date'
       end
    end
 
-   if not plugin.err then
-      disp:task_succeeded(plugin.full_name, msg)
-   else
-      disp:task_failed(plugin.full_name, 'failed to update')
+   if plugin.err then
+      disp:task_failed(plugin.full_name, 'failed to update', plugin.err)
       log.fmt_debug('Failed to update %s: %s', plugin.full_name, table.concat(plugin.err, '\n'))
+   elseif actual_update then
+      local info = {}
+      local ncommits = 0
+      if plugin.messages and #plugin.messages > 0 then
+         table.insert(info, 'Commits:')
+         for _, m in ipairs(plugin.messages) do
+            for _, line in ipairs(vim.split(m, '\n')) do
+               table.insert(info, '    ' .. line)
+               ncommits = ncommits + 1
+            end
+         end
+
+         table.insert(info, '')
+      end
+
+      local msg = fmt('updated: %d new commits', ncommits)
+      disp:task_succeeded(plugin.full_name, msg, info)
+   else
+      disp:task_done(plugin.full_name, 'already up to date')
    end
 
    updates[plugin.name] = { err = plugin.err }
@@ -380,7 +395,7 @@ M.install = a.sync(function()
       update_helptags(installs)
    end)
 
-   disp:final_results({ installs = installs }, delta)
+   disp:finish(delta)
 end)
 
 
@@ -413,7 +428,7 @@ M.update = a.void(function(...)
       update_helptags(updates)
    end)
 
-   disp:final_results({ updates = updates }, delta)
+   disp:finish(delta)
 end)
 
 
@@ -467,16 +482,11 @@ M.sync = a.void(function(...)
       update_helptags(vim.tbl_extend('error', results.installs, results.updates))
    end)
 
-   disp:final_results(results, delta)
+   disp:finish(delta)
 end)
 
 M.status = a.sync(function()
-   if packer_plugins == nil then
-      log.warn('packer_plugins table is nil! Cannot run packer.status()!')
-      return
-   end
-
-   open_display():set_status(packer_plugins)
+   require('packer.status').run()
 end)
 
 

@@ -24,6 +24,14 @@ local record M
   lock    : function()
 end
 
+local record Result
+  err: {string}
+
+  -- Used for moves
+  from: string
+  to: string
+end
+
 local function open_display(): Display
   return display.display.open({
     diff = function(plugin: Plugin, commit: string, callback: function): {string}
@@ -34,8 +42,6 @@ local function open_display(): Display
       local plugin_type = require'packer.plugin_types'[plugin.type]
       plugin_type.revert_last(plugin)
     end,
-    update = M.update,
-    install = M.install
   })
 end
 
@@ -83,9 +89,9 @@ local function helptags_stale(dir: string): boolean
   return txt_newest > tag_oldest
 end
 
-local function update_helptags(results: {string:Display.Result})
+local function update_helptags(results: {string:Result})
   local paths = {}
-  for plugin_name, r in pairs(results as {string:Display.Result}) do
+  for plugin_name, r in pairs(results as {string:Result}) do
     if not r.err then
       paths[#paths+1] = packer_plugins[plugin_name].install_path
     end
@@ -134,7 +140,7 @@ local post_update_hook = a.sync(function(plugin: Plugin, disp: Display): {string
   end
 end, 2)
 
-local install_task = a.sync(function(plugin: Plugin, disp: Display, installs: {string:Display.Result}): string, {string}
+local install_task = a.sync(function(plugin: Plugin, disp: Display, installs: {string:Result}): string, {string}
   disp:task_start(plugin.full_name, 'installing...')
 
   local plugin_type = require'packer.plugin_types'[plugin.type]
@@ -153,13 +159,8 @@ local install_task = a.sync(function(plugin: Plugin, disp: Display, installs: {s
     disp:task_succeeded(plugin.full_name, 'installed')
     log.fmt_debug('Installed %s', plugin.full_name)
   else
-    disp:task_failed(plugin.full_name, 'failed to install')
+    disp:task_failed(plugin.full_name, 'failed to install', err)
     log.fmt_debug('Failed to install %s: %s', plugin.full_name, vim.inspect(err))
-    disp.items[plugin.name] = {
-      displayed = false,
-      lines = err,
-      plugin = plugin
-    }
   end
 
   installs[plugin.name] = { err = err }
@@ -170,7 +171,7 @@ local function get_install_tasks(
   plugins: {string:Plugin},
   missing_plugins: {string},
   disp: Display,
-  installs: {string:Display.Result}
+  installs: {string:Result}
 ): {a.Thunk}
   if #missing_plugins == 0 then
     return {}
@@ -184,7 +185,7 @@ local function get_install_tasks(
   return tasks
 end
 
-local function move_plugin(plugin: Plugin, moves: {string:Display.Result}, fs_state: fsstate.FSState)
+local function move_plugin(plugin: Plugin, moves: {string:Result}, fs_state: fsstate.FSState)
   local from: string
   local to: string
   if not plugin.start then
@@ -212,7 +213,7 @@ local function move_plugin(plugin: Plugin, moves: {string:Display.Result}, fs_st
   end
 end
 
-local update_task = a.sync(function(plugin: Plugin, disp: Display, updates: {string:Display.Result}, opts: table): string, {string}
+local update_task = a.sync(function(plugin: Plugin, disp: Display, updates: {string:Result}, opts: table): string, {string}
   disp:task_start(plugin.full_name, 'updating...')
 
   if plugin.lock then
@@ -221,28 +222,42 @@ local update_task = a.sync(function(plugin: Plugin, disp: Display, updates: {str
   end
 
   local plugin_type = require'packer.plugin_types'[plugin.type]
+  local actual_update = false
 
   plugin.err = plugin_type.updater(plugin, disp, opts)
-  local msg = 'up to date'
   if not plugin.err and plugin.type == 'git' then
     local revs = plugin.revs
-    local actual_update = revs[1] ~= revs[2]
+    actual_update = revs[1] ~= revs[2]
     if actual_update then
-      msg = fmt('updated: %s...%s', revs[1], revs[2])
       if not opts.preview_updates then
         log.fmt_debug('Updated %s', plugin.full_name)
         plugin.err = post_update_hook(plugin, disp)
       end
-    else
-      msg = 'already up to date'
     end
   end
 
-  if not plugin.err then
-    disp:task_succeeded(plugin.full_name, msg)
-  else
-    disp:task_failed(plugin.full_name, 'failed to update')
+  if plugin.err then
+    disp:task_failed(plugin.full_name, 'failed to update', plugin.err)
     log.fmt_debug('Failed to update %s: %s', plugin.full_name, table.concat(plugin.err, '\n'))
+  elseif actual_update then
+    local info = {}
+    local ncommits = 0
+    if plugin.messages and #plugin.messages > 0 then
+      table.insert(info, 'Commits:')
+      for _, m in ipairs(plugin.messages) do
+        for _, line in ipairs(vim.split(m, '\n')) do
+          table.insert(info, '    '..line)
+          ncommits = ncommits + 1
+        end
+      end
+
+      table.insert(info, '')
+    end
+    -- msg = fmt('updated: %s...%s', revs[1], revs[2])
+    local msg = fmt('updated: %d new commits', ncommits)
+    disp:task_succeeded(plugin.full_name, msg, info)
+  else
+    disp:task_done(plugin.full_name, 'already up to date')
   end
 
   updates[plugin.name] = { err = plugin.err }
@@ -253,7 +268,7 @@ local function get_update_tasks(
   plugins: {string:Plugin},
   update_plugins: {string},
   disp: Display,
-  updates: {string:Display.Result},
+  updates: {string:Result},
   opts: table
 ): {a.Thunk}
   local tasks = {}
@@ -277,7 +292,7 @@ end
 local function fix_plugin_types(
   plugins: {string:Plugin},
   extra_plugins: {string},
-  moves: {string:Display.Result},
+  moves: {string:Result},
   fs_state: fsstate.FSState
 )
   log.debug 'Fixing plugin types'
@@ -370,7 +385,7 @@ M.install = a.sync(function()
   log.debug 'Gathering install tasks'
 
   local disp = open_display()
-  local installs: {string:Display.Result} = {}
+  local installs: {string:Result} = {}
 
   local delta = util.measure(function()
     local install_tasks = get_install_tasks(packer_plugins, missing_plugins, disp, installs)
@@ -380,7 +395,7 @@ M.install = a.sync(function()
     update_helptags(installs)
   end)
 
-  disp:final_results({installs = installs}, delta)
+  disp:finish(delta)
 end)
 
 --- Update operation:
@@ -413,7 +428,7 @@ M.update = a.void(function(...:string)
     update_helptags(updates)
   end)
 
-  disp:final_results({updates=updates}, delta)
+  disp:finish(delta)
 end)
 
 --- Sync operation:
@@ -429,7 +444,7 @@ M.sync = a.void(function(...:string)
 
   local extra_plugins = util.partition(vim.tbl_values(fs_state.extra), update_plugins)
 
-  local results: Display.Results = {
+  local results = {
     moves = {},
     removals = {},
     installs = {},
@@ -467,16 +482,11 @@ M.sync = a.void(function(...:string)
     update_helptags(vim.tbl_extend('error', results.installs, results.updates))
   end)
 
-  disp:final_results(results, delta)
+  disp:finish(delta)
 end)
 
 M.status = a.sync(function()
-  if packer_plugins == nil then
-    log.warn 'packer_plugins table is nil! Cannot run packer.status()!'
-    return
-  end
-
-  open_display():set_status(packer_plugins)
+  require'packer.status'.run()
 end)
 
 --- Clean operation:

@@ -53,7 +53,6 @@ local join_paths = util.join_paths
 
 
 
-
 local default_config = {
    package_root = join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
    max_jobs = nil,
@@ -74,16 +73,12 @@ local default_config = {
       moved_sym = '→',
       item_sym = '•',
       header_sym = '━',
-      show_all_info = true,
       prompt_border = 'double',
       keybindings = {
          quit = 'q',
-         toggle_update = 'u',
-         continue = 'c',
-         toggle_info = '<CR>',
+         toggle_info = { 'za', '<CR>' },
          diff = 'd',
          prompt_revert = 'r',
-         retry = 'R',
       },
    },
    log = { level = 'info' },
