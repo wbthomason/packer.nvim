@@ -251,8 +251,6 @@ local function get_clone_cmd(plugin: Plugin): {string}
   end
 
   vim.list_extend(clone_cmd, {
-    '--recurse-submodules',
-    '--shallow-submodules',
     '--no-checkout',
     '--single-branch',
     '--progress'
@@ -344,7 +342,6 @@ local function update(plugin: Plugin, disp: Display, opts: table): {string}
   local ok, _, err = git_run({
     'fetch',
     '--update-shallow',
-    '--recurse-submodules',
     '--progress',
   }, {
     cwd = plugin.install_path
