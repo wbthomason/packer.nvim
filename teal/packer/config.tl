@@ -4,7 +4,6 @@ local join_paths = util.join_paths
 
 local record Config
   record Display
-    preview_updates : boolean
     non_interactive : boolean
     prompt_border   : string
     working_sym     : string
@@ -40,7 +39,6 @@ local record Config
   max_jobs        : integer
   start_dir       : string
   opt_dir         : string
-  preview_updates : boolean
   auto_clean      : boolean
   autoremove      : boolean
   display         : Display
@@ -57,7 +55,6 @@ local default_config: Config = {
   package_root = join_paths(vim.fn.stdpath 'data', 'site', 'pack'),
   max_jobs = nil,
   auto_clean = true,
-  preview_updates = false,
   git = {
     cmd = 'git',
     depth = 1,
