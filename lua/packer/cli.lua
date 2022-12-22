@@ -1,3 +1,4 @@
+local log = require('packer.log')
 
 local M = {}
 
@@ -33,6 +34,10 @@ end
 function M.run(params)
    local func = params.fargs[1]
 
+   if not func then
+      log.error('No subcommand provided')
+   end
+
    local actions = require('packer.actions')
 
    local cmd_func = actions[func]
@@ -41,7 +46,7 @@ function M.run(params)
       return
    end
 
-   error(string.format('%s is not a valid function or action', func))
+   log.fmt_error('%s is not a valid function or action', func)
 end
 
 return M
