@@ -21,7 +21,7 @@ local function run_tasks(tasks: {a.Thunk}, disp: Display, kind: string): {any}
     return
   end
 
-  local function check(): boolean
+  local function interrupt_check(): boolean
     if disp then
       return disp:check()
     end
@@ -35,7 +35,7 @@ local function run_tasks(tasks: {a.Thunk}, disp: Display, kind: string): {any}
   if disp then
     disp:update_headline_message(string.format('%s %d / %d plugins', kind, #tasks, #tasks))
   end
-  return a.join(limit, check, tasks)
+  return a.join(limit, interrupt_check, tasks)
 end
 
 local function update(path: string, info: {string:string})
@@ -87,7 +87,7 @@ local restore_plugin = a.sync(function(plugin: P.Plugin, disp: Display, commit: 
   disp:task_start(plugin.full_name, fmt('restoring to %s', commit))
 
   if plugin.type == 'local' then
-    disp:task_succeeded(plugin.full_name, 'local')
+    disp:task_done(plugin.full_name, 'local plugin')
     return
   end
 
@@ -100,7 +100,7 @@ local restore_plugin = a.sync(function(plugin: P.Plugin, disp: Display, commit: 
 
   local rev = plugin_type.get_rev(plugin)
   if commit == rev then
-    disp:task_succeeded(plugin.full_name, fmt('already at commit %s', commit))
+    disp:task_done(plugin.full_name, fmt('already at commit %s', commit))
     return
   end
 
