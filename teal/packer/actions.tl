@@ -229,10 +229,8 @@ local update_task = a.sync(function(plugin: Plugin, disp: Display, updates: {str
     local revs = plugin.revs
     actual_update = revs[1] ~= revs[2]
     if actual_update then
-      if not opts.preview_updates then
-        log.fmt_debug('Updated %s', plugin.full_name)
-        plugin.err = post_update_hook(plugin, disp)
-      end
+      log.fmt_debug('Updated %s', plugin.full_name)
+      plugin.err = post_update_hook(plugin, disp)
     end
   end
 
@@ -317,13 +315,7 @@ local function filter_opts_from_plugins(...: string): table, {string}
     if first is table then
       table.remove(args, 1)
       opts = first
-    elseif first == '--preview' then
-      table.remove(args, 1)
-      opts = { preview_updates = true }
     end
-  end
-  if config.preview_updates then
-    opts.preview_updates = true
   end
   return opts, #args > 0 and args or vim.tbl_keys(packer_plugins)
 end
@@ -402,7 +394,6 @@ end)
 --- Takes an optional list of plugin names as an argument. If no list is given,
 --- operates on all managed plugin then updates installed plugins and updates
 --- helptags. - Options can be specified in the first argument as either a table -
---- or explicit `'--preview'`.
 M.update = a.void(function(...:string)
   local opts, update_plugins = filter_opts_from_plugins(...)
   local fs_state = fsstate.get_fs_state(packer_plugins)
@@ -436,7 +427,6 @@ end)
 --- operates on all managed plugins. Fixes plugin types, installs missing
 --- plugins, then updates installed plugins and updates helptags and rplugins
 --- Options can be specified in the first argument as either a table
---- or explicit `'--preview'`.
 M.sync = a.void(function(...:string)
   local plugins = packer_plugins
   local opts, update_plugins = filter_opts_from_plugins(...)
