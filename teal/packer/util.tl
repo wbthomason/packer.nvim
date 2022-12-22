@@ -53,5 +53,15 @@ function util.measure(f: function()): number
   return (vim.loop.hrtime() - start_time) / 1e9
 end
 
+function util.file_lines(file: string): {string}
+  local text: {string} = {}
+  if not vim.loop.fs_stat(file) then
+    return
+  end
+  for line in io.lines(file) do
+    text[#text+1] = line
+  end
+  return text
+end
 
 return util
