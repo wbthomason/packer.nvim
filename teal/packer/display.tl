@@ -469,7 +469,6 @@ display.task_start = vim.schedule_wrap(function(self: Display, plugin: string, m
   if not valid_display(self) then
     return
   end
-  display.running = true
 
   local item = self.items[plugin]
   item.status = 'running'
@@ -713,7 +712,7 @@ function display.open(cbs: Display.Callbacks): Display
   end
 
   display.callbacks = cbs
-  display.running   = false
+  display.running = true
 
   display.items = setmetatable({}, {
     __index = function(t: {string:Display.Item}, k: string): Display.Item

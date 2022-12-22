@@ -40,7 +40,7 @@ local function execute(func: function, callback: function, ...: any)
 
     if co.status(thread) == 'dead' then
       if callback then
-        callback(unpack(ret, 2))
+        callback(unpack(ret, 3))
       end
       return
     end
