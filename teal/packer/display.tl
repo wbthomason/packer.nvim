@@ -7,78 +7,6 @@ local fmt = string.format
 
 local Plugin = require'packer.plugin'.Plugin
 
-local Config = config.Config
-
-local function strip_newlines(raw_lines: {string}): {string}
-  local lines = {}
-  for _, line in ipairs(raw_lines) do
-    for _, chunk in ipairs(vim.split(line, '\n')) do
-      table.insert(lines, chunk)
-    end
-  end
-
-  return lines
-end
-
-local function unpack_config_value(value: any, formatter: function(any): string): string|{string}
-  if value is string then
-    return { value }
-  elseif value is {string} then
-    local result = {}
-    for _, k in ipairs(value) do
-      local item = formatter and formatter(k) or k
-      table.insert(result, fmt('  - %s', item))
-    end
-    return result
-  end
-  return ''
-end
-
-local function format_keys(value: string|{string}): string
-  local mapping, mode: string, string
-  if value is string then
-    mapping = value
-    mode = ''
-  else
-    mapping = value[2]
-    mode = value[1] ~= '' and 'mode: ' .. value[1] or ''
-  end
-  return fmt('"%s", %s', mapping, mode)
-end
-
-local function format_cmd(value: any): string
-  return fmt('"%s"', value)
-end
-
----format a configuration value of unknown type into a string or list of strings
-local function format_values(key: string, value: any): string|{string}
-  if key == 'url' then
-    return fmt('"%s"', value)
-  end
-
-  if key == 'keys' then
-    return unpack_config_value(value, format_keys)
-  end
-
-  if key == 'commands' then
-    return unpack_config_value(value, format_cmd)
-  end
-
-  if type(value) == 'function' then
-    local info = debug.getinfo(value, 'Sl')
-    return fmt('<Lua: %s:%s>', info.short_src, info.linedefined)
-  end
-
-  local s = vim.inspect(value):gsub('\n', ', ')
-  return s
-end
-
-local plugin_keys_exclude: {string:boolean} = {
-  full_name = true,
-  name = true,
-  destructors = true,
-}
-
 local function is_plugin_line(line: string): boolean
   for _, sym in ipairs {
     config.display.item_sym,
@@ -93,66 +21,55 @@ local function is_plugin_line(line: string): boolean
   return false
 end
 
+local ns = api.nvim_create_namespace 'packer_display'
+
 local record M
 
   record Display
     record Item
-      plugin        : Plugin
-      lines         : {string}
-      displayed     : boolean
-      ignore_update : boolean
+      enum Status
+        'running'
+        'failed'
+        'success'
+        'done'
+      end
+
+      status: Status
+
+      message: string
+
+      -- Additional info that can be collapsed
+      info: {string}
+
+      -- Whether info is being displayed
+      expanded: boolean
+
+      -- Extmark used track the location of the item in the buffer
+      mark: integer
     end
 
     interactive   : boolean
     buf           : integer
     win           : integer
-    ns            : integer
-    opts          : Config.Display
 
-    record Result
-      err: {string}
-
-      -- Used for moves
-      from: string
-      to: string
-    end
-
-    record Results
-      removals: {string}
-      moves: {string:Result}
-      installs: {string:Result}
-      updates: {string:Result}
-    end
-
-    results       : Results
-    items         : {string:Item}
-    item_order    : {string}
-
-    marks: {string:integer}
+    items: {string:Item}
 
     running: boolean
 
-    any_failed_install : boolean
-    failed_update_list : {string}
-
     open                    : function(Display.Callbacks): Display
     check                   : function(Display): boolean
-    task_update             : function(Display, plugin: string, msg: string|{string})
-    task_start              : function(Display, plugin: string, msg: string)
-    task_succeeded          : function(Display, plugin: string, msg: string)
-    task_failed             : function(Display, plugin: string, msg: string)
+    task_update             : function(Display, plugin: string, msg: string, info: {string})
+    task_start              : function(Display, plugin: string, msg: string, info: {string})
+    task_succeeded          : function(Display, plugin: string, msg: string, info: {string})
+    task_done               : function(Display, plugin: string, msg: string, info: {string})
+    task_failed             : function(Display, plugin: string, msg: string, info: {string})
     update_headline_message : function(Display, string)
-    set_status              : function(Display, {string:Plugin})
-    is_previewing           : function(Display): boolean
-    has_changes             : function(Display, Plugin): boolean
-    final_results           : function(Display, any, number, Config.Display)
+    finish                  : function(Display, number)
     ask_user                : function(string, {string}): boolean
 
     record Callbacks
       diff: function(plugin: Plugin, commit: string, callback: function): {string}
-      update: function(string|table, ...: string)
       revert_last: function(Plugin)
-      install: function()
     end
 
     callbacks: Callbacks
@@ -195,19 +112,32 @@ local function find_nearest_plugin(disp: Display): string, {integer}
   end
 end
 
-local function open_preview(commit: string, lines: {string})
-  if not lines or #lines < 1 then
-    log.warn 'No diff available'
-    return
+local function open_win(inner: boolean): integer, integer
+  local vpad = inner and 8 or 6
+  local hpad = inner and 14 or 10
+  local width = math.min(vim.o.columns - hpad * 2, 200)
+  local height = math.min(vim.o.lines - vpad * 2, 70)
+  local buf = api.nvim_create_buf(false, true)
+  local win = api.nvim_open_win(buf, true, {
+    relative = "editor",
+    style = "minimal",
+    width = width,
+    border = inner and 'rounded' or nil,
+    height = height,
+    noautocmd = true,
+    row = (vim.o.lines - height) / 2,
+    col = (vim.o.columns - width ) / 2
+  })
+
+  if inner then
+    vim.wo[win].previewwindow = true
   end
-  vim.cmd.pedit(commit)
-  vim.cmd.wincmd('P')
-  vim.wo.previewwindow = true
-  vim.bo.buftype = 'nofile'
-  vim.bo.buflisted = false
-  api.nvim_buf_set_lines(0, 0, -1, false, lines)
-  vim.keymap.set('n', 'q', '<cmd>close!<cr>', { buffer = 0, silent = true, nowait = true })
-  vim.bo.filetype = 'git'
+  vim.bo[buf].buftype = 'nofile'
+  vim.bo[buf].buflisted = false
+  vim.bo[buf].swapfile = false
+  vim.bo[buf].bufhidden = 'wipe'
+
+  return buf, win
 end
 
 local COMMIT_PAT = [[[0-9a-f]\{7,9}]]
@@ -230,12 +160,13 @@ local function diff(disp: Display)
     return
   end
 
-  if not disp.items[plugin_name] then
+  local plugin = packer_plugins[plugin_name]
+
+  if not plugin then
     log.warn 'Plugin not available!'
     return
   end
 
-  local plugin = disp.items[plugin_name].plugin
   local current_line = api.nvim_get_current_line()
   local commit = vim.fn.matchstr(current_line, COMMIT_RANGE_PAT)
   if commit == '' then
@@ -253,86 +184,81 @@ local function diff(disp: Display)
       return
     end
     vim.schedule(function()
-      open_preview(commit, lines)
+      if not lines or #lines < 1 then
+        log.warn 'No diff available'
+        return
+      end
+      local buf = open_win(true)
+      api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+      api.nvim_buf_set_name(buf, commit)
+      vim.keymap.set('n', 'q', '<cmd>close!<cr>', { buffer = buf, silent = true, nowait = true })
+      vim.bo[buf].filetype = 'git'
     end)
   end)
 end
 
-local function make_update_msg(symbol: string, status: string, plugin_name: string, plugin: Plugin): string
-  return fmt(' %s %s %s: %s..%s', symbol, status, plugin_name, plugin.revs[1], plugin.revs[2])
-end
-
 --- Update the text of the display buffer
 local function set_lines(disp: Display, srow: integer, erow: integer, lines: {string})
-  if not valid_display(disp) then
-    return
-  end
   vim.bo[disp.buf].modifiable = true
   api.nvim_buf_set_lines(disp.buf, srow, erow, true, lines)
   vim.bo[disp.buf].modifiable = false
 end
 
-local function update_task_lines(self: Display, plugin: string, message: {string})
-  self.marks[plugin] = self.marks[plugin] or
-    api.nvim_buf_set_extmark(self.buf, self.ns, HEADER_LINES, 0, {})
+local function get_task_region(self: Display, plugin: string): integer, integer
+  local mark = self.items[plugin].mark
 
-  local mark = self.marks[plugin]
+  if not mark then
+    return
+  end
 
-  local info = api.nvim_buf_get_extmark_by_id(self.buf, self.ns, mark, {details=true})
+  local info = api.nvim_buf_get_extmark_by_id(self.buf, ns, mark, {details=true})
 
   local srow = info[1]
   local erow = info[3].end_row or srow
 
+  -- TODO(lewis6991): sometimes the end_row will be lower and start_row. Could
+  -- be an extmark bug?
+  if srow > erow then
+    srow, erow = erow, srow
+  end
+
+  return srow, erow
+end
+
+local function clear_task(self: Display, plugin: string)
+  local srow, erow = get_task_region(self, plugin)
+  set_lines(self, srow, erow, {})
+  local item = self.items[plugin]
+  api.nvim_buf_del_extmark(self.buf, ns, item.mark)
+  item.mark = nil
+end
+
+local enum TaskPos
+  'top'
+  'bottom'
+end
+
+local function update_task_lines(self: Display, plugin: string, message: {string}, pos: TaskPos)
+  local item = self.items[plugin]
+
+  -- If pos is given, task will be rendered at the top or bottom of the buffer.
+  -- If not given then will use last position, if exists, else bottom.
+  if pos ~= nil or not item.mark then
+    if item.mark then
+      clear_task(self, plugin)
+    end
+
+    local new_row = pos == 'top' and HEADER_LINES or api.nvim_buf_line_count(self.buf)
+    item.mark = api.nvim_buf_set_extmark(self.buf, ns, new_row, 0, {})
+  end
+
+  local srow, erow = get_task_region(self, plugin)
   set_lines(self, srow, erow, message)
 
-  api.nvim_buf_set_extmark(self.buf, self.ns, srow, 0, {
+  api.nvim_buf_set_extmark(self.buf, ns, srow, 0, {
     end_row = srow + #message,
-    id = mark
+    id = item.mark
   })
-end
-
-local function toggle_update(disp: Display)
-  if not disp:is_previewing() then
-    return
-  end
-  local plugin_name = find_nearest_plugin(disp)
-  local item = disp.items[plugin_name]
-  if not item then
-    log.warn 'Plugin not available!'
-    return
-  end
-
-  item.ignore_update = not item.ignore_update
-
-  local symbol: string
-  local status_msg: string
-  if item.ignore_update then
-    status_msg = [[Won't update]]
-    symbol = config.display.item_sym
-  else
-    status_msg = 'Can update'
-    symbol = config.display.done_sym
-  end
-  update_task_lines(disp, plugin_name,
-    {make_update_msg(symbol, status_msg, plugin_name, item.plugin)})
-end
-
-local function continue(disp: Display)
-  if not disp:is_previewing() then
-    return
-  end
-  local plugins = {}
-  for plugin_name, _ in pairs(disp.results.updates) do
-    local item = disp.items[plugin_name]
-    if item.ignore_update then
-      table.insert(plugins, plugin_name)
-    end
-  end
-  if #plugins > 0 then
-    disp.callbacks.update({pull_head = true, preview_updates = false}, unpack(plugins))
-  else
-    log.warn 'No plugins selected!'
-  end
 end
 
 local function pad(x: {string}): {string}
@@ -343,11 +269,37 @@ local function pad(x: {string}): {string}
   return r
 end
 
+local function render_task(self: Display, plugin: string)
+  local item = self.items[plugin]
+
+  local icon: string
+  if not item.status then
+    icon = config.display.item_sym
+  elseif item.status == 'running' then
+    icon = config.display.working_sym
+  elseif item.status == 'failed' then
+    icon = config.display.error_sym
+  else
+    icon = config.display.done_sym
+  end
+
+  local lines = { fmt(' %s %s: %s', icon, plugin, item.message) }
+
+  if item.info and item.expanded then
+    vim.list_extend(lines, pad(item.info))
+  end
+
+  local pos: TaskPos = (item.status == 'success' or item.status == 'failed') and 'top' or nil
+
+  update_task_lines(self, plugin, lines, pos)
+end
+
   --- Toggle the display of detailed information for a plugin in the final results display
 local function toggle_info(disp: Display)
   if not valid_display(disp) then
     return
   end
+
   if disp.items == nil or next(disp.items) == nil then
     log.info 'Operations are still running; plugin info is not ready yet'
     return
@@ -360,18 +312,9 @@ local function toggle_info(disp: Display)
   end
 
   local item = disp.items[plugin_name]
-
-  if item.displayed then
-    set_lines(disp, cursor_pos[1], cursor_pos[1] + #item.lines, {})
-    item.displayed = false
-  elseif #item.lines > 0 then
-    set_lines(disp, cursor_pos[1], cursor_pos[1], pad(item.lines))
-    item.displayed = true
-  else
-    log.fmt_info('No further information for %s', plugin_name)
-  end
-
-  api.nvim_win_set_cursor(0, cursor_pos)
+  item.expanded = not item.expanded
+  render_task(disp, plugin_name)
+  api.nvim_win_set_cursor(disp.win, cursor_pos)
 end
 
 --- Utility function to prompt a user with a question in a floating window
@@ -447,8 +390,7 @@ local function prompt_revert(disp: Display)
     return
   end
 
-  local item = disp.items[plugin_name]
-  local plugin = item.plugin
+  local plugin = packer_plugins[plugin_name]
   local actual_update = plugin.revs[1] ~= plugin.revs[2]
   if actual_update then
     prompt_user('Revert update for ' .. plugin_name .. '?', {
@@ -480,7 +422,7 @@ display.ask_user = awrap(prompt_user, 3)
 
 local record Keymap
   action: string
-  lhs: string
+  lhs: string|{string}
   rhs: function()
 end
 
@@ -502,20 +444,6 @@ local keymaps: {string:Keymap} = {
     end
   },
 
-  toggle_update = {
-    action = 'toggle update',
-    rhs = function()
-      toggle_update(display)
-    end
-  },
-
-  continue = {
-    action = 'continue with updates',
-    rhs = function()
-      continue(display)
-    end
-  },
-
   toggle_info = {
     action = 'show more info',
     rhs = function()
@@ -530,28 +458,6 @@ local keymaps: {string:Keymap} = {
     end
   },
 
-  retry = {
-    action = 'retry failed operations',
-    rhs = function()
-      if display.any_failed_install then
-        log.debug('retrying install')
-        display.callbacks.install()
-      elseif #display.failed_update_list > 0 then
-        log.fmt_debug('retrying updates for: %s', table.concat(display.failed_update_list, '\n'))
-        display.callbacks.update(unpack(display.failed_update_list))
-      end
-    end
-  },
-}
-
---- The order of the keys in a dict-like table isn't guaranteed, meaning the display window can
---- potentially show the keybindings in a different order every time
-local default_keymap_display_order = {
-  'quit',
-  'toggle_info',
-  'diff',
-  'prompt_revert',
-  'retry',
 }
 
 function display:check(): boolean
@@ -565,13 +471,15 @@ display.task_start = vim.schedule_wrap(function(self: Display, plugin: string, m
   end
   display.running = true
 
-  update_task_lines(self, plugin, {
-    fmt(' %s %s: %s', config.display.working_sym, plugin, message),
-  })
+  local item = self.items[plugin]
+  item.status = 'running'
+  item.message = message
+
+  render_task(self, plugin)
 end)
 
 --- Decrement the count of active operations in the headline
-local decrement_headline_count = vim.schedule_wrap(function(disp: Display)
+local function decrement_headline_count(disp: Display)
   if not valid_display(disp) then
     return
   end
@@ -587,48 +495,73 @@ local decrement_headline_count = vim.schedule_wrap(function(disp: Display)
     )
     set_lines(disp, 0, HEADER_LINES - 1, { updated_headline })
   end
-end)
+end
 
---- Update a task as having successfully completed
-local task_done = vim.schedule_wrap(function(self: Display, plugin: string, message: string, success: boolean)
+local function normalize_lines(x: {string}): {string}
+  local r: {string} = {}
+  for _, l in ipairs(x) do
+    for _, i in ipairs(vim.split(l, '\n')) do
+      r[#r+1] = i
+    end
+  end
+  return r
+end
+
+local task_done = vim.schedule_wrap(function(self: Display, plugin: string, message: string, info: {string}, success: boolean)
   if not valid_display(self) then
     return
   end
 
-  local icon = success and config.display.done_sym or config.display.error_sym
-  update_task_lines(self, plugin, { fmt(' %s %s: %s', icon, plugin, message) })
+  local item = self.items[plugin]
+
+  if success == true then
+    item.status = 'success'
+  elseif success == false then
+    item.status = 'failed'
+  else
+    item.status = 'done'
+  end
+
+  item.message = message
+
+  if info then
+    item.info = normalize_lines(info)
+  end
+
+  render_task(self, plugin)
   decrement_headline_count(self)
 end)
 
+--- Update a task as having passively completed
+function display:task_done(plugin: string, message: string, info: {string})
+  task_done(self, plugin, message, info, nil)
+end
+
 --- Update a task as having successfully completed
-function display:task_succeeded(plugin: string, message: string)
-  task_done(self, plugin, message, true)
+function display:task_succeeded(plugin: string, message: string, info: {string})
+  task_done(self, plugin, message, info, true)
 end
 
 --- Update a task as having unsuccessfully failed
-function display:task_failed(plugin: string, message: string)
-  task_done(self, plugin, message, false)
+function display:task_failed(plugin: string, message: string, info: {string})
+  task_done(self, plugin, message, info, false)
 end
 
 --- Update the status message of a task in progress
-display.task_update = vim.schedule_wrap(function(self: Display, plugin: string, message: string|{string})
+display.task_update = vim.schedule_wrap(function(self: Display, plugin: string, message: string, info: {string})
   log.fmt_debug('%s: %s', plugin, message)
   if not valid_display(self) then
     return
   end
 
-  local lines: {string} = {}
+  local item = self.items[plugin]
+  item.message = message
 
-  if message is string then
-    lines[1] = fmt(' %s %s: %s', config.display.working_sym, plugin, message)
-  else
-    lines[1] = fmt(' %s %s:', config.display.working_sym, plugin)
-    vim.list_extend(lines, vim.tbl_map(function(x: string): string
-      return '       '..x
-    end, message))
+  if info then
+    item.info = info
   end
 
-  update_task_lines(self, plugin, lines)
+  render_task(self, plugin)
 end)
 
 --- Update the text of the headline message
@@ -642,263 +575,17 @@ display.update_headline_message = vim.schedule_wrap(function(self: Display, mess
   set_lines(self, 0, HEADER_LINES - 1, { string.rep(' ', pad_width) .. headline })
 end)
 
---- Setup new syntax group links for the status window
-local function setup_status_syntax()
-  for _, c in ipairs{
-    { 'packerStatus'          , 'Type'},
-    { 'packerStatusCommit'    , 'Constant'},
-    { 'packerStatusSuccess'   , 'Constant'},
-    { 'packerStatusFail'      , 'ErrorMsg'},
-    { 'packerPackageName'     , 'Title'},
-    { 'packerPackageNotLoaded', 'Comment'},
-    { 'packerString'          , 'String'},
-    { 'packerBool'            , 'Boolean'},
-    { 'packerBreakingChange'  , 'WarningMsg'},
-  } do
-    api.nvim_set_hl(0, c[1], { link = c[2], default = true, })
-  end
-end
-
-local function load_state(plugin: Plugin): string
-  if not plugin.loaded then
-    if plugin.start then
-      return ' (not installed)'
-    end
-    return ' (not loaded)'
-  end
-
-  if plugin.lazy then
-    return ' (manually loaded)'
-  end
-
-  return ''
-end
-
-local function get_plugin_status(plugin: Plugin): {string}
-  local config_lines = {}
-  for key, value in pairs(plugin as {string:any}) do
-    if not plugin_keys_exclude[key] then
-      local details = format_values(key, value)
-      if details is string then
-        -- insert a position one so that one line details appear above multiline ones
-        table.insert(config_lines, 1, fmt('%s: %s', key, details))
-      else
-        vim.list_extend(config_lines, { fmt('%s: ', key), unpack(details) })
-      end
-    end
-  end
-
-  return config_lines
-end
-
-display.set_status = vim.schedule_wrap(function(self: Display, plugins: {string:Plugin})
-  if not valid_display(self) then
-    return
-  end
-  setup_status_syntax()
-  self:update_headline_message(fmt('Total plugins: %d', vim.tbl_count(plugins)))
-
-  local lines = {}
-
-  self.items = self.items or {}
-
-  for plugin_name, plugin in pairs(plugins) do
-    lines[#lines+1] = fmt(' %s %s%s', config.display.item_sym, plugin_name, load_state(plugin))
-    self.items[plugin_name] = {
-      plugin = plugin,
-      lines = get_plugin_status(plugin),
-      displayed = false
-    }
-  end
-
-  table.sort(lines)
-  set_lines(self, HEADER_LINES, -1, lines)
-end)
-
-function display:is_previewing(): boolean
-  local opts = self.opts or {}
-  return opts.preview_updates
-end
-
-function display:has_changes(plugin: Plugin): boolean
-  if plugin.type ~= 'git' or plugin.revs[1] == plugin.revs[2] then
-    return false
-  end
-  if self:is_previewing() and plugin.commit ~= nil then
-    return false
-  end
-  return true
-end
-
-  --- Toggle the display of detailed information for all plugins in the final results display
-local function show_all_info(disp: Display)
-  if not valid_display(disp) then
-    return
-  end
-
-  if next(disp.items) == nil then
-    log.info 'Operations are still running; plugin info is not ready yet'
-    return
-  end
-
-  for _, plugin_name in ipairs(disp.item_order) do
-    local item = disp.items[plugin_name]
-    if item and #item.lines > 0 then
-      update_task_lines(disp, plugin_name, item.lines)
-      item.displayed = true
-    end
-  end
-end
-
 --- Display the final results of an operation
-display.final_results = vim.schedule_wrap(function(self: Display, results: Display.Results, time: number, opts: Config.Display)
-  self.opts = opts
+display.finish = vim.schedule_wrap(function(self: Display, time: number)
   if not valid_display(self) then
     return
   end
-  local keymap_display_order: {string} = {}
-  vim.list_extend(keymap_display_order, default_keymap_display_order)
-  self.results = results
-  setup_status_syntax()
+
   display.running = false
-  time = tonumber(time)
   self:update_headline_message(fmt('finished in %.3fs', time))
-  local raw_lines = {}
-  local item_order = {}
-  if results.removals then
-    for _, plugin_dir in ipairs(results.removals) do
-      table.insert(item_order, plugin_dir)
-      table.insert(raw_lines, fmt(' %s Removed %s', config.display.removed_sym, plugin_dir))
-    end
-  end
 
-  if results.moves then
-    for plugin, result in pairs(results.moves) do
-      table.insert(item_order, plugin)
-      local from = result.from
-      local to = result.to
-
-      table.insert(
-        raw_lines,
-        fmt(
-          ' %s %s %s: %s %s %s',
-          not result.err and config.display.done_sym or config.display.error_sym,
-          not result.err and 'Moved' or 'Failed to move',
-          plugin,
-          from,
-          config.display.moved_sym,
-          to
-        )
-      )
-    end
-  end
-
-  display.any_failed_install = false
-  display.failed_update_list = {}
-
-  if results.installs then
-    for plugin, result in pairs(results.installs) do
-      table.insert(item_order, plugin)
-      table.insert(
-        raw_lines,
-        fmt(
-          ' %s %s %s',
-          not result.err and config.display.done_sym or config.display.error_sym,
-          not result.err and 'Installed' or 'Failed to install',
-          plugin
-        )
-      )
-      display.any_failed_install = display.any_failed_install or result.err ~= nil
-    end
-  end
-
-  if results.updates then
-    local status_msg = 'Updated'
-    if self:is_previewing() then
-      status_msg = 'Can update'
-      table.insert(keymap_display_order, 1, 'continue')
-      table.insert(keymap_display_order, 2, 'toggle_update')
-    end
-    for plugin_name, result in pairs(results.updates) do
-      local plugin = packer_plugins[plugin_name]
-      local message = {}
-      local actual_update = true
-      local failed_update = false
-      if not result.err then
-        if self:has_changes(plugin) then
-          table.insert(item_order, plugin_name)
-          table.insert(message, make_update_msg(config.display.done_sym, status_msg, plugin_name, plugin))
-        else
-          actual_update = false
-          table.insert(message, fmt(' %s %s is already up to date', config.display.done_sym, plugin_name))
-        end
-      else
-        failed_update = true
-        actual_update = false
-        table.insert(display.failed_update_list, plugin_name)
-        table.insert(item_order, plugin_name)
-        table.insert(message, fmt(' %s Failed to update %s: %s', config.display.error_sym, plugin_name, vim.inspect(result.err)))
-      end
-
-      if actual_update or failed_update then
-        vim.list_extend(raw_lines, message)
-      end
-    end
-  end
-
-  self.item_order = item_order
-
-  if #raw_lines == 0 then
-    table.insert(raw_lines, ' Everything already up to date!')
-  end
-
-  table.insert(raw_lines, '')
-  local show_retry = display.any_failed_install or #display.failed_update_list > 0
-  for _, keymap in ipairs(keymap_display_order) do
-    local k = keymaps[keymap]
-    if k.lhs then
-      if not (keymap == 'retry') or show_retry then
-        table.insert(raw_lines, fmt(" Press '%s' to %s", k.lhs, k.action))
-      end
-    end
-  end
-
-  -- Ensure there are no newlines
-  local lines = strip_newlines(raw_lines)
-  set_lines(self, HEADER_LINES, -1, lines)
-  for plugin_name, plugin in pairs(packer_plugins) do
-    local item = {
-      displayed = false,
-      lines = {},
-      plugin = plugin
-    }
-    if plugin.err and #plugin.err > 0 then
-      table.insert(item.lines, '  Errors:')
-      for _, line in ipairs(plugin.err) do
-        line = vim.trim(line)
-        if line:find '\n' then
-          for sub_line in line:gmatch '[^\r\n]+' do
-            table.insert(item.lines, '    ' .. sub_line)
-          end
-        else
-          table.insert(item.lines, '    ' .. line)
-        end
-      end
-      table.insert(item.lines, '')
-    end
-
-    if plugin.messages and #plugin.messages > 0 then
-      table.insert(item.lines, fmt('  URL: %s', plugin.url))
-      table.insert(item.lines, '  Commits:')
-      for _, msg in ipairs(plugin.messages) do
-        for _, line in ipairs(vim.split(msg, '\n')) do
-          table.insert(item.lines, string.rep(' ', 4) .. line)
-        end
-      end
-
-      table.insert(item.lines, '')
-    end
-
+  for plugin_name, _ in pairs(self.items) do
+    local plugin = packer_plugins[plugin_name]
     if plugin.breaking_commits and #plugin.breaking_commits > 0 then
       vim.cmd('syntax match packerBreakingChange "' .. plugin_name .. '" containedin=packerStatusSuccess')
       for _, commit_hash in ipairs(plugin.breaking_commits) do
@@ -906,13 +593,6 @@ display.final_results = vim.schedule_wrap(function(self: Display, results: Displ
         vim.cmd('syntax match packerBreakingChange "' .. commit_hash .. '" containedin=packerHash')
       end
     end
-
-    self.items = self.items or {}
-    self.items[plugin_name] = item
-  end
-
-  if config.display.show_all_info then
-    show_all_info(self)
   end
 end)
 
@@ -981,8 +661,13 @@ local function setup_display_buf(bufnr: integer)
   api.nvim_buf_set_name(bufnr, '[packer]')
   set_config_keymaps()
   for _, m in pairs(keymaps) do
-    if m.lhs then
-      vim.keymap.set('n', m.lhs, m.rhs, {
+    local lhs = m.lhs
+    if lhs is string then
+      lhs = {lhs}
+    end
+    lhs = lhs as {string}
+    for _, x in ipairs(lhs) do
+      vim.keymap.set('n', x, m.rhs, {
         desc = 'Packer: '..m.action,
         buffer = bufnr,
         nowait = true,
@@ -990,11 +675,6 @@ local function setup_display_buf(bufnr: integer)
       })
     end
   end
-
-  vim.bo[bufnr].buftype = 'nofile'
-  vim.bo[bufnr].bufhidden = 'wipe'
-  vim.bo[bufnr].buflisted = false
-  vim.bo[bufnr].swapfile = false
 
   local ft_cmds = make_filetype_cmds(
     config.display.working_sym,
@@ -1005,6 +685,20 @@ local function setup_display_buf(bufnr: integer)
   for _, c in ipairs(ft_cmds) do
     vim.cmd(c)
   end
+
+  for _, c in ipairs{
+    { 'packerStatus'          , 'Type'},
+    { 'packerStatusCommit'    , 'Constant'},
+    { 'packerStatusSuccess'   , 'Constant'},
+    { 'packerStatusFail'      , 'ErrorMsg'},
+    { 'packerPackageName'     , 'Title'},
+    { 'packerPackageNotLoaded', 'Comment'},
+    { 'packerString'          , 'String'},
+    { 'packerBool'            , 'Boolean'},
+    { 'packerBreakingChange'  , 'WarningMsg'},
+  } do
+    api.nvim_set_hl(0, c[1], { link = c[2], default = true, })
+  end
 end
 
 --- Open a new display window
@@ -1014,29 +708,19 @@ function display.open(cbs: Display.Callbacks): Display
   end
 
   if not (display.win and api.nvim_win_is_valid(display.win)) then
-    local vpad = 6
-    local hpad = 10
-    local width = math.min(vim.o.columns - hpad * 2, 200)
-    local height = math.min(vim.o.lines - vpad * 2, 70)
-    display.buf = api.nvim_create_buf(false, true)
-    display.win = api.nvim_open_win(display.buf, true, {
-      relative = "editor",
-      style = "minimal",
-      width = width,
-      height = height,
-      noautocmd = true,
-      row = (vim.o.lines - height) / 2,
-      col = (vim.o.columns - width ) / 2
-    })
-    display.ns = api.nvim_create_namespace 'packer_display'
+    display.buf, display.win = open_win()
     setup_display_buf(display.buf)
   end
 
   display.callbacks = cbs
-  display.results   = nil
-  display.items     = nil
-  display.marks     = {}
   display.running   = false
+
+  display.items = setmetatable({}, {
+    __index = function(t: {string:Display.Item}, k: string): Display.Item
+      t[k] = { expanded = false }
+      return t[k]
+    end
+  })
 
   set_lines(display, 0, -1, {})
   make_header(display)

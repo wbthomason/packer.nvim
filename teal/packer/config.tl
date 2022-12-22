@@ -14,8 +14,7 @@ local record Config
     moved_sym       : string
     item_sym        : string
     header_sym      : string
-    show_all_info   : boolean
-    keybindings     : {string: string}
+    keybindings     : {string: string|{string}}
   end
 
   record Git
@@ -74,16 +73,12 @@ local default_config: Config = {
     moved_sym = '→',
     item_sym = '•',
     header_sym = '━',
-    show_all_info = true,
     prompt_border = 'double',
     keybindings = {
       quit = 'q',
-      toggle_update = 'u',
-      continue = 'c',
-      toggle_info = '<CR>',
+      toggle_info = {'za', '<CR>'},
       diff = 'd',
       prompt_revert = 'r',
-      retry = 'R',
     },
   },
   log = { level = 'info' },
