@@ -13,6 +13,7 @@ local config_defaults = {
   snapshot_path = join_paths(stdpath 'cache', 'packer.nvim'),
   package_root = join_paths(stdpath 'data', 'site', 'pack'),
   compile_path = join_paths(stdpath 'config', 'plugin', 'packer_compiled.lua'),
+  merge_duplicates = false,
   plugin_package = 'packer',
   max_jobs = nil,
   auto_clean = true,
@@ -183,6 +184,108 @@ packer.use_rocks = function(rock)
   end
 end
 
+-- Merges new into old; returns merged spec.
+local function merge_specs(old, new)
+  local name = new.short_name
+
+  -- disable: Warn & ignore on disabling a previously enabled plugin
+  if old.disable then
+    if not new.disable then log.warn('Trying to disable previously non-disabled mod "' .. name .. '", ignoring') end
+  else
+    old.disable = new.disable
+  end
+
+  -- branch, tag, commit, lock: Must all be the same, else warning
+  for _, key in ipairs{'branch', 'commit', 'lock', 'tag'} do
+    if new[key] ~= old[key] then
+      log.warn('Plugin "' .. name .. '" wants to overwrite "' .. key .. '" setting. Keeping original value')
+    end
+  end
+
+  -- opt
+  -- - Conditions and opt_default have already been handled in manage()
+  -- - Rule of thumb: true < nil < false. Set the lowest necessary--if nil suffices, don't set false
+  -- - For manual_opt:
+  --   - If result is start, remove mo. Else, if omo or nmo, keep mo.
+  --   - There is no situation where opt = falsy but manual_opt = true
+  --
+  -- old new result (1 = true, - = nil, 0 = false, s = start, o = opt)
+  -- ---+---+------
+  --   -   -     -s
+  --   1   -     -s
+  --   -   1     -s
+  --   0   0     0s
+  --   1   0     0s
+  --   0   1     0s
+  --   -   0     0s
+  --   0   -     0s
+  --   1   1     1o
+  local old_opt = old.opt
+  local new_opt = new.opt
+  if old_opt == false or new_opt == false then
+    old.opt = false
+    old.manual_opt = nil
+  elseif old_opt == nil or new_opt == nil then
+    old.opt = nil
+    old.manual_opt = nil
+  elseif old_opt == true and new_opt == true then
+    if old.manual_opt or new.manual_opt then old.manual_opt = true end
+  end
+
+  -- config, setup: append
+  for _, key in ipairs{'config', 'setup'} do
+    if new[key] then
+      if type(old[key]) ~= 'table' then old[key] = {old[key]} end
+      if type(new[key]) ~= 'table' then new[key] = {new[key]} end
+      for _, item in ipairs(new[key]) do
+        table.insert(old[key], item)
+      end
+    end
+  end
+
+  -- installer, updater: Warn & ignore
+  for _, key in ipairs{'installer', 'updater'} do
+    if new[key] then
+      log.warn('Plugin "' .. name .. '" wants to overwrite "' .. key .. '" setting. Keeping original value')
+    end
+  end
+
+  -- run, rtp: Keep old key if it's set, otherwise set new one
+  for _, key in ipairs{'run', 'rtp'} do
+    if new[key] then
+      if old[key] then
+        local old_type = type(old[key])
+        local new_type = type(new[key])
+        if (old_type ~= new_type) or
+            -- If the first condition doesn't hit, old and new have the same type
+            (old_type == 'string' and old[key] ~= new[key]) or
+            (old_type == 'function' and (string.dump(old[key], true) ~= string.dump(new[key], true)))
+        then
+          log.warn('Plugin "' .. name .. '" wants to overwrite "' .. key .. '" setting. Keeping original value')
+        end
+      else
+        old[key] = new[key]
+      end
+    end
+  end
+
+  -- cmd, cond, event, ft, keys: append (dedup is done in compile)
+  for _, key in ipairs{'cmd', 'cond', 'event', 'ft', 'keys'} do
+    if new[key] then
+      if type(old[key]) ~= 'table' then old[key] = {old[key]} end
+      if type(new[key]) ~= 'table' then new[key] = {new[key]} end
+      for _, item in ipairs(new[key]) do
+        if not vim.tbl_contains(old[key], item) then
+          table.insert(old[key], item)
+        end
+      end
+    end
+  end
+
+  -- require, after: Handled in manage()/compile()
+  return old
+end
+
 --- The main logic for adding a plugin (and any dependencies) to the managed set
 -- Can be invoked with (1) a single plugin spec as a string, (2) a single plugin spec table, or (3)
 -- a list of plugin specs
@@ -215,7 +318,7 @@ manage = function(plugin_data)
     return
   end
 
-  if plugins[name] and not plugins[name].from_requires then
+  if plugins[name] and not plugins[name].from_requires and not config.merge_duplicates then
     log.warn('Plugin "' .. name .. '" is used twice! (line ' .. spec_line .. ')')
     return
   end
@@ -254,23 +357,30 @@ manage = function(plugin_data)
     end
   end
 
-  plugin_spec.install_path = join_paths(plugin_spec.opt and config.opt_dir or config.start_dir, plugin_spec.short_name)
+  if plugins[plugin_spec.short_name] and config.merge_duplicates then
+    log.info("Merging specs for plugin " .. plugin_spec.short_name)
+    merge_specs(plugins[plugin_spec.short_name], plugin_spec)
+  else
+    plugin_spec.install_path = join_paths(plugin_spec.opt and config.opt_dir or config.start_dir,
+      plugin_spec.short_name)
 
-  local plugin_utils = require_and_configure 'plugin_utils'
-  local plugin_types = require_and_configure 'plugin_types'
-  local handlers = require_and_configure 'handlers'
-  if not plugin_spec.type then
-    plugin_utils.guess_type(plugin_spec)
-  end
-  if plugin_spec.type ~= plugin_utils.custom_plugin_type then
-    plugin_types[plugin_spec.type].setup(plugin_spec)
-  end
-  for k, v in pairs(plugin_spec) do
-    if handlers[k] then
-      handlers[k](plugins, plugin_spec, v)
+    local plugin_utils = require_and_configure 'plugin_utils' 
+    local plugin_types = require_and_configure 'plugin_types' 
+    local handlers = require_and_configure 'handlers' 
+    if not plugin_spec.type then
+      plugin_utils.guess_type(plugin_spec)
     end
+    if plugin_spec.type ~= plugin_utils.custom_plugin_type then
+      plugin_types[plugin_spec.type].setup(plugin_spec)
+    end
+    for k, v in pairs(plugin_spec) do
+      if handlers[k] then
+        handlers[k](plugins, plugin_spec, v)
+      end
+    end
+
+    plugins[plugin_spec.short_name] = plugin_spec
   end
-  plugins[plugin_spec.short_name] = plugin_spec
   if plugin_spec.rocks then
     packer.use_rocks(plugin_spec.rocks)
   end
@@ -301,7 +411,7 @@ manage = function(plugin_data)
       -- the plugin is from a `requires` field and the full specificaiton has not been called yet.
       -- @see: https://github.com/wbthomason/packer.nvim/issues/258#issuecomment-876568439
       req.from_requires = true
-      if not plugins[req_name] then
+      if config.merge_duplicates or not plugins[req_name] then
         if config.transitive_opt and plugin_spec.manual_opt then
           req.opt = true
           if type(req.after) == 'string' then
