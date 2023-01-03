@@ -147,23 +147,51 @@ local function check_version(version: {integer,integer,integer}): boolean
   return true
 end
 
-local function get_ref(plugin: Plugin, ...: string): string
-  local lines = util.file_lines(util.join_paths(plugin.install_path, '.git', ...))
+local function head(...: string): string
+  local lines = util.file_lines(util.join_paths(...))
   if lines then
     return lines[1]
   end
 end
 
+local SHA_PAT = string.rep('%x', 40)
+
+local function resolve_ref(dir: string, ref: string): string
+  if ref:match(SHA_PAT) then
+    return ref
+  end
+  local ptr = ref:match('^ref: (.*)')
+  if ptr then
+    return head(dir, '.git', unpack(vim.split(ptr, '/')))
+  end
+end
+
+local function get_head(dir: string): string
+  return resolve_ref(dir, head(dir, '.git', 'HEAD'))
+end
+
 ---@async
 local function get_current_branch(plugin: Plugin): string
   -- first try local HEAD
-  local remote_head = get_ref(plugin, 'refs', 'remotes', 'origin', 'HEAD')
+  local remote_head = head(plugin.install_path, '.git', 'refs', 'remotes', 'origin', 'HEAD')
   if remote_head then
     local branch = remote_head:match('^ref: refs/remotes/origin/(.*)')
     if branch then
       return branch
     end
   end
+
+  -- fallback to local HEAD
+  local local_head = head(plugin.install_path, '.git', 'HEAD')
+
+  if local_head then
+    local branch = local_head:match('^ref: refs/heads/(.*)')
+    if branch then
+      return branch
+    end
+  end
+
+  error('Could not get current branch for '..plugin.install_path)
 end
 
 local function resolve_tag(plugin: Plugin): string, {string}
@@ -217,9 +245,11 @@ local function checkout(plugin: Plugin, disp: Display): boolean, {string}
     target = 'tags/'..tag
   else
     local branch = plugin.branch or get_current_branch(plugin)
-    target = get_ref(plugin, 'refs', 'remotes', 'origin', branch)
-          or get_ref(plugin, 'refs', 'heads', branch)
+    target = head(plugin.install_path, '.git', 'refs', 'remotes', 'origin', branch)
+          or head(plugin.install_path, '.git', 'refs', 'heads', branch)
   end
+
+  assert(target, 'Could not determine target for '..plugin.install_path)
 
   return git_run({ 'checkout', '--progress', target }, { cwd = plugin.install_path })
 end
@@ -254,7 +284,11 @@ local function mark_breaking_changes(
 end
 
 local function clone(plugin: Plugin, timeout: integer): boolean, {string}
-  local clone_cmd = { 'clone' }
+  local clone_cmd = {
+    'clone',
+    '--no-checkout',
+    '--progress'
+  }
 
   -- partial clone support
   if check_version{2, 19, 0} then
@@ -262,12 +296,6 @@ local function clone(plugin: Plugin, timeout: integer): boolean, {string}
       "--filter=blob:none",
     })
   end
-
-  vim.list_extend(clone_cmd, {
-    '--no-checkout',
-    '--single-branch',
-    '--progress'
-  })
 
   vim.list_extend(clone_cmd, { plugin.url, plugin.install_path })
 
@@ -313,11 +341,13 @@ end
 local function update(plugin: Plugin, disp: Display): boolean, {string}
   disp:task_update(plugin.full_name, 'checking current commit...')
 
-  plugin.revs[1] = get_ref(plugin, 'HEAD')
+  plugin.revs[1] = get_head(plugin.install_path)
 
   disp:task_update(plugin.full_name, 'fetching updates...')
   local ok, out = git_run({
     'fetch',
+    '--tags',  -- fetch remote tags
+    '--force', -- overwrite tags
     '--update-shallow',
     '--progress',
   }, {
@@ -335,7 +365,7 @@ local function update(plugin: Plugin, disp: Display): boolean, {string}
     return false, out
   end
 
-  plugin.revs[2] = get_ref(plugin, 'HEAD')
+  plugin.revs[2] = get_head(plugin.install_path)
 
   if plugin.revs[1] ~= plugin.revs[2] then
     disp:task_update(plugin.full_name, 'getting commit messages...')
@@ -434,7 +464,7 @@ end, 2)
 
 --- Returns HEAD's short hash
 M.get_rev = async(function(plugin: Plugin): string, string
-  return get_ref(plugin, 'HEAD')
+  return get_head(plugin.install_path)
 end, 1)
 
 return M

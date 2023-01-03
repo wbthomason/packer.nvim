@@ -273,7 +273,7 @@ local function render_task(self, plugin)
    local item = self.items[plugin]
 
    local icon
-   if not item.status then
+   if not item.status or item.status == 'done' then
       icon = config.display.item_sym
    elseif item.status == 'running' then
       icon = config.display.working_sym

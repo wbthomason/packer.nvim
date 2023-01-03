@@ -123,7 +123,7 @@ function M.setup(plugins)
 
    for _, plugin in pairs(plugins) do
       if not plugin.lazy then
-         load_plugins({ plugin })
+         M.load_plugin(plugin)
       end
    end
 
