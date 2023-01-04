@@ -269,7 +269,7 @@ local function pad(x)
    return r
 end
 
-local function render_task(self, plugin)
+local function render_task(self, plugin, static)
    local item = self.items[plugin]
 
    local icon
@@ -289,7 +289,10 @@ local function render_task(self, plugin)
       vim.list_extend(lines, pad(item.info))
    end
 
-   local pos = (item.status == 'success' or item.status == 'failed') and 'top' or nil
+   local pos
+   if not static then
+      pos = (item.status == 'success' or item.status == 'failed') and 'top' or nil
+   end
 
    update_task_lines(self, plugin, lines, pos)
 end
@@ -313,7 +316,7 @@ local function toggle_info(disp)
 
    local item = disp.items[plugin_name]
    item.expanded = not item.expanded
-   render_task(disp, plugin_name)
+   render_task(disp, plugin_name, true)
    api.nvim_win_set_cursor(disp.win, cursor_pos)
 end
 
