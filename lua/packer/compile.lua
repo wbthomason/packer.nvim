@@ -576,7 +576,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
           require('packer.load')({%s}, { cmd = '%s', l1 = cmdargs.line1, l2 = cmdargs.line2, bang = cmdargs.bang, args = cmdargs.args, mods = cmdargs.mods }, _G.packer_plugins)
         end,
         {nargs = '*', range = true, bang = true, complete = function()
-          require('packer.load')({%s}, { cmd = '%s' }, _G.packer_plugins)
+          require('packer.load')({%s}, {}, _G.packer_plugins)
           return vim.fn.getcompletion('%s ', 'cmdline')
       end})]],
         command,
