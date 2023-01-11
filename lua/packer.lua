@@ -351,9 +351,30 @@ end
 
 packer.__manage_all = manage_all_plugins
 
+local function has_actual_updates(results)
+  if not results then return false end
+  local plugin_utils = require('packer.plugin_utils')
+  for plugin_name, result in pairs(results.updates) do
+    local plugin = results.plugins[plugin_name]
+    if result.ok and plugin.type == plugin_utils.git_plugin_type
+          and plugin.revs[1] ~= plugin.revs[2] then
+        return true
+      end
+  end
+  return false
+end
+
 --- Hook to fire events after packer operations
-packer.on_complete = vim.schedule_wrap(function()
+packer.on_complete = vim.schedule_wrap(function(results)
   vim.cmd [[doautocmd User PackerComplete]]
+  vim.notify('Packer complete', 'info', { title = 'Packer' })
+  if config.auto_snapshot and results
+    and ((has_actual_updates(results))
+          or (vim.fn.empty(results.removals) == 0)
+          or (vim.fn.empty(results.installs) == 0))
+  then
+    packer.snapshot(config.snapshot)
+  end
 end)
 
 --- Hook to fire events after packer compilation
@@ -383,7 +404,7 @@ packer.clean = function(results)
     end
     local fs_state = await(plugin_utils.get_fs_state(plugins))
     await(clean(plugins, fs_state, results))
-    packer.on_complete()
+    packer.on_complete(results)
   end)()
 end
 
@@ -451,10 +472,10 @@ packer.install = function(...)
       plugin_utils.update_rplugins()
       local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
       display_win:final_results(results, delta)
-      packer.on_complete()
+      packer.on_complete(results)
     else
       log.info 'Nothing to install!'
-      packer.on_complete()
+      packer.on_complete(results)
     end
   end)()
 end
@@ -554,7 +575,7 @@ packer.update = function(...)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta, opts)
-    packer.on_complete()
+    packer.on_complete(results)
   end)()
 end
 
@@ -647,7 +668,7 @@ packer.sync = function(...)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta, opts)
-    packer.on_complete()
+    packer.on_complete(results)
   end)()
 end
 
@@ -921,6 +942,7 @@ end
 ---@vararg string @ if provided, the only plugins to be rolled back,
 ---otherwise all the plugins will be rolled back
 packer.rollback = function(snapshot_name, ...)
+  vim.notify('Start rolling back...')
   local args = { ... }
   local a = require 'packer.async'
   local async = a.sync
