@@ -50,7 +50,7 @@ end
 local spawn = a.wrap(function(cmd, options, callback)
   local handle = nil
   local timer = nil
-  handle = loop.spawn(cmd, options, function(exit_code, signal)
+  handle, pid = loop.spawn(cmd, options, function(exit_code, signal)
     handle:close()
     if timer ~= nil then
       timer:stop()
@@ -76,6 +76,13 @@ local spawn = a.wrap(function(cmd, options, callback)
         loop.read_start(pipe, options.stdio_callbacks[i])
       end
     end
+  end
+
+  if handle == nil then 
+      -- pid is an error string in this case 
+      log.error(string.format("Failed spawning command: %s because %s", cmd, pid))
+      callback(-1, pid)
+      return 
   end
 
   if options.timeout then
