@@ -370,29 +370,12 @@ end
 
 packer.__manage_all = manage_all_plugins
 
-local function has_actual_updates(results)
-  if not results then return false end
-  local plugin_utils = require('packer.plugin_utils')
-  for plugin_name, result in pairs(results.updates) do
-    local plugin = results.plugins[plugin_name]
-    if result.ok and plugin.type == plugin_utils.git_plugin_type
-          and plugin.revs[1] ~= plugin.revs[2] then
-        return true
-      end
-  end
-  return false
-end
-
 --- Hook to fire events after packer operations
 packer.on_complete = vim.schedule_wrap(function(event_name, results)
   vim.cmd(string.format('doautocmd User Packer%sComplete', event_name))
   vim.notify(string.format('Packer%s complete', event_name),
     'info', { title = 'Packer' })
-  if config.snapshot.auto and results
-    and ((has_actual_updates(results))
-          or (vim.fn.empty(results.removals) == 0)
-          or (vim.fn.empty(results.installs) == 0))
-  then
+  if vim.tbl_contains({ 'Sync', 'Update', 'Clean', 'Install' }, event_name) then
     packer.snapshot(config.snapshot.name)
   end
 end)
