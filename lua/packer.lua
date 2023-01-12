@@ -147,7 +147,7 @@ packer.init = function(user_config)
 end
 
 packer.make_commands = function()
-  vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.create PackerSnapshot  lua require('packer').snapshot(<f-args>)]]
+  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer.snapshot'.completion.create PackerSnapshot  lua require('packer').snapshot(<f-args>)]]
   vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.rollback PackerSnapshotRollback  lua require('packer').rollback(<f-args>)]]
   vim.cmd [[command! -nargs=+ -complete=customlist,v:lua.require'packer.snapshot'.completion.snapshot PackerSnapshotDelete lua require('packer.snapshot').delete(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerInstall lua require('packer').install(<f-args>)]]
@@ -879,7 +879,8 @@ packer.snapshot = function(snapshot_name, ...)
   local snapshot = require 'packer.snapshot'
   local log = require_and_configure 'log'
   local args = { ... }
-  snapshot_name = snapshot_name or require('os').date '%Y-%m-%d'
+  snapshot_name = (not vim.fn.empty(snapshot_name) and snapshot_name)
+    or config.snapshot or require('os').date '%Y-%m-%d'
   local snapshot_path = vim.fn.expand(snapshot_name)
 
   local fmt = string.format
