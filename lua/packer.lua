@@ -933,13 +933,17 @@ packer.snapshot = function(snapshot_name, ...)
   local write_snapshot = true
 
   if vim.fn.filereadable(snapshot_path) == 1 then
-    vim.ui.select(
-      { 'Replace', 'Cancel' },
-      { prompt = fmt("Do you want to replace '%s'?", snapshot_path) },
-      function(_, idx)
-        write_snapshot = idx == 1
-      end
-    )
+    if config.snapshot.silent_overwrite then
+      write_snapshot = true
+    else
+      vim.ui.select(
+        { 'Replace', 'Cancel' },
+        { prompt = fmt("Do you want to replace '%s'?", snapshot_path) },
+        function(_, idx)
+          write_snapshot = idx == 1
+        end
+      )
+    end
   end
 
   async(function()

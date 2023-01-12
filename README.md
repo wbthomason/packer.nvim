@@ -288,6 +288,7 @@ default configuration values (and structure of the configuration table) are:
     auto = false, -- Automatically updates snapshot file when package changes
     name = nil, -- Name of the snapshot you would like to load at startup
     path = join_paths(stdpath 'cache', 'packer.nvim'), -- Default save directory for snapshots
+    silent_overwrite = false, -- overwrite existing snapshot without confirm
   },
   package_root   = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
   compile_path = util.join_paths(vim.fn.stdpath('config'), 'plugin', 'packer_compiled.lua'),
