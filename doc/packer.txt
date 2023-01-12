@@ -202,8 +202,8 @@ default values: >lua
     ensure_dependencies   = true, -- Should packer install plugin dependencies?
     snapshot = {
       auto = false, -- Automatically updates snapshot file when package changes
-      name = nil, -- Name of the snapshot you would like to load at startup
-      path = join_paths(stdpath 'cache', 'packer.nvim'), -- Default save directory for snapshots
+      name = function() return os.date('%Y-%m-%d') .. '.json' end, -- Name of the snapshot you would like to load at startup, can be string or function returns a string
+      path = join_paths(stdpath 'cache', 'packer.nvim'), -- Default save directory for snapshots, can be string or function returns a string
       silent_overwrite = false, -- overwrite existing snapshot without confirm
     },
     package_root   = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),

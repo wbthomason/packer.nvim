@@ -11,7 +11,7 @@ local config_defaults = {
   ensure_dependencies = true,
   snapshot = {
     auto = false,
-    name = nil,
+    name = function() return os.date('%Y-%m-%d') .. '.json' end,
     path = join_paths(stdpath 'cache', 'packer.nvim'),
   },
   package_root = join_paths(stdpath 'data', 'site', 'pack'),
@@ -129,19 +129,25 @@ packer.init = function(user_config)
 
   -- Check deprecated options
   if type(user_config.snapshot) == 'string' then
-    vim.notify('[packer.nvim] snapshot is now a table. Please update your config.', vim.log.levels.WARN)
+    vim.notify('[packer.nvim] snapshot is now a table. ' ..
+      'Please update your config.', vim.log.levels.WARN)
     user_config.snapshot = { path = user_config.snapshot }
   end
   if user_config.auto_snapshot then
-    vim.notify('[packer.nvim] auto_snapshot is now snapshot.auto. Please update your config.', vim.log.levels.WARN)
-    user_config.snapshot = { auto = user_config.auto_snapshot }
+    vim.notify('[packer.nvim] auto_snapshot is now snapshot.auto. ' ..
+      'Please update your config.', vim.log.levels.WARN)
+    user_config.snapshot = vim.tbl_deep_extend('keep',
+      user_config.snapshot or {}, { auto = user_config.auto_snapshot })
   end
   if user_config.snapshot_path then
-    vim.notify('[packer.nvim] snapshot_path is now snapshot.path. Please update your config.', vim.log.levels.WARN)
-    user_config.snapshot = { path = user_config.snapshot_path }
+    vim.notify('[packer.nvim] snapshot_path is now snapshot.path. ' ..
+      'Please update your config.', vim.log.levels.WARN)
+    user_config.snapshot = vim.tbl_deep_extend('keep',
+      user_config.snapshot or {}, { path = user_config.snapshot_path })
   end
 
   config = util.deep_extend('force', config, user_config)
+  print(config.snapshot.path)
   packer.reset()
   config.package_root = vim.fn.fnamemodify(config.package_root, ':p')
   local _
@@ -157,10 +163,6 @@ packer.init = function(user_config)
 
   if not config.disable_commands then
     packer.make_commands()
-  end
-
-  if vim.fn.mkdir(config.snapshot.path, 'p') ~= 1 then
-    require_and_configure('log').warn("Couldn't create " .. config.snapshot.path)
   end
 end
 
@@ -881,7 +883,12 @@ packer.snapshot = function(snapshot_name, ...)
   local log = require_and_configure 'log'
   local args = { ... }
   snapshot_name = ((vim.fn.empty(snapshot_name) == 0) and snapshot_name)
-    or config.snapshot.name or require('os').date '%Y-%m-%d'
+    or config.snapshot.name
+  if type(snapshot_name) == 'function' then
+    snapshot_name = snapshot_name()
+  end
+  assert(type(snapshot_name) == 'string',
+    'snapshot.name must be a string or a function that returns a string')
   local snapshot_path = vim.fn.expand(snapshot_name)
 
   local fmt = string.format
@@ -891,6 +898,14 @@ packer.snapshot = function(snapshot_name, ...)
       log.warn 'config.snapshot.path is not set'
       return
     else
+      if type(config.snapshot.path) == 'function' then
+        config.snapshot.path = config.snapshot.path()
+      end
+      assert(type(config.snapshot.path) == 'string',
+        'snapshot.path must be a string or a function that returns a string')
+      if vim.fn.mkdir(config.snapshot.path, 'p') ~= 1 then
+        require_and_configure('log').warn("Couldn't create " .. config.snapshot.path)
+      end
       snapshot_path = util.join_paths(config.snapshot.path, snapshot_path) -- set to default path
     end
   end
