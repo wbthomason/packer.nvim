@@ -943,7 +943,7 @@ end
 ---@vararg string @ if provided, the only plugins to be rolled back,
 ---otherwise all the plugins will be rolled back
 packer.rollback = function(snapshot_name, ...)
-  vim.notify('Start rolling back...')
+  vim.notify('Start rolling back, please wait...')
   local args = { ... }
   local a = require 'packer.async'
   local async = a.sync
