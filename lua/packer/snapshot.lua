@@ -114,10 +114,28 @@ snapshot.create = function(snapshot_path, plugins)
     local commits = await(generate_snapshot(plugins))
 
     await(a.main)
-    local snapshot_content = vim.fn.json_encode(commits.ok.completed)
+
+    local plugin_names = {}
+    for plugin_name, _ in pairs(commits.ok.completed) do
+      table.insert(plugin_names, plugin_name)
+    end
+    table.sort(plugin_names)
+
+    local snapshot_content = { '{' }
+    for i, plugin_name in ipairs(plugin_names) do
+      local plugin_info = commits.ok.completed[plugin_name]
+      if i == #plugin_names then
+      table.insert(snapshot_content,
+        fmt('  %q: { "commit": %q }', plugin_name, plugin_info.commit))
+      else
+      table.insert(snapshot_content,
+        fmt('  %q: { "commit": %q },', plugin_name, plugin_info.commit))
+      end
+    end
+    table.insert(snapshot_content, '}')
 
     local status, res = pcall(function()
-      return vim.fn.writefile({ snapshot_content }, snapshot_path) == 0
+      return vim.fn.writefile(snapshot_content , snapshot_path) == 0
     end)
 
     if status and res then
