@@ -284,8 +284,12 @@ default configuration values (and structure of the configuration table) are:
 ```lua
 {
   ensure_dependencies   = true, -- Should packer install plugin dependencies?
-  snapshot = nil, -- Name of the snapshot you would like to load at startup
-  snapshot_path = join_paths(stdpath 'cache', 'packer.nvim'), -- Default save directory for snapshots
+  snapshot = {
+    auto = false, -- Automatically updates snapshot file when package changes
+    name = function() return os.date('%Y-%m-%d') .. '.json' end, -- Name of the snapshot you would like to load at startup, can be string or function returns a string
+    path = join_paths(stdpath 'cache', 'packer.nvim'), -- Default save directory for snapshots, can be string or function returns a string
+    silent_overwrite = false, -- overwrite existing snapshot without confirm
+  },
   package_root   = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
   compile_path = util.join_paths(vim.fn.stdpath('config'), 'plugin', 'packer_compiled.lua'),
   plugin_package = 'packer', -- The default package for plugins
@@ -565,7 +569,14 @@ name and information table as arguments.
 require knowing when the operations are complete, you can use the following `User` autocmds (see
 `:help User` for more info on how to use):
 
-- `PackerComplete`: Fires after install, update, clean, and sync asynchronous operations finish.
+- `PackerInstallComplete`: Fires after install
+- `PackerUpdateComplete`: Fires after update
+- `PackerCleanComplete`: Fires after clean
+- `PackerSyncComplete`: Fires after sync
+- `PackerSnapshotComplete`: Fires after snapshot
+- `PackerSnapshotRollbackComplete`: Fires after snapshot rollback
+- `PackerSnapshotDeleteComplete`: Fires after snapshot deletion
+- `PackerCompileComplete`: Fires after compilation (before `PackerCompileDone`)
 - `PackerCompileDone`: Fires after compiling (see [the section on compilation](#compiling-lazy-loaders))
 
 ### Using a floating window

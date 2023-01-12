@@ -16,8 +16,12 @@ local fmt = string.format
 
 local config = {
   ensure_dependencies = true,
-  snapshot = nil,
-  snapshot_path = join_paths(stdpath 'cache', 'packer.nvim'),
+  snapshot = {
+    auto = false,
+    name = function() return os.date('%Y-%m-%d') .. '.json' end,
+    path = join_paths(stdpath 'cache', 'packer.nvim'),
+    silent_overwrite = false,
+  },
   package_root = join_paths(stdpath 'data', 'site', 'pack'),
   compile_path = join_paths(stdpath 'config', 'plugin', 'packer_compiled.lua'),
   plugin_package = 'packer',
@@ -111,7 +115,7 @@ end
 local snapshotted_plugins = {}
 a.describe('Packer testing ', function()
   local snapshot_name = 'test'
-  local test_path = join_paths(config.snapshot_path, snapshot_name)
+  local test_path = join_paths(config.snapshot.path, snapshot_name)
   local snapshot = require 'packer.snapshot'
   snapshot.cfg(config)
 
@@ -154,7 +158,7 @@ a.describe('Packer testing ', function()
 
   a.describe('packer.rollback()', function()
     local rollback_snapshot_name = 'rollback_test'
-    local rollback_test_path = join_paths(config.snapshot_path, rollback_snapshot_name)
+    local rollback_test_path = join_paths(config.snapshot.path, rollback_snapshot_name)
     local prev_commit_cmd = 'git rev-parse --short HEAD~5'
     local get_rev_cmd = 'git rev-parse --short HEAD'
 
