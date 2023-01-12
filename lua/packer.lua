@@ -147,7 +147,6 @@ packer.init = function(user_config)
   end
 
   config = util.deep_extend('force', config, user_config)
-  print(config.snapshot.path)
   packer.reset()
   config.package_root = vim.fn.fnamemodify(config.package_root, ':p')
   local _
