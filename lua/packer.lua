@@ -10,6 +10,7 @@ local packer = {}
 local config_defaults = {
   ensure_dependencies = true,
   snapshot = nil,
+  auto_snapshot = false,
   snapshot_path = join_paths(stdpath 'cache', 'packer.nvim'),
   package_root = join_paths(stdpath 'data', 'site', 'pack'),
   compile_path = join_paths(stdpath 'config', 'plugin', 'packer_compiled.lua'),
