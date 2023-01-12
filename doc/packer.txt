@@ -44,6 +44,7 @@ FEATURES                                         *packer-intro-features*
 - Uses jobs for async installation
 - Support for `git` tags, branches, revisions, submodules
 - Support for local plugins
+- Lockfile for keeping plugins in sync between systems
 - Support for saving/restoring snapshots for plugin versions (`git` only)
 
 ==============================================================================
@@ -117,27 +118,39 @@ configuration. Regenerate compiled loader file.
 
 `PackerInstall`                                 *packer-commands-install*
 Clean, then install missing plugins.
+Optional arguments:
+    `--nolockfile`                  Do not apply lockfile if enabled
+    `--lockfile=/path/lockfile.lua` Override lockfile used
 
 `PackerUpdate`                                  *packer-commands-update*
 Clean, then update and install plugins.
-Supports the `--preview` flag as an optional first argument to preview
-updates.
+Optional arguments:
+    `--preview`                     Preview updates
+    `--nolockfile`                  Do not apply lockfile if enabled
+    `--lockfile=/path/lockfile.lua` Override lockfile used
 
 `PackerSync`                                    *packer-commands-sync*
 Perform `PackerUpdate` and then `PackerCompile`.
-Supports the `--preview` flag as an optional first argument to preview
-updates.
+Optional arguments:
+    `--preview`                     Preview updates
+    `--nolockfile`                  Do not apply lockfile if enabled
+    `--lockfile=/path/lockfile.lua` Override lockfile used
+
+`PackerLockfile`                                *packer-commands-lockfile*
+Updates lockfile from installed plugins.
+Optional arguments:
+    `--path=/path/lockfile.lua`     Override lockfile output
 
 `PackerLoad`                                    *packer-commands-load*
 Loads opt plugin immediately
 
-`PackerSnapshot`                                    *packer-commands-snapshot*
+`PackerSnapshot`                                *packer-commands-snapshot*
 Snapshots your plugins to a file
 
-`PackerSnapshotDelete`                                    *packer-commands-delete*
+`PackerSnapshotDelete`                          *packer-commands-delete*
 Deletes a snapshot
 
-`PackerSnapshotRollback`                                    *packer-commands-rollback*
+`PackerSnapshotRollback`                        *packer-commands-rollback*
 Rolls back plugins' commit specified by the snapshot
 ==============================================================================
 USAGE                                          *packer-usage*
@@ -190,6 +203,7 @@ commands work well for this purpose: >vim
   command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete  PackerInstall lua require('packer').install(<f-args>)
   command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)
   command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)
+  command! -nargs=* -complete=customlist,v:lua.require'packer.lockfile'.completion PackerLockfile lua require('packer').lockfile(<f-args>)
   command! PackerClean packadd packer.nvim | lua require('plugins').clean()
   command! PackerCompile packadd packer.nvim | lua require('plugins').compile('~/.config/nvim/plugin/packer_load.vim')
   command! -bang -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad lua require('packer').loader(<f-args>, '<bang>')
@@ -230,6 +244,11 @@ default values: >lua
       depth = 1, -- Git clone depth
       clone_timeout = 60, -- Timeout, in seconds, for git clones
       default_url_format = 'https://github.com/%s' -- Lua format string used for "aaa/bbb" style plugins
+    },
+    lockfile = {
+      enable = false, -- Should packer apply lockfile to `installer` and `updater`?
+      path = util.join_paths(stdpath 'config', 'lockfile.lua'), -- Default file location for lockfile
+      regen_on_update = false, -- Should packer update the lockfile after upgrading plugins?
     },
     log = { level = 'warn' }, -- The default print log level. One of: "trace", "debug", "info", "warn", "error", "fatal".
     display = {
@@ -490,6 +509,51 @@ They can be configured by changing the value of `config.display.keybindings`
 (see |packer-configuration|). Setting it to `false` will disable all keybindings.
 Setting any of its keys to `false` will disable the corresponding keybinding.
 
+LOCKFILE                                       *packer-lockfile*
+`packer` can provide a `lockfile` to help manage plugin updates. This is
+useful for users that store their configuration in some sort of source
+repository. Committing the lockfile will ensure that `packer` will `install`
+and `update` plugins to known working commits for their configuration.
+
+Lockfile is enabled by setting the |packer-configuration| option
+`lockfile.enable = true` .  Enabling lockfile support will change the default
+behavior of |packer.install()|, |packer.update()|, and |packer.sync()|. If the
+lockfile contains a plugin, `packer` will update to the specified commit
+instead of the latest changes. If the plugin is not found in the lockfile,
+`packer` will fetch the latest changes.  The plugin value `commit` will take
+precedence over any lockfile value.
+
+If you want to update your local plugins to the latest changes, call
+`:PackerUpdate` or `:PackerSync` with the `--nolockfile` argument.
+This will ignore the lockfile and update your plugins to the latest changes.
+
+Some example commands:
+
+>
+    " Generate the lockfile to lockfile.path defined in packer's config
+    PackerLockfile
+
+    " Generating a lockfile to some other path
+    PackerLockfile --path="/some/other/path.lua"
+
+    " Update plugins to the state defined in lockfile
+    PackerUpdate
+
+    " Updating without applying lockfile
+    PackerUpdate --nolockfile
+
+    " Updating a specific plugin without applying lockfile
+    PackerUpdate --nolockfile plenary.nvim
+
+    " Updating plugins and applying a specific lockfile
+    PackerUpdate --lockfile="/some/other/path.lua"
+
+    " Updating a specific plugin with a specific lockfile
+    PackerUpdate --lockfile="/some/other/path.lua" plenary.nvim
+<
+
+The same options that apply to `PackerUpdate` also apply to `PackerInstall` and `PackerSync`.
+
 USER AUTOCMDS                                  *packer-user-autocmds*
 `packer` runs most of its operations asyncronously. If you would like to
 implement automations that require knowing when the operations are complete,
@@ -499,15 +563,16 @@ use):
 `PackerComplete`       Fires after install, update, clean, and sync
                      asynchronous operations finish.
 `PackerCompileDone`    Fires after compiling (see |packer-lazy-load|)
+`PackerLockfileDone`   Fires after lockfile (see |packer-lockfile|)
 
 ==============================================================================
 API                                            *packer-api*
 
-clean()		                                     *packer.clean()*
+clean()                                        *packer.clean()*
 `clean` scans for and removes all disabled or no longer managed plugins. It is
 invoked without arguments.
 
-compile()		                                   *packer.compile()*
+compile()                                      *packer.compile()*
 `compile` builds lazy-loader code from your plugin specification and saves it
 to either `config.compile_path` if it is invoked with no argument, or to the
 path it is invoked with if it is given a single argument. This path should end
@@ -515,12 +580,12 @@ in `.vim` and be on your |runtimepath| in order for lazy-loading to work. You
 **must** call `compile` to update lazy-loaders after your configuration
 changes.
 
-init()		                                     *packer.init()*
+init(user_config)                              *packer.init()*
 Initializes `packer`; must be called before any calls to any other `packer`
 function. Takes an optional table of configuration values as described in
 |packer-configuration|.
 
-install()		                                   *packer.install()*
+install(...)                                   *packer.install()*
 `install` installs any missing plugins, runs post-update hooks, and updates
 rplugins (|remote-plugin|) and helptags.
 
@@ -528,26 +593,54 @@ It can be invoked with no arguments or with a list of plugin names to install.
 These plugin names must already be managed by `packer` via a call to
 |packer.use()|.
 
-reset()		                                     *packer.reset()*
+Additionally, `install` can take an optional table as the first option. This
+table can contain the following keys:
+
+- `lockfile`: `string` Override the default lockfile path to be used
+- `nolockfile`: `boolean` If value is `true` the install command will not
+              enable the |packer-lockfile|
+
+Some examples:
+>
+    -- Install only select plugins
+    packer.install("telescope.nvim", "plenary.nvim")
+
+    -- Install plugins without applying the lockfile
+    packer.install({ nolockfile = true })
+
+    -- Install only select plugins without applying the lockfile
+    packer.install({ nolockfile = true }, "telescope.nvim", "plenary.nvim"})
+<
+
+lockfile(...)                                  *packer.lockfile()*
+`lockfile` updates `packer`'s lockfile (|packer-lockfile|) at `lockfile.path` based
+on the currently installed plugins.
+
+Additionally, `lockfile` can take an optional table. This table can contain
+the following keys:
+
+- `path`: `string` Override lockfile output path
+
+reset()                                        *packer.reset()*
 `reset` empties the set of managed plugins. Called with no arguments; used to
 ensure plugin specifications are reinitialized if the specification file is
 reloaded. Called by |packer.startup()| or manually before calling
 |packer.use()|.
 
-set_handler()		                               *packer.set_handler()*
+set_handler()                                  *packer.set_handler()*
 `set_handler` allows custom extension of `packer`. See |packer-extending| for
 details.
 
-startup()		                                   *packer.startup()*
+startup()                                      *packer.startup()*
 `startup` is a convenience function for simple setup. See |packer-startup| for
 details.
 
-sync()		                                     *packer.sync()*
+sync()                                         *packer.sync()*
 `sync` runs |packer.clean()| followed by |packer.update()|.
 
 Supports options as the first argument, see |packer.update()|.
 
-update()		                                   *packer.update()*
+update(...)                                    *packer.update()*
 `update` installs any missing plugins, updates all installed plugins, runs
 post-update hooks, and updates rplugins (|remote-plugin|) and helptags.
 
@@ -555,23 +648,44 @@ It can be invoked with no arguments or with a list of plugin names to update.
 These plugin names must already be managed by `packer` via a call to
 |packer.use()|.
 
-Additionally, the first argument can be a table specifying options,
-such as `update({preview_updates = true}, ...)` to preview potential changes before updating
-(same as `PackerUpdate --preview`).
+Additionally, `update` can take an optional table as the first option. This
+table can contain the following keys:
 
-snapshot(snapshot_name, ...)		                                *packer.snapshot()*
-`snapshot` takes the rev of all the installed plugins and serializes them into a Lua table which will be saved under `config.snapshot_path` (which is the directory that will hold all the snapshots files) as `config.snapshot_path/<snapshot_name>` or an absolute path provided by the users.
-Optionally plugins name can be specified so that only those plugins will be
-snapshotted.
-Snapshot files can be loaded manually via `dofile` which will return a table with the plugins name as keys the commit short hash as value.
+- `preview`: `boolean` Preview potential change before updating
+- `lockfile`: `string` Override the default lockfile path to be used
+- `nolockfile`: `boolean` If value is `true` the install command will not
+              enable the |packer-lockfile|
 
-delete(snapshot_name)		                                *packer.delete()*
+Some examples:
+>
+    -- Update only select plugins
+    packer.update("telescope.nvim", "plenary.nvim")
+
+    -- Update plugins without applying the lockfile
+    packer.update({ nolockfile = true })
+
+    -- Update only select plugins without applying the lockfile
+    packer.update({ nolockfile = true }, "telescope.nvim", "plenary.nvim"})
+<
+
+snapshot(snapshot_name, ...)                   *packer.snapshot()*
+`snapshot` takes the rev of all the installed plugins and serializes them into
+a Lua table which will be saved under `config.snapshot_path` (which is the
+directory that will hold all the snapshots files) as
+`config.snapshot_path/<snapshot_name>` or an absolute path provided by the
+users.  Optionally plugins name can be specified so that only those plugins
+will be snapshotted.  Snapshot files can be loaded manually via `dofile` which
+will return a table with the plugins name as keys the commit short hash as
+value.
+
+delete(snapshot_name)                          *packer.delete()*
 `delete` deletes a snapshot given the name or the absolute path.
 
-rollback(snapshot_name, ...)		                                *packer.rollback()*
-`rollback` reverts all plugins or only the specified as extra arguments to the commit specified in the snapshot file
+rollback(snapshot_name, ...)                   *packer.rollback()*
+`rollback` reverts all plugins or only the specified as extra arguments to the
+commit specified in the snapshot file
 
-use()		                                       *packer.use()*
+use()                                          *packer.use()*
 `use` allows you to add one or more plugins to the managed set. It can be
 invoked as follows:
 - With a single plugin location string, e.g. `use <STRING>`
@@ -611,8 +725,10 @@ invoked as follows:
   }
 - With a list of plugins specified in either of the above two forms
 
-For the *cmd* option, the command may be a full command, or an autocommand pattern. If the command contains any
-non-alphanumeric characters, it is assumed to be a pattern, and instead of creating a stub command, it creates
-a CmdUndefined autocmd to load the plugin when a command that matches the pattern is invoked.
+For the *cmd* option, the command may be a full command, or an autocommand
+pattern. If the command contains any non-alphanumeric characters, it is
+assumed to be a pattern, and instead of creating a stub command, it creates a
+CmdUndefined autocmd to load the plugin when a command that matches the
+pattern is invoked.
 
  vim:tw=78:ts=2:ft=help:norl:

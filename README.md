@@ -23,8 +23,9 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
     4. [Performing plugin management operations](#performing-plugin-management-operations)
     5. [Extending packer](#extending-packer)
     6. [Compiling Lazy-Loaders](#compiling-lazy-loaders)
-	7. [User autocommands](#user-autocommands)
-	8. [Using a floating window](#using-a-floating-window)
+    7. [Lockfile](#lockfile)
+    8. [User autocommands](#user-autocommands)
+    9. [Using a floating window](#using-a-floating-window)
 6. [Profiling](#profiling)
 7. [Debugging](#debugging)
 8. [Compatibility and known issues](#compatibility-and-known-issues)
@@ -43,6 +44,7 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 - Uses jobs for async installation
 - Support for `git` tags, branches, revisions, submodules
 - Support for local plugins
+- Lockfile for keeping plugins in sync between systems
 
 ## Requirements
 - You need to be running **Neovim v0.5.0+**
@@ -160,31 +162,23 @@ end)
 
 `packer` provides the following commands after you've run and configured `packer` with `require('packer').startup(...)`:
 
-```
--- You must run this or `PackerSync` whenever you make changes to your plugin configuration
--- Regenerate compiled loader file
-:PackerCompile
-
--- Remove any disabled or unused plugins
-:PackerClean
-
--- Clean, then install missing plugins
-:PackerInstall
-
--- Clean, then update and install plugins
--- supports the `--preview` flag as an optional first argument to preview updates
-:PackerUpdate
-
--- Perform `PackerUpdate` and then `PackerCompile`
--- supports the `--preview` flag as an optional first argument to preview updates
-:PackerSync
-
--- Show list of installed plugins
-:PackerStatus
-
--- Loads opt plugin immediately
-:PackerLoad completion-nvim ale
-```
+- `:PackerCompile` Regenerate compiled loader file
+  - You must run this or `PackerSync` whenever you make changes to your plugin configuration
+- `:PackerClean` Remove any disabled or unused plugins
+- `:PackerInstall` Clean, then install missing plugins. Supports optional arguments
+  - `--nolockfile`: Do not apply lockfile if enabled
+  - `--lockfile=/path/lockfile.lua`: Override lockfile used
+- `:PackerUpdate` Clean, then update and install plugins. Supports optional arguments
+  - `--preview`: Preview updates before applying
+  - `--nolockfile`: Do not apply lockfile if enabled
+  - `--lockfile=/path/lockfile.lua`: Override lockfile used
+- `:PackerSync` Perform `PackerUpdate` and then `PackerCompile`. Supports optional arguments
+  - `--preview`: Preview updates before applying
+  - `--nolockfile`: Do not apply lockfile if enabled
+  - `--lockfile=/path/lockfile.lua`: Override lockfile used
+- `:PackerLoad` Loads opt plugin immediately
+- `:PackerLockfile` Updates lockfile from installed plugins. Supports optional arguments
+  - `--path=/path/lockfile.lua`: Override lockfile output
 
 You can configure Neovim to automatically run `:PackerCompile` whenever `plugins.lua` is updated with
 [an autocommand](https://neovim.io/doc/user/autocmd.html#:autocmd):
@@ -339,6 +333,11 @@ default configuration values (and structure of the configuration table) are:
       prompt_revert = 'r',
     }
   },
+  lockfile = {
+    enable = false, -- Should packer apply lockfile to `installer` and `updater`?
+    path = util.join_paths(stdpath 'config', 'lockfile.lua'), -- Default file location for lockfile
+    regen_on_update = false, -- Should packer update the lockfile after upgrading plugins?
+  },
   luarocks = {
     python_cmd = 'python' -- Set the python command to use for running hererocks
   },
@@ -396,12 +395,12 @@ use {
   ft = string or list,         -- Specifies filetypes which load this plugin.
   keys = string or list,       -- Specifies maps which load this plugin. See "Keybindings".
   event = string or list,      -- Specifies autocommand events which load this plugin.
-  fn = string or list          -- Specifies functions which load this plugin.
+  fn = string or list,         -- Specifies functions which load this plugin.
   cond = string, function, or list of strings/functions,   -- Specifies a conditional test to load this plugin
-  module = string or list      -- Specifies Lua module names for require. When requiring a string which starts
+  module = string or list,     -- Specifies Lua module names for require. When requiring a string which starts
                                -- with one of these module names, the plugin will be loaded.
-  module_pattern = string/list -- Specifies Lua pattern of Lua module names for require. When
-                               -- requiring a string which matches one of these patterns, the plugin will be loaded.
+  module_pattern = string/list -- Specifies Lua pattern of Lua module names for require. When requiring a
+                               -- string which matches one of these patterns, the plugin will be loaded.
 }
 ```
 
@@ -520,12 +519,20 @@ below, `plugins` is an optional table of plugin names; if not provided, the defa
 plugins":
 
 - `packer.install(plugins)`: Install the specified plugins if they are not already installed
+- `packer.install(opts, plugins)`: First argument can be a table of optional args
+  - `nolockfile`: `boolean` Should the command use the lockfile
+  - `lockfile`: `string` Override the default lockfile path to be used
 - `packer.update(plugins)`: Update the specified plugins, installing any that are missing
-- `packer.update(opts, plugins)`: First argument can be a table specifying options, such as `{preview_updates = true}` to preview potential changes before updating (same as `PackerUpdate --preview`).
+- `packer.update(opts, plugins)`: First argument can be a table specifying options
+  - `preview`: `boolean` Preview potential change before updating
+  - `nolockfile`: `boolean` Should the command use the lockfile
+  - `lockfile`: `string` Override the default lockfile path to be used
 - `packer.clean()`: Remove any disabled or no longer managed plugins
 - `packer.sync(plugins)`: Perform a `clean` followed by an `update`.
 - `packer.sync(opts, plugins)`: Can take same optional options as `update`.
 - `packer.compile(path)`: Compile lazy-loader code and save to `path`.
+- `packer.lockfile(opts)`: Updates lockfile based on currently installed plugins
+  - `path`: `string` Override lockfile output path
 - `packer.snapshot(snapshot_name, ...)`: Creates a snapshot file that will live under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be taken. Optionally, a list of plugins name can be provided to selectively choose the plugins to snapshot.
 - `packer.rollback(snapshot_name, ...)`: Rollback plugins status a snapshot file that will live under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be taken. Optionally, a list of plugins name can be provided to selectively choose which plugins to revert.
 - `packer.delete(snapshot_name)`: Deletes a snapshot file under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be deleted.
@@ -560,6 +567,47 @@ config/setup functions to bytecode, which has this limitation.
 Additionally, if functions are given for these keys, the functions will be passed the plugin
 name and information table as arguments.
 
+### Lockfile
+
+`packer` can provide a `lockfile` to help manage plugin updates. This is useful for users that store their
+configuration in some sort of source repository. Committing the lockfile will ensure that `packer` will
+`install` and `update` plugins to known working commits for their configuration.
+
+Enabling lockfile support will change the default behavior of `packer.install()`, `packer.update()`, and
+`packer.sync()`. If the lockfile contains a plugin, `packer` will update to the specified commit instead
+of the latest changes. If the plugin is not found in the lockfile, `packer` will fetch the latest changes.
+The plugin value `commit` will take precedence over any lockfile value.
+
+If you want to update your local plugins to the latest changes, call `:PackerUpdate` or `:PackerSync` with
+the `--nolockfile` argument. This will ignore the lockfile and update your plugins to the latest changes.
+
+Some example commands:
+
+```vim
+" Generate the lockfile to lockfile.path, as defined in packer's config
+PackerLockfile
+
+" Generating a lockfile to some other path
+PackerLockfile --path="/some/other/path.lua"
+
+" Update plugins to the state defined in lockfile
+PackerUpdate
+
+" Updating without applying lockfile
+PackerUpdate --nolockfile
+
+" Updating a specific plugin without applying lockfile
+PackerUpdate --nolockfile plenary.nvim
+
+" Updating plugins and applying a specific lockfile
+PackerUpdate --lockfile="/some/other/path.lua"
+
+" Updating a specific plugin with a specific lockfile
+PackerUpdate --lockfile="/some/other/path.lua" plenary.nvim
+```
+
+The same options that apply to `PackerUpdate` also apply to `PackerInstall` and `PackerSync`.
+
 ### User autocommands
 `packer` runs most of its operations asyncronously. If you would like to implement automations that
 require knowing when the operations are complete, you can use the following `User` autocmds (see
@@ -567,6 +615,7 @@ require knowing when the operations are complete, you can use the following `Use
 
 - `PackerComplete`: Fires after install, update, clean, and sync asynchronous operations finish.
 - `PackerCompileDone`: Fires after compiling (see [the section on compilation](#compiling-lazy-loaders))
+- `PackerLockfileDone`: Fires after lockfile generation (see [the section on lockfile](#lockfile))
 
 ### Using a floating window
 You can configure Packer to use a floating window for command outputs by passing a utility

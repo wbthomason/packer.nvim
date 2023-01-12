@@ -29,17 +29,19 @@ local config_defaults = {
     subcommands = {
       update = 'pull --ff-only --progress --rebase=false',
       update_head = 'merge FETCH_HEAD',
-      install = 'clone --depth %i --no-single-branch --progress',
-      fetch = 'fetch --depth 999999 --progress',
+      install = 'clone --no-single-branch --progress',
+      fetch = 'fetch --progress',
       checkout = 'checkout %s --',
       update_branch = 'merge --ff-only @{u}',
       current_branch = 'rev-parse --abbrev-ref HEAD',
       diff = 'log --color=never --pretty=format:FMT --no-show-signature %s...%s',
       diff_fmt = '%%h %%s (%%cr)',
+      commit_count = 'rev-list --count %s..%s',
       git_diff_fmt = 'show --no-color --pretty=medium %s',
       get_rev = 'rev-parse --short HEAD',
       get_header = 'log --color=never --pretty=format:FMT --no-show-signature HEAD -n 1',
       get_bodies = 'log --color=never --pretty=format:"===COMMIT_START===%h%n%s===BODY_START===%b" --no-show-signature HEAD@{1}...HEAD',
+      get_date = 'show -s --format="%ct"',
       get_fetch_bodies = 'log --color=never --pretty=format:"===COMMIT_START===%h%n%s===BODY_START===%b" --no-show-signature HEAD...FETCH_HEAD',
       submodules = 'submodule update --init --recursive --progress',
       revert = 'reset --hard HEAD@{1}',
@@ -76,6 +78,11 @@ local config_defaults = {
       retry = 'R',
     },
   },
+  lockfile = {
+    enable = false,
+    path = join_paths(stdpath 'config', 'lockfile.lua'),
+    regen_on_update = false,
+  },
   luarocks = { python_cmd = 'python' },
   log = { level = 'warn' },
   profile = { enable = false },
@@ -105,6 +112,12 @@ local configurable_modules = {
   snapshot = false,
 }
 
+local install_update_complete_opt_args = {
+  '--preview',
+  '--nolockfile',
+  '--lockfile=',
+}
+
 local function require_and_configure(module_name)
   local fully_qualified_name = 'packer.' .. module_name
   local module = require(fully_qualified_name)
@@ -115,6 +128,56 @@ local function require_and_configure(module_name)
   end
 
   return module
+end
+
+---Filter options, flags and positional arguments from a variadic input.
+---The first argument in the variadic argument may be a table that
+--- options, and flags will be appended to.
+---
+--- Optional arguments are defined prefixed by `--`. There are two types:
+---
+--- - `Options`
+---   - Defined by containing `=` where the lhs is the name and rhs the value.
+---   - Example `--path=/some/path` -> { path = '/some/path' }
+--- - `Flags`
+---   - Defined by just their name. Their value is always set to true
+---   - Example `--nolockfile` -> { nolockfile = true }
+---
+--- - `Positional` arguments dont contain the optional prefix `--`.
+--- @return table, table First table is optional arguments second is positional
+local filter_opts_from_pos_args = function(...)
+  local args = { ... }
+  local opts = {}
+  local pos_args = {}
+
+  local unquote = function(str)
+    return str:gsub('"', ''):gsub("'", '')
+  end
+
+  if not vim.tbl_isempty(args) then
+    local first = args[1]
+    if type(first) == 'table' then
+      opts = first
+      table.remove(args, 1)
+    end
+
+    for _, e in ipairs(args) do
+      if type(e) == 'string' and e ~= '' then
+        if e:sub(1, 2) == '--' then
+          local x = string.find(e, '=', 1, true)
+          if x then
+            opts[string.sub(e, 3, x - 1)] = unquote(string.sub(e, x + 1))
+          else
+            opts[string.sub(e, 3)] = true
+          end
+        else
+          table.insert(pos_args, e)
+        end
+      end
+    end
+  end
+
+  return opts, pos_args
 end
 
 --- Initialize packer
@@ -152,6 +215,7 @@ packer.make_commands = function()
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerInstall lua require('packer').install(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerUpdate lua require('packer').update(<f-args>)]]
   vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer'.plugin_complete PackerSync lua require('packer').sync(<f-args>)]]
+  vim.cmd [[command! -nargs=* -complete=customlist,v:lua.require'packer.lockfile'.completion PackerLockfile lua require('packer').lockfile(<f-args>)]]
   vim.cmd [[command! PackerClean             lua require('packer').clean()]]
   vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
   vim.cmd [[command! PackerStatus            lua require('packer').status()]]
@@ -364,6 +428,13 @@ packer.on_compile_done = function()
   log.debug 'packer.compile: Complete'
 end
 
+packer.on_lockfile_done = function()
+  local log = require_and_configure 'log'
+
+  vim.cmd [[doautocmd User PackerLockfileDone]]
+  log.debug 'packer.lockfile: Complete'
+end
+
 --- Clean operation:
 -- Finds plugins present in the `packer` package but not in the managed set
 packer.clean = function(results)
@@ -404,10 +475,19 @@ packer.install = function(...)
   local display = require_and_configure 'display'
 
   manage_all_plugins()
-  local install_plugins
-  if ... then
-    install_plugins = { ... }
+
+  local opts, pos_args = filter_opts_from_pos_args(...)
+  if config.lockfile.enable then
+    local lockfile = require_and_configure 'lockfile'
+    lockfile.is_updating = opts.nolockfile or false
+    lockfile.load(opts.lockfile or config.lockfile.path)
   end
+
+  local install_plugins
+  if #pos_args > 0 then
+    install_plugins = pos_args
+  end
+
   async(function()
     local fs_state = await(plugin_utils.get_fs_state(plugins))
     if not install_plugins then
@@ -459,27 +539,6 @@ packer.install = function(...)
   end)()
 end
 
--- Filter out options specified as the first argument to update or sync
--- returns the options table and the plugin names
-local filter_opts_from_plugins = function(...)
-  local args = { ... }
-  local opts = {}
-  if not vim.tbl_isempty(args) then
-    local first = args[1]
-    if type(first) == 'table' then
-      table.remove(args, 1)
-      opts = first
-    elseif first == '--preview' then
-      table.remove(args, 1)
-      opts = { preview_updates = true }
-    end
-  end
-  if opts.preview_updates == nil and config.preview_updates then
-    opts.preview_updates = true
-  end
-  return opts, util.nonempty_or(args, vim.tbl_keys(plugins))
-end
-
 --- Update operation:
 -- Takes an optional list of plugin names as an argument. If no list is given, operates on all
 -- managed plugins.
@@ -501,7 +560,15 @@ packer.update = function(...)
 
   manage_all_plugins()
 
-  local opts, update_plugins = filter_opts_from_plugins(...)
+  local opts, pos_args = filter_opts_from_pos_args(...)
+  local update_plugins = util.nonempty_or(pos_args, vim.tbl_keys(plugins))
+  opts.preview_updates = opts.preview or config.preview_updates
+  if config.lockfile.enable then
+    local lockfile = require_and_configure 'lockfile'
+    lockfile.is_updating = opts.nolockfile or false
+    lockfile.load(opts.lockfile or config.lockfile.path)
+  end
+
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
@@ -554,6 +621,14 @@ packer.update = function(...)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta, opts)
+
+    if config.lockfile.enable then
+      local lockfile = require_and_configure 'lockfile'
+      if lockfile.is_updating and config.lockfile.regen_on_update then
+        await(lockfile.update(plugins, opts.lockfile or config.lockfile.path))
+      end
+    end
+
     packer.on_complete()
   end)()
 end
@@ -581,7 +656,15 @@ packer.sync = function(...)
 
   manage_all_plugins()
 
-  local opts, sync_plugins = filter_opts_from_plugins(...)
+  local opts, pos_args = filter_opts_from_pos_args(...)
+  local sync_plugins = util.nonempty_or(pos_args, vim.tbl_keys(plugins))
+  opts.preview_updates = opts.preview or config.preview_updates
+  if config.lockfile.enable then
+    local lockfile = require_and_configure 'lockfile'
+    lockfile.is_updating = opts.nolockfile or false
+    lockfile.load(opts.lockfile or config.lockfile.path)
+  end
+
   async(function()
     local start_time = vim.fn.reltime()
     local results = {}
@@ -647,7 +730,47 @@ packer.sync = function(...)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta, opts)
+
+    if config.lockfile.enable then
+      local lockfile = require_and_configure 'lockfile'
+      if lockfile.is_updating and config.lockfile.regen_on_update then
+        await(lockfile.update(plugins, opts.lockfile or config.lockfile.path))
+      end
+    end
+
     packer.on_complete()
+  end)()
+end
+
+--- Update lockfile with current plugin status
+packer.lockfile = function(...)
+  local a = require 'packer.async'
+  local async = a.sync
+  local await = a.wait
+  local log = require 'packer.log'
+  local lockfile = require_and_configure 'lockfile'
+
+  manage_all_plugins()
+
+  local opts, _ = filter_opts_from_pos_args(...)
+  local lockfile_path = opts.path or config.lockfile.path
+
+  async(function()
+    await(lockfile.update(plugins, lockfile_path))
+      :map_ok(function(ok)
+        await(a.main)
+        if next(ok.failed) then
+          log.error('Could not update lockfile ' .. vim.inspect(ok.failed))
+        else
+          log.info(ok.message)
+        end
+      end)
+      :map_err(function(err)
+        await(a.main)
+        log.error(err)
+      end)
+
+    packer.on_lockfile_done()
   end)()
 end
 
@@ -655,6 +778,12 @@ packer.status = function()
   local async = require('packer.async').sync
   local display = require_and_configure 'display'
   local log = require_and_configure 'log'
+
+  if config.lockfile.enable then
+    local lockfile = require_and_configure 'lockfile'
+    lockfile.load(config.lockfile.path)
+  end
+
   manage_all_plugins()
   async(function()
     local display_win = display.open(config.display.open_fn or config.display.open_cmd)
@@ -840,6 +969,15 @@ end
 -- Completion user plugins
 -- Intended to provide completion for PackerUpdate/Sync/Install command
 packer.plugin_complete = function(lead, _, _)
+  if vim.startswith(lead, '--lockfile=') then
+    return require('packer.util').path_complete(lead)
+  end
+  if vim.startswith(lead, '-') then
+    return vim.tbl_filter(function(name)
+      return vim.startswith(name, lead)
+    end, install_update_complete_opt_args)
+  end
+
   local completion_list = vim.tbl_filter(function(name)
     return vim.startswith(name, lead)
   end, vim.tbl_keys(_G.packer_plugins))

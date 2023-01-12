@@ -3,6 +3,7 @@ local jobs = require 'packer.jobs'
 local a = require 'packer.async'
 local result = require 'packer.result'
 local log = require 'packer.log'
+local lockfile = require 'packer.lockfile'
 local await = a.wait
 local async = a.sync
 local fmt = string.format
@@ -81,7 +82,16 @@ git.cfg = function(_config)
   config.base_dir = _config.package_root
   config.default_base_dir = util.join_paths(config.base_dir, _config.plugin_package)
   config.exec_cmd = config.cmd .. ' '
+  config.is_lockfile = _config.lockfile.enable
   ensure_git_env()
+end
+
+---Get lockfile info if lockfile should be applied
+---@param plugin table @ plugin being applied
+---@return table @ either table with lockfile info or an empty table
+local function get_lockfile_info(plugin)
+  local use_lockfile = config.is_lockfile and not lockfile.is_updating
+  return use_lockfile and lockfile.get(plugin.short_name) or {}
 end
 
 ---Resets a git repo `dest` to `commit`
@@ -147,14 +157,15 @@ local handle_checkouts = function(plugin, dest, disp, opts)
         end)
     end
 
-    if plugin.commit then
+    local commit = plugin.commit or get_lockfile_info(plugin).commit
+    if commit then
       if disp ~= nil then
-        disp:task_update(plugin_name, fmt('checking out %s...', plugin.commit))
+        disp:task_update(plugin_name, fmt('checking out %s...', commit))
       end
-      r:and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, plugin.commit), job_opts))
+      r:and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, commit), job_opts))
         :map_err(function(err)
           return {
-            msg = fmt('Error checking out commit %s for %s', plugin.commit, plugin_name),
+            msg = fmt('Error checking out commit %s for %s', commit, plugin_name),
             data = err,
             output = output,
           }
@@ -207,20 +218,48 @@ local split_messages = function(messages)
   return lines
 end
 
+local get_date = function(plugin)
+  local plugin_name = util.get_plugin_full_name(plugin)
+
+  local rev_cmd = config.exec_cmd .. config.subcommands.get_date
+
+  return async(function()
+    local rev = await(jobs.run(rev_cmd, { cwd = plugin.install_path, options = { env = git.job_env }, capture_output = true }))
+      :map_ok(function(ok)
+        local _, r = next(ok.output.data.stdout)
+        return r
+      end)
+      :map_err(function(err)
+        local _, msg = fmt('%s: %s', plugin_name, next(err.output.data.stderr))
+        return msg
+      end)
+
+    return rev
+  end)
+end
+
+local get_depth = function(plugin)
+  if config.is_lockfile then
+    local info = lockfile.get(plugin.short_name)
+    return info.date and fmt(' --shallow-since="%s"', info.date) or ' --depth=999999'
+  else
+    local depth = plugin.commit and 999999 or config.depth
+    return fmt(' --depth=%s', depth)
+  end
+end
+
 git.setup = function(plugin)
+  local depth_opt = get_depth(plugin)
   local plugin_name = util.get_plugin_full_name(plugin)
   local install_to = plugin.install_path
-  local install_cmd =
-    vim.split(config.exec_cmd .. fmt(config.subcommands.install, plugin.commit and 999999 or config.depth), '%s+')
+  local install_cmd = vim.split(config.exec_cmd .. config.subcommands.install .. depth_opt, '%s+')
 
   local submodule_cmd = config.exec_cmd .. config.subcommands.submodules
   local rev_cmd = config.exec_cmd .. config.subcommands.get_rev
-  local update_cmd = config.exec_cmd .. config.subcommands.update
+
   local update_head_cmd = config.exec_cmd .. config.subcommands.update_head
-  local fetch_cmd = config.exec_cmd .. config.subcommands.fetch
-  if plugin.commit or plugin.tag then
-    update_cmd = fetch_cmd
-  end
+  local fetch_cmd = vim.split(config.exec_cmd .. config.subcommands.fetch .. depth_opt, '%s+')
+  local pull_cmd = vim.split(config.exec_cmd .. config.subcommands.update .. depth_opt, '%s+')
 
   local branch_cmd = config.exec_cmd .. config.subcommands.current_branch
   local current_commit_cmd = vim.split(config.exec_cmd .. config.subcommands.get_header, '%s+')
@@ -258,12 +297,13 @@ git.setup = function(plugin)
       installer_opts.cwd = install_to
       r:and_then(await, jobs.run(submodule_cmd, installer_opts))
 
-      if plugin.commit then
-        disp:task_update(plugin_name, fmt('checking out %s...', plugin.commit))
-        r:and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, plugin.commit), installer_opts))
+      local commit = plugin.commit or get_lockfile_info(plugin).commit
+      if commit then
+        disp:task_update(plugin_name, fmt('checking out %s...', commit))
+        r:and_then(await, jobs.run(config.exec_cmd .. fmt(config.subcommands.checkout, commit), installer_opts))
           :map_err(function(err)
             return {
-              msg = fmt('Error checking out commit %s for %s', plugin.commit, plugin_name),
+              msg = fmt('Error checking out commit %s for %s', commit, plugin_name),
               data = { err, output },
             }
           end)
@@ -302,7 +342,7 @@ git.setup = function(plugin)
 
   plugin.updater = function(disp, opts)
     return async(function()
-      local update_info = { err = {}, revs = {}, output = {}, messages = {} }
+      local update_info = { err = {}, revs = {}, output = {}, messages = {}, ahead_behind = {} }
       local function exit_ok(r)
         if #update_info.err > 0 or r.exit_code ~= 0 then
           return result.err(r)
@@ -380,7 +420,10 @@ git.setup = function(plugin)
         options = { env = git.job_env },
       }
 
-      if needs_checkout then
+      local commit = plugin.commit or get_lockfile_info(plugin).commit
+      local update_cmd = commit and fetch_cmd or pull_cmd
+
+      if needs_checkout or commit then
         r:and_then(await, jobs.run(config.exec_cmd .. config.subcommands.fetch, update_opts))
         r:and_then(await, handle_checkouts(plugin, install_to, disp, opts))
         local function merge_output(res)
@@ -454,6 +497,36 @@ git.setup = function(plugin)
           local commit_headers_onread = jobs.logging_callback(update_info.err, update_info.messages)
           local commit_headers_callbacks = { stdout = commit_headers_onread, stderr = commit_headers_onread }
 
+          local ahead_behind_onread = jobs.logging_callback(update_info.err, update_info.ahead_behind)
+          local ahead_behind_callbacks = { stdout = ahead_behind_onread, stderr = ahead_behind_onread }
+          local ahead_behind_cmd = config.exec_cmd .. config.subcommands.commit_count
+
+          local ahead_cmd = fmt(ahead_behind_cmd, update_info.revs[1], update_info.revs[2])
+          local behind_cmd = fmt(ahead_behind_cmd, update_info.revs[2], update_info.revs[1])
+
+          r:and_then(
+            await,
+            jobs.run(ahead_cmd, {
+              success_test = exit_ok,
+              capture_output = ahead_behind_callbacks,
+              cwd = install_to,
+              options = { env = git.job_env },
+            })
+          )
+
+          r:and_then(
+            await,
+            jobs.run(behind_cmd, {
+              success_test = exit_ok,
+              capture_output = ahead_behind_callbacks,
+              cwd = install_to,
+              options = { env = git.job_env },
+            })
+          )
+
+          update_info.ahead_behind[1] = tonumber(update_info.ahead_behind[1])
+          update_info.ahead_behind[2] = tonumber(update_info.ahead_behind[2])
+
           local diff_cmd = string.format(config.subcommands.diff, update_info.revs[1], update_info.revs[2])
           local commit_headers_cmd = vim.split(config.exec_cmd .. diff_cmd, '%s+')
           for i, arg in ipairs(commit_headers_cmd) do
@@ -475,6 +548,7 @@ git.setup = function(plugin)
           if r.ok then
             plugin.messages = update_info.messages
             plugin.revs = update_info.revs
+            plugin.ahead_behind = update_info.ahead_behind
           end
 
           if config.mark_breaking_changes then
@@ -559,6 +633,12 @@ git.setup = function(plugin)
   ---@return string
   plugin.get_rev = function()
     return get_rev(plugin)
+  end
+
+  ---Returns HEAD's date
+  ---@return string
+  plugin.get_date = function()
+    return get_date(plugin)
   end
 end
 

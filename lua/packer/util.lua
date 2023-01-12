@@ -64,6 +64,44 @@ util.join_paths = function(...)
   return table.concat({ ... }, separator)
 end
 
+util.path_complete = function(lead)
+  local split = vim.split(lead, '=')
+  local command, path = split[1] .. '=', split[2]
+  if #path == 0 then
+    path = '.'
+  end
+  path = vim.fs.normalize(path)
+
+  local completion_list = {}
+  local is_dir = vim.fn.isdirectory(path) == 1
+  local dirpath = is_dir and path or vim.fs.dirname(path)
+  local filepath = not is_dir and vim.fs.basename(path)
+
+  local sep = util.get_separator()
+  local dir = vim.loop.fs_opendir(dirpath)
+
+  local function join(d, f)
+    return d:sub(#d, #d) == sep and d .. f or d .. sep .. f
+  end
+
+  local res = vim.loop.fs_readdir(dir)
+  while res ~= nil do
+    for _, entry in ipairs(res) do
+      if filepath then
+        if vim.startswith(entry.name, filepath) then
+          completion_list[#completion_list + 1] = command .. join(dirpath, entry.name)
+        end
+      else
+        completion_list[#completion_list + 1] = command .. join(dirpath, entry.name)
+      end
+    end
+    res = vim.loop.fs_readdir(dir)
+  end
+
+  vim.loop.fs_closedir(dir)
+  return completion_list
+end
+
 util.get_plugin_short_name = function(plugin)
   local path = vim.fn.expand(plugin[1])
   local name_segments = vim.split(path, util.get_separator())

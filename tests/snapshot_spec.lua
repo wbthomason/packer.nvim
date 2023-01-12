@@ -69,6 +69,11 @@ local config = {
     prompt_border = 'double',
     keybindings = { quit = 'q', toggle_info = '<CR>', diff = 'd', prompt_revert = 'r' },
   },
+  lockfile = {
+    enable = false,
+    path = join_paths(stdpath 'config', 'lockfile.lua'),
+    regen_on_update = false,
+  },
   luarocks = { python_cmd = 'python' },
   log = { level = 'trace' },
   profile = { enable = false },
