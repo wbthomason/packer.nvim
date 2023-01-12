@@ -18,15 +18,15 @@ snapshot.cfg = function(_config)
   config = _config
 end
 
---- Completion for listing snapshots in `config.snapshot_path`
+--- Completion for listing snapshots in `config.snapshot.path`
 --- Intended to provide completion for PackerSnapshotDelete command
 snapshot.completion.snapshot = function(lead, cmdline, pos)
   local completion_list = {}
-  if config.snapshot_path == nil then
+  if config.snapshot.path == nil then
     return completion_list
   end
 
-  local dir = vim.loop.fs_opendir(config.snapshot_path)
+  local dir = vim.loop.fs_opendir(config.snapshot.path)
 
   if dir ~= nil then
     local res = vim.loop.fs_readdir(dir)
@@ -57,7 +57,7 @@ snapshot.completion.create = function(lead, cmdline, pos)
   return {}
 end
 
---- Completion for listing snapshots in `config.snapshot_path` and single plugins after
+--- Completion for listing snapshots in `config.snapshot.path` and single plugins after
 --- the first argument is provided
 --- Intended to provide completion for PackerSnapshotRollback command
 snapshot.completion.rollback = function(lead, cmdline, pos)
@@ -209,7 +209,7 @@ snapshot.delete = function(snapshot_name)
   assert(type(snapshot_name) == 'string', fmt('Expected string, got %s', type(snapshot_name)))
   ---@type string
   local snapshot_path = vim.loop.fs_realpath(snapshot_name)
-    or vim.loop.fs_realpath(util.join_paths(config.snapshot_path, snapshot_name))
+    or vim.loop.fs_realpath(util.join_paths(config.snapshot.path, snapshot_name))
 
   if snapshot_path == nil then
     local warn = fmt("Snapshot '%s' is wrong or doesn't exist", snapshot_name)

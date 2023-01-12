@@ -9,9 +9,11 @@ local stdpath = vim.fn.stdpath
 local packer = {}
 local config_defaults = {
   ensure_dependencies = true,
-  snapshot = nil,
-  auto_snapshot = false,
-  snapshot_path = join_paths(stdpath 'cache', 'packer.nvim'),
+  snapshot = {
+    auto = false,
+    name = nil,
+    path = join_paths(stdpath 'cache', 'packer.nvim'),
+  },
   package_root = join_paths(stdpath 'data', 'site', 'pack'),
   compile_path = join_paths(stdpath 'config', 'plugin', 'packer_compiled.lua'),
   plugin_package = 'packer',
@@ -122,7 +124,23 @@ end
 -- Forwards user configuration to sub-modules, resets the set of managed plugins, and ensures that
 -- the necessary package directories exist
 packer.init = function(user_config)
+
   user_config = user_config or {}
+
+  -- Check deprecated options
+  if type(user_config.snapshot) == 'string' then
+    vim.notify('[packer.nvim] snapshot is now a table. Please update your config.', vim.log.levels.WARN)
+    user_config.snapshot = { path = user_config.snapshot }
+  end
+  if user_config.auto_snapshot then
+    vim.notify('[packer.nvim] auto_snapshot is now snapshot.auto. Please update your config.', vim.log.levels.WARN)
+    user_config.snapshot = { auto = user_config.auto_snapshot }
+  end
+  if user_config.snapshot_path then
+    vim.notify('[packer.nvim] snapshot_path is now snapshot.path. Please update your config.', vim.log.levels.WARN)
+    user_config.snapshot = { path = user_config.snapshot_path }
+  end
+
   config = util.deep_extend('force', config, user_config)
   packer.reset()
   config.package_root = vim.fn.fnamemodify(config.package_root, ':p')
@@ -141,8 +159,8 @@ packer.init = function(user_config)
     packer.make_commands()
   end
 
-  if vim.fn.mkdir(config.snapshot_path, 'p') ~= 1 then
-    require_and_configure('log').warn("Couldn't create " .. config.snapshot_path)
+  if vim.fn.mkdir(config.snapshot.path, 'p') ~= 1 then
+    require_and_configure('log').warn("Couldn't create " .. config.snapshot.path)
   end
 end
 
@@ -370,12 +388,12 @@ packer.on_complete = vim.schedule_wrap(function(event_name, results)
   vim.cmd(string.format('doautocmd User Packer%sComplete', event_name))
   vim.notify(string.format('Packer%s complete', event_name),
     'info', { title = 'Packer' })
-  if config.auto_snapshot and results
+  if config.snapshot.auto and results
     and ((has_actual_updates(results))
           or (vim.fn.empty(results.removals) == 0)
           or (vim.fn.empty(results.installs) == 0))
   then
-    packer.snapshot(config.snapshot)
+    packer.snapshot(config.snapshot.name)
   end
 end)
 
@@ -879,18 +897,18 @@ packer.snapshot = function(snapshot_name, ...)
   local snapshot = require 'packer.snapshot'
   local log = require_and_configure 'log'
   local args = { ... }
-  snapshot_name = (not vim.fn.empty(snapshot_name) and snapshot_name)
-    or config.snapshot or require('os').date '%Y-%m-%d'
+  snapshot_name = ((vim.fn.empty(snapshot_name) == 0) and snapshot_name)
+    or config.snapshot.name or require('os').date '%Y-%m-%d'
   local snapshot_path = vim.fn.expand(snapshot_name)
 
   local fmt = string.format
   log.debug(fmt('Taking snapshots of currently installed plugins to %s...', snapshot_name))
   if vim.fn.fnamemodify(snapshot_name, ':p') ~= snapshot_path then -- is not absolute path
-    if config.snapshot_path == nil then
-      log.warn 'config.snapshot_path is not set'
+    if config.snapshot.path == nil then
+      log.warn 'config.snapshot.path is not set'
       return
     else
-      snapshot_path = util.join_paths(config.snapshot_path, snapshot_path) -- set to default path
+      snapshot_path = util.join_paths(config.snapshot.path, snapshot_path) -- set to default path
     end
   end
 
@@ -960,7 +978,7 @@ packer.rollback = function(snapshot_name, ...)
   async(function()
     manage_all_plugins()
 
-    local snapshot_path = vim.loop.fs_realpath(util.join_paths(config.snapshot_path, snapshot_name))
+    local snapshot_path = vim.loop.fs_realpath(util.join_paths(config.snapshot.path, snapshot_name))
       or vim.loop.fs_realpath(snapshot_name)
 
     if snapshot_path == nil then
@@ -1056,8 +1074,8 @@ packer.startup = function(spec)
     end
   end
 
-  if config.snapshot ~= nil then
-    packer.rollback(config.snapshot)
+  if config.snapshot.name ~= nil then
+    packer.rollback(config.snapshot.name)
   end
 
   return packer
