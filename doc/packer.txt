@@ -502,9 +502,24 @@ implement automations that require knowing when the operations are complete,
 you can use the following User autocmds (see |User| for more info on how to
 use):
 
-`PackerComplete`       Fires after install, update, clean, and sync
-                     asynchronous operations finish.
-`PackerCompileDone`    Fires after compiling (see |packer-lazy-load|)
+`PackerInstallComplete`             Fires after install
+
+`PackerUpdateComplete`              Fires after update
+
+`PackerCleanComplete`               Fires after clean
+
+`PackerSyncComplete`                Fires after sync
+
+`PackerSnapshotComplete`            Fires after snapshot
+
+`PackerSnapshotRollbackComplete`    Fires after snapshot rollback
+
+`PackerSnapshotDeleteComplete`      Fires after snapshot deletion
+
+`PackerCompileComplete`             Fires after compilation,
+                                  before `PackerCompileDone`
+
+`PackerCompileDone`                 Fires after compiling (see |packer-lazy-load|)
 
 ==============================================================================
 API                                            *packer-api*
