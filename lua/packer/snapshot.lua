@@ -225,6 +225,7 @@ snapshot.delete = function(snapshot_name)
     local warn = "Couldn't delete " .. snapshot_path
     log.warn(warn)
   end
+  require('packer').on_complete('SnapshotDelete')
 end
 
 return snapshot

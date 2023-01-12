@@ -566,7 +566,14 @@ name and information table as arguments.
 require knowing when the operations are complete, you can use the following `User` autocmds (see
 `:help User` for more info on how to use):
 
-- `PackerComplete`: Fires after install, update, clean, and sync asynchronous operations finish.
+- `PackerInstallComplete`: Fires after install
+- `PackerUpdateComplete`: Fires after update
+- `PackerCleanComplete`: Fires after clean
+- `PackerSyncComplete`: Fires after sync
+- `PackerSnapshotComplete`: Fires after snapshot
+- `PackerSnapshotRollbackComplete`: Fires after snapshot rollback
+- `PackerSnapshotDeleteComplete`: Fires after snapshot deletion
+- `PackerCompileComplete`: Fires after compilation (before `PackerCompileDone`)
 - `PackerCompileDone`: Fires after compiling (see [the section on compilation](#compiling-lazy-loaders))
 
 ### Using a floating window

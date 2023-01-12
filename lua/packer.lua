@@ -366,9 +366,10 @@ local function has_actual_updates(results)
 end
 
 --- Hook to fire events after packer operations
-packer.on_complete = vim.schedule_wrap(function(results)
-  vim.cmd [[doautocmd User PackerComplete]]
-  vim.notify('Packer complete', 'info', { title = 'Packer' })
+packer.on_complete = vim.schedule_wrap(function(event_name, results)
+  vim.cmd(string.format('doautocmd User Packer%sComplete', event_name))
+  vim.notify(string.format('Packer%s complete', event_name),
+    'info', { title = 'Packer' })
   if config.auto_snapshot and results
     and ((has_actual_updates(results))
           or (vim.fn.empty(results.removals) == 0)
@@ -405,7 +406,7 @@ packer.clean = function(results)
     end
     local fs_state = await(plugin_utils.get_fs_state(plugins))
     await(clean(plugins, fs_state, results))
-    packer.on_complete(results)
+    packer.on_complete('Clean', results)
   end)()
 end
 
@@ -437,7 +438,7 @@ packer.install = function(...)
     end
     if #install_plugins == 0 then
       log.info 'All configured plugins are installed'
-      packer.on_complete()
+      packer.on_complete('Install')
       return
     end
 
@@ -473,10 +474,10 @@ packer.install = function(...)
       plugin_utils.update_rplugins()
       local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
       display_win:final_results(results, delta)
-      packer.on_complete(results)
+      packer.on_complete('Install', results)
     else
       log.info 'Nothing to install!'
-      packer.on_complete(results)
+      packer.on_complete('Install', results)
     end
   end)()
 end
@@ -576,7 +577,7 @@ packer.update = function(...)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta, opts)
-    packer.on_complete(results)
+    packer.on_complete('Update', results)
   end)()
 end
 
@@ -669,7 +670,7 @@ packer.sync = function(...)
     plugin_utils.update_rplugins()
     local delta = string.gsub(vim.fn.reltimestr(vim.fn.reltime(start_time)), ' ', '')
     display_win:final_results(results, delta, opts)
-    packer.on_complete(results)
+    packer.on_complete('Sync', results)
   end)()
 end
 
@@ -800,6 +801,7 @@ packer.compile = function(raw_args, move_plugins)
       end
     end
     log.info 'Finished compiling lazy-loaders!'
+    packer.on_complete('Compile')
     packer.on_compile_done()
   end)()
 end
@@ -935,6 +937,7 @@ packer.snapshot = function(snapshot_name, ...)
         end)
     end
   end)()
+  packer.on_complete('Snapshot')
 end
 
 ---Instantly rolls back plugins to a previous state specified by `snapshot_name`
@@ -991,7 +994,7 @@ packer.rollback = function(snapshot_name, ...)
         log.error(err)
       end)
 
-    packer.on_complete()
+    packer.on_complete('SnapshotRollback')
   end)()
 end
 
