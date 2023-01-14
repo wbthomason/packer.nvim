@@ -499,6 +499,7 @@ use):
 `PackerComplete`       Fires after install, update, clean, and sync
                      asynchronous operations finish.
 `PackerCompileDone`    Fires after compiling (see |packer-lazy-load|)
+`PackerSnapshotDone`   Fires after snapshot
 
 ==============================================================================
 API                                            *packer-api*

@@ -364,6 +364,14 @@ packer.on_compile_done = function()
   log.debug 'packer.compile: Complete'
 end
 
+--- Hook to fire events after packer snapshot
+packer.on_snapshot_done = vim.schedule_wrap(function()
+  local log = require_and_configure 'log'
+
+  vim.cmd [[doautocmd User PackerSnapshotDone]]
+  log.debug 'packer.snapshot: Complete'
+end)
+
 --- Clean operation:
 -- Finds plugins present in the `packer` package but not in the managed set
 packer.clean = function(results)
@@ -912,6 +920,8 @@ packer.snapshot = function(snapshot_name, ...)
           log.warn(err.message)
         end)
     end
+
+    packer.on_snapshot_done()
   end)()
 end
 
