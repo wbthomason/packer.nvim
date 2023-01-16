@@ -518,7 +518,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
     table.insert(
       event_aucmds,
       fmt(
-        'vim.cmd [[au %s ++once lua require("packer.load")({%s}, { event = "%s" }, _G.packer_plugins)]]',
+        'vim.cmd [[au %s ++once lua vim.schedule(function() require("packer.load")({%s}, { event = "%s" }, _G.packer_plugins) end)]]',
         event,
         table.concat(names, ', '),
         event:gsub([[\]], [[\\]])
