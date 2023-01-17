@@ -170,10 +170,32 @@ local function get_head(dir)
    return resolve_ref(dir, head(dir, '.git', 'HEAD'))
 end
 
+local function packed_refs(dir)
+   local refs = util.join_paths(dir, '.git', 'packed-refs')
+   local lines = util.file_lines(refs)
+   local ret = {}
+   for _, line in ipairs(lines or {}) do
+      local ref, name = line:match("^(.*) refs/(.*)$")
+      if ref then
+         ret[name] = ref
+      end
+   end
+   return ret
+end
+
+local function ref(dir, ...)
+   local x = head(dir, '.git', 'refs', ...)
+   if x then
+      return x
+   end
+   local r = table.concat({ ... }, "/")
+   return packed_refs(dir)[r]
+end
+
 
 local function get_current_branch(plugin)
 
-   local remote_head = head(plugin.install_path, '.git', 'refs', 'remotes', 'origin', 'HEAD')
+   local remote_head = ref(plugin.install_path, 'remotes', 'origin', 'HEAD')
    if remote_head then
       local branch = remote_head:match('^ref: refs/remotes/origin/(.*)')
       if branch then
@@ -245,8 +267,8 @@ local function checkout(plugin, disp)
       target = 'tags/' .. tag
    else
       local branch = plugin.branch or get_current_branch(plugin)
-      target = head(plugin.install_path, '.git', 'refs', 'remotes', 'origin', branch) or
-      head(plugin.install_path, '.git', 'refs', 'heads', branch)
+      target = ref(plugin.install_path, 'remotes', 'origin', branch) or
+      ref(plugin.install_path, 'heads', branch)
    end
 
    assert(target, 'Could not determine target for ' .. plugin.install_path)
