@@ -7,20 +7,6 @@ local fmt = string.format
 
 local Plugin = require('packer.plugin').Plugin
 
-local function is_plugin_line(line)
-   for _, sym in ipairs({
-         config.display.item_sym,
-         config.display.done_sym,
-         config.display.working_sym,
-         config.display.error_sym,
-      }) do
-      if line:find(sym, 1, true) then
-         return true
-      end
-   end
-   return false
-end
-
 local ns = api.nvim_create_namespace('packer_display')
 
 local M = {Display = {Item = {}, Callbacks = {}, }, }
@@ -88,26 +74,23 @@ local function valid_display(disp)
    return disp and disp.interactive and api.nvim_buf_is_valid(disp.buf) and api.nvim_win_is_valid(disp.win)
 end
 
+local function get_plugin(disp)
+   local row = unpack(api.nvim_win_get_cursor(0)) - 1
 
-local function find_nearest_plugin(disp)
-   if not valid_display(disp) then
+
+
+
+   local es = api.nvim_buf_get_extmarks(0, ns, { row, 0 }, { row, -1 }, {})
+   if not es[1] then
+      print('no marks')
       return
    end
 
-   local current_cursor_pos = api.nvim_win_get_cursor(0)
-   local nb_lines = api.nvim_buf_line_count(0)
-   local cursor_pos_y = math.max(current_cursor_pos[1], HEADER_LINES + 1)
-   if cursor_pos_y > nb_lines then
-      return
-   end
-   for i = cursor_pos_y, 1, -1 do
-      local curr_line = api.nvim_buf_get_lines(0, i - 1, i, true)[1]
-      if is_plugin_line(curr_line) then
-         for name, _ in pairs(disp.items) do
-            if string.find(curr_line, name, 1, true) then
-               return name, { i, 0 }
-            end
-         end
+   local id, start, col = unpack(es[1])
+
+   for name, item in pairs(disp.items) do
+      if item.mark == id then
+         return name, { start + 1, col }
       end
    end
 end
@@ -154,7 +137,7 @@ local function diff(disp)
       return
    end
 
-   local plugin_name = find_nearest_plugin(disp)
+   local plugin_name = get_plugin(disp)
    if plugin_name == nil then
       log.warn('No plugin selected!')
       return
@@ -213,8 +196,11 @@ local function get_task_region(self, plugin)
 
    local info = api.nvim_buf_get_extmark_by_id(self.buf, ns, mark, { details = true })
 
-   local srow = info[1]
-   local erow = info[3].end_row or srow
+   local srow, erow = info[1], info[3].end_row
+
+   if not erow then
+      return srow, srow
+   end
 
 
 
@@ -222,7 +208,7 @@ local function get_task_region(self, plugin)
       srow, erow = erow, srow
    end
 
-   return srow, erow
+   return srow, erow + 1
 end
 
 local function clear_task(self, plugin)
@@ -237,6 +223,8 @@ end
 
 
 
+
+local MAX_COL = 10000
 
 local function update_task_lines(self, plugin, message, pos)
    local item = self.items[plugin]
@@ -256,7 +244,9 @@ local function update_task_lines(self, plugin, message, pos)
    set_lines(self, srow, erow, message)
 
    api.nvim_buf_set_extmark(self.buf, ns, srow, 0, {
-      end_row = srow + #message,
+      end_row = srow + #message - 1,
+      end_col = MAX_COL,
+      strict = false,
       id = item.mark,
    })
 end
@@ -308,7 +298,7 @@ local function toggle_info(disp)
       return
    end
 
-   local plugin_name, cursor_pos = find_nearest_plugin(disp)
+   local plugin_name, cursor_pos = get_plugin(disp)
    if cursor_pos == nil then
       log.warn('No plugin selected!')
       return
@@ -387,7 +377,7 @@ local function prompt_revert(disp)
       return
    end
 
-   local plugin_name = find_nearest_plugin(disp)
+   local plugin_name = get_plugin(disp)
    if plugin_name == nil then
       log.warn('No plugin selected!')
       return
