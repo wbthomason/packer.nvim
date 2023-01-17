@@ -76,7 +76,7 @@ local record M
     start: integer | {integer, integer},
     eend: integer | {integer, integer},
     GetExtmarOpts
-  ): {{integer, integer, integer}}
+  ): {{integer, integer, integer, ExtmarkInfo}}
 
   nvim_buf_get_lines    : function(integer, number, number, boolean): {string}
   nvim_buf_get_name     : function(integer): string

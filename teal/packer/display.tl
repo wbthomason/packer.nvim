@@ -80,19 +80,19 @@ local function get_plugin(disp: Display): string, {integer}
   --     nvim_buf_get_extmarks(0, ns, row-1, row+1, {})
   -- does not return all the extmarks that the following would:
   --     nvim_buf_get_extmarks(0, ns, {row, 0}, {row,-1}, {})
-  local es = api.nvim_buf_get_extmarks(0, ns, {row, 0}, {row, -1}, {})
-  if not es[1] then
-    print('no marks')
-    return
-  end
-
-  local id, start, col = unpack(es[1])
-
-  for name, item in pairs(disp.items) do
-    if item.mark == id then
-      return name, {start+1, col}
+  for _, e in ipairs(api.nvim_buf_get_extmarks(0, ns, 0, -1, { details = true })) do
+    local id, srow, erow = e[1], e[2], e[4].end_row
+    if row >= srow and row <= erow then
+      for name, item in pairs(disp.items) do
+        if item.mark == id then
+          return name, {srow+1, 0}
+        end
+      end
     end
   end
+
+  print('no marks')
+  return
 end
 
 local function open_win(inner: boolean): integer, integer
@@ -508,8 +508,10 @@ local task_done = vim.schedule_wrap(function(self: Display, plugin: string, mess
 
   if success == true then
     item.status = 'success'
+    item.expanded = true
   elseif success == false then
     item.status = 'failed'
+    item.expanded = true
   else
     item.status = 'done'
   end
