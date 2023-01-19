@@ -15,6 +15,8 @@ local record M
     cwd: string
     timeout: integer
     env: {string}
+    on_stderr: function(string)
+    on_stdout: function(string)
   end
 
   run: function(task: string|{string}, opts: M.Opts): M.JobResult
@@ -117,6 +119,12 @@ M.run = a.wrap(function(task: string|{string}, opts: M.Opts, callback: function(
   for kind, pipe in pairs({ stdout = stdout, stderr = stderr } as {StdioType:vim.loop.Pipe}) do
     if pipe then
       pipe:read_start(function(err: string, data: string)
+        if kind == 'stderr' and opts.on_stderr and data then
+          opts.on_stderr(data)
+        end
+        if kind == 'stdout' and opts.on_stdout and data then
+          opts.on_stdout(data)
+        end
         if err then
           log.error(err)
         end

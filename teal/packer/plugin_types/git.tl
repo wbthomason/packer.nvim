@@ -216,6 +216,35 @@ local function get_current_branch(plugin: Plugin): string
   error('Could not get current branch for '..plugin.install_path)
 end
 
+local function split_messages(messages: string|{string}): {string}
+  if messages is string then
+    messages = {messages}
+  end
+  local lines = {}
+  for _, message in ipairs(messages as {string}) do
+    vim.list_extend(lines, vim.split(message, '\n'))
+    table.insert(lines, '')
+  end
+  return lines
+end
+
+local function process_progress(x: string): {string}
+  -- Only consider text after the last \r
+  local rlines = vim.split(x, '\r')
+  local line: string
+  if rlines[#rlines] == '' then
+    line = rlines[#rlines-1]
+  else
+    line = rlines[#rlines]
+  end
+
+  local lines = vim.split(line, '\n', true)
+  if lines[#lines] == '' then
+    lines[#lines] = nil
+  end
+  return lines
+end
+
 local function resolve_tag(plugin: Plugin): string, {string}
   local tag = plugin.tag
   local ok, out = git_run({
@@ -240,9 +269,9 @@ end
 
 ---@async
 local function checkout(plugin: Plugin, disp: Display): boolean, {string}
-  local function update_disp(msg: string)
+  local function update_disp(msg: string, info: {string})
     if disp then
-      disp:task_update(plugin.full_name, msg)
+      disp:task_update(plugin.full_name, msg, info)
     end
   end
 
@@ -273,16 +302,15 @@ local function checkout(plugin: Plugin, disp: Display): boolean, {string}
 
   assert(target, 'Could not determine target for '..plugin.install_path)
 
-  return git_run({ 'checkout', '--progress', target }, { cwd = plugin.install_path })
-end
-
-local function split_messages(messages: {string}): {string}
-  local lines = {}
-  for _, message in ipairs(messages) do
-    vim.list_extend(lines, vim.split(message, '\n'))
-    table.insert(lines, '')
-  end
-  return lines
+  update_disp('checking out...')
+  return git_run({
+    'checkout', '--progress', target
+  }, {
+    cwd = plugin.install_path,
+    on_stderr = function(chunk: string)
+      update_disp('checking out... ', process_progress(chunk))
+    end
+  })
 end
 
 local function mark_breaking_changes(
@@ -305,7 +333,13 @@ local function mark_breaking_changes(
   return ok, out
 end
 
-local function clone(plugin: Plugin, timeout: integer): boolean, {string}
+local function clone(plugin: Plugin, disp: Display, timeout: integer): boolean, {string}
+  local function task_update(info: {string})
+    disp:task_update(plugin.full_name, 'cloning...', info)
+  end
+
+  task_update()
+
   local clone_cmd = {
     'clone',
     '--no-checkout',
@@ -321,14 +355,17 @@ local function clone(plugin: Plugin, timeout: integer): boolean, {string}
 
   vim.list_extend(clone_cmd, { plugin.url, plugin.install_path })
 
-  return git_run(clone_cmd, { timeout = timeout })
+  return git_run(clone_cmd, {
+    timeout = timeout,
+    on_stderr = function(chunk: string)
+      task_update(process_progress(chunk))
+    end
+  })
 end
 
 ---@async
 local function install(plugin: Plugin, disp: Display): boolean, {string}
-  disp:task_update(plugin.full_name, 'cloning...')
-
-  local ok, out = clone(plugin, config.git.clone_timeout)
+  local ok, out = clone(plugin, disp, config.git.clone_timeout)
   if not ok then
     return nil, out
   end
@@ -361,11 +398,16 @@ end
 
 ---@async
 local function update(plugin: Plugin, disp: Display): boolean, {string}
+
   disp:task_update(plugin.full_name, 'checking current commit...')
 
   plugin.revs[1] = get_head(plugin.install_path)
 
-  disp:task_update(plugin.full_name, 'fetching updates...')
+  local function fetch_update(info: {string})
+    disp:task_update(plugin.full_name, 'fetching updates...', info)
+  end
+
+  fetch_update()
   local ok, out = git_run({
     'fetch',
     '--tags',  -- fetch remote tags
@@ -373,7 +415,10 @@ local function update(plugin: Plugin, disp: Display): boolean, {string}
     '--update-shallow',
     '--progress',
   }, {
-    cwd = plugin.install_path
+    cwd = plugin.install_path,
+    on_stderr = function(chunk: string)
+      fetch_update(process_progress(chunk))
+    end
   })
   if not ok then
     return false, out

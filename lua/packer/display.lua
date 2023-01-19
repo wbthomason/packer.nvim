@@ -490,9 +490,12 @@ local function decrement_headline_count(disp)
 end
 
 local function normalize_lines(x)
+   if not x then
+      return nil
+   end
    local r = {}
    for _, l in ipairs(x) do
-      for _, i in ipairs(vim.split(l, '\n')) do
+      for _, i in ipairs(vim.split(l, '\n\r?')) do
          r[#r + 1] = i
       end
    end
@@ -514,13 +517,11 @@ local task_done = vim.schedule_wrap(function(self, plugin, message, info, succes
       item.expanded = true
    else
       item.status = 'done'
+      item.expanded = false
    end
 
    item.message = message
-
-   if info then
-      item.info = normalize_lines(info)
-   end
+   item.info = normalize_lines(info)
 
    render_task(self, plugin)
    decrement_headline_count(self)
@@ -552,6 +553,7 @@ display.task_update = vim.schedule_wrap(function(self, plugin, message, info)
    item.message = message
 
    if info then
+      item.expanded = true
       item.info = info
    end
 

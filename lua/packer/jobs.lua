@@ -20,6 +20,8 @@ local M = {JobResult = {}, Opts = {}, }
 
 
 
+
+
 local function trace(cmd, options)
    log.fmt_trace(
    "Running job: cmd = %s, args = %s, cwd = %s",
@@ -117,6 +119,12 @@ M.run = a.wrap(function(task, opts, callback)
    for kind, pipe in pairs({ stdout = stdout, stderr = stderr }) do
       if pipe then
          pipe:read_start(function(err, data)
+            if kind == 'stderr' and opts.on_stderr and data then
+               opts.on_stderr(data)
+            end
+            if kind == 'stdout' and opts.on_stdout and data then
+               opts.on_stdout(data)
+            end
             if err then
                log.error(err)
             end
