@@ -12,25 +12,27 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 **Packer is built on native packages. You may wish to read `:h packages` before continuing**
 
 ## Table of Contents
+
 1. [Features](#features)
 2. [Requirements](#requirements)
 3. [Quickstart](#quickstart)
 4. [Bootstrapping](#bootstrapping)
 5. [Usage](#usage)
-    1. [The startup function](#the-startup-function)
-    2. [Custom Initialization](#custom-initialization)
-    3. [Specifying Plugins](#specifying-plugins)
-    4. [Performing plugin management operations](#performing-plugin-management-operations)
-    5. [Extending packer](#extending-packer)
-    6. [Compiling Lazy-Loaders](#compiling-lazy-loaders)
-	7. [User autocommands](#user-autocommands)
-	8. [Using a floating window](#using-a-floating-window)
+   1. [The startup function](#the-startup-function)
+   2. [Custom Initialization](#custom-initialization)
+   3. [Specifying Plugins](#specifying-plugins)
+   4. [Performing plugin management operations](#performing-plugin-management-operations)
+   5. [Extending packer](#extending-packer)
+   6. [Compiling Lazy-Loaders](#compiling-lazy-loaders)
+   7. [User autocommands](#user-autocommands)
+   8. [Using a floating window](#using-a-floating-window)
 6. [Profiling](#profiling)
 7. [Debugging](#debugging)
 8. [Compatibility and known issues](#compatibility-and-known-issues)
 9. [Contributors](#contributors)
 
 ## Features
+
 - Declarative plugin specification
 - Support for dependencies
 - Support for Luarocks dependencies
@@ -45,11 +47,13 @@ Have a problem or idea? Make an [issue](https://github.com/wbthomason/packer.nvi
 - Support for local plugins
 
 ## Requirements
+
 - You need to be running **Neovim v0.5.0+**
 - If you are on Windows 10, you need developer mode enabled in order to use local plugins (creating
   symbolic links requires admin privileges on Windows - credit to @TimUntersberger for this note)
 
 ## Quickstart
+
 To get started, first clone this repository to somewhere on your `packpath`, e.g.:
 
 > Unix, Linux Installation
@@ -152,6 +156,7 @@ Note that if you get linter complaints about `use` being an undefined global, th
 spurious - `packer` injects `use` into the scope of the function passed to `startup`.
 If these errors bother you, the easiest fix is to simply specify `use` as an argument to the
 function you pass to `startup`, e.g.
+
 ```lua
 packer.startup(function(use)
 ...your config...
@@ -257,21 +262,24 @@ The above snippets give some examples of `packer` features and use. Examples inc
   - [Loading file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/lua/plugins.lua)
   - [Generated lazy-loader file](https://github.com/wbthomason/dotfiles/blob/linux/neovim/.config/nvim/plugin/packer_compiled.lua)
 - An example using the `startup` method: [tjdevries](https://github.com/tjdevries/config_manager/blob/master/xdg_config/nvim/lua/tj/plugins.lua)
-    - Using this method, you do not require a "loading" file. You can simply `lua require('plugins')` from your `init.vim`
+  - Using this method, you do not require a "loading" file. You can simply `lua require('plugins')` from your `init.vim`
 
 The following is a more in-depth explanation of `packer`'s features and use.
 
 ### The `startup` function
+
 `packer` provides `packer.startup(spec)`, which is used in the above examples.
 
 `startup` is a convenience function for simple setup and can be invoked as follows:
+
 - `spec` can be a function: `packer.startup(function() use 'tjdevries/colorbuddy.vim' end)`
 - `spec` can be a table with a function as its first element and config overrides as another element:
   `packer.startup({function() use 'tjdevries/colorbuddy.vim' end, config = { ... }})`
 - `spec` can be a table with a table of plugin specifications as its first element, config overrides as another element, and optional rock specifications as another element:
- `packer.startup({{'tjdevries/colorbuddy.vim'}, config = { ... }, rocks = { ... }})`
+  `packer.startup({{'tjdevries/colorbuddy.vim'}, config = { ... }, rocks = { ... }})`
 
 ### Custom Initialization
+
 You are not required to use `packer.startup` if you prefer a more manual setup with finer control
 over configuration and loading.
 
@@ -281,6 +289,7 @@ specification code (e.g. by sourcing your plugin specification file with `luafil
 
 You may pass a table of configuration values to `packer.init()` to customize its operation. The
 default configuration values (and structure of the configuration table) are:
+
 ```lua
 {
   ensure_dependencies   = true, -- Should packer install plugin dependencies?
@@ -368,6 +377,7 @@ A table given to `use` can take two forms:
 1. A list of plugin specifications (strings or tables)
 2. A table specifying a single plugin. It must have a plugin location string as its first element,
    and may additionally have a number of optional keyword elements, shown below:
+
 ```lua
 use {
   'myusername/example',        -- The plugin location string
@@ -410,6 +420,7 @@ non-alphanumeric characters, it is assumed to be a pattern, and instead of creat
 a CmdUndefined autocmd to load the plugin when a command that matches the pattern is invoked.
 
 #### Checking plugin statuses
+
 You can check whether or not a particular plugin is installed with `packer` as well as if that plugin is loaded.
 To do this you can check for the plugin's name in the `packer_plugins` global table.
 Plugins in this table are saved using only the last section of their names
@@ -421,7 +432,8 @@ print("Vim fugitive is loaded")
 -- other custom logic
 end
 ```
-**NOTE:** this table is only available *after* `packer_compiled.vim` is loaded so cannot be used till *after* plugins
+
+**NOTE:** this table is only available _after_ `packer_compiled.vim` is loaded so cannot be used till _after_ plugins
 have been loaded.
 
 #### Luarocks support
@@ -432,11 +444,12 @@ Entries in the list may either be strings, a list of strings or a table --- the 
 particular version of a package.
 all supported luarocks keys are allowed except: `tree` and `local`. Environment variables for the luarocks command can also be
 specified using the `env` key which takes a table as the value as shown below.
+
 ```lua
 rocks = {'lpeg', {'lua-cjson', version = '2.1.0'}}
 use_rocks {'lua-cjson', 'lua-resty-http'}
 use_rocks {'luaformatter', server = 'https://luarocks.org/dev'}
-use_rocks {'openssl' env = {OPENSSL_DIR = "/path/to/dir"}}
+use_rocks {'openssl', env = {OPENSSL_DIR = "/path/to/dir"}}
 ```
 
 Currently, `packer` only supports equality constraints on package versions.
@@ -503,10 +516,12 @@ If `after` is a string, it must be the name of another plugin managed by `packer
 
 The set of plugins specified in a plugin's `after` key must **all** be loaded before the plugin
 using `after` will be loaded. For example, in the specification
+
 ```lua
   use {'FooBar/Baz', ft = 'bax'}
   use {'Something/Else', after = 'Baz'}
 ```
+
 the plugin `Else` will only be loaded after the plugin `Baz`, which itself is only loaded for files
 with `bax` filetype.
 
@@ -515,6 +530,7 @@ with `bax` filetype.
 Plugins may be lazy-loaded on the use of keybindings/maps. Individual keybindings are specified either as a string (in which case they are treated as normal mode maps) or a table in the format `{mode, map}`.
 
 ### Performing plugin management operations
+
 `packer` exposes the following functions for common plugin management operations. In all of the
 below, `plugins` is an optional table of plugin names; if not provided, the default is "all managed
 plugins":
@@ -531,12 +547,14 @@ plugins":
 - `packer.delete(snapshot_name)`: Deletes a snapshot file under `config.snapshot_path/<snapshot_name>`. If `snapshot_name` is an absolute path, then that will be the location where the snapshot will be deleted.
 
 ### Extending `packer`
+
 You can add custom key handlers to `packer` by calling `packer.set_handler(name, func)` where `name`
 is the key you wish to handle and `func` is a function with the signature `func(plugins, plugin,
 value)` where `plugins` is the global table of managed plugins, `plugin` is the table for a specific
 plugin, and `value` is the value associated with key `name` in `plugin`.
 
 ### Compiling Lazy-Loaders
+
 To optimize startup time, `packer.nvim` compiles code to perform the lazy-loading operations you
 specify. This means that you do not need to load `packer.nvim` unless you want to perform some
 plugin management operations.
@@ -561,6 +579,7 @@ Additionally, if functions are given for these keys, the functions will be passe
 name and information table as arguments.
 
 ### User autocommands
+
 `packer` runs most of its operations asyncronously. If you would like to implement automations that
 require knowing when the operations are complete, you can use the following `User` autocmds (see
 `:help User` for more info on how to use):
@@ -569,8 +588,10 @@ require knowing when the operations are complete, you can use the following `Use
 - `PackerCompileDone`: Fires after compiling (see [the section on compilation](#compiling-lazy-loaders))
 
 ### Using a floating window
+
 You can configure Packer to use a floating window for command outputs by passing a utility
 function to `packer`'s config:
+
 ```lua
 packer.startup({function()
   -- Your plugins here
@@ -585,6 +606,7 @@ config = {
 By default, this floating window will show doubled borders. If you want to customize the window
 appearance, you can pass a configuration to `float`, which is the same configuration that would be
 passed to `nvim_open_win`:
+
 ```lua
 packer.startup({function()
   -- Your plugins here
@@ -599,11 +621,13 @@ config = {
 ```
 
 ## Profiling
+
 Packer has built in functionality that can allow you to profile the time taken loading your plugins.
 In order to use this functionality you must either enable profiling in your config, or pass in an argument
 when running packer compile.
 
 #### Setup via config
+
 ```lua
 config = {
   profile = {
@@ -614,6 +638,7 @@ config = {
 ```
 
 #### Using the packer compile command
+
 ```vim
 :PackerCompile profile=true
 " or
@@ -621,10 +646,12 @@ config = {
 ```
 
 #### Profiling usage
+
 This will rebuild your `packer_compiled.vim` with profiling code included. In order to visualise the output of the profile
 restart your neovim and run `PackerProfile`. This will open a window with the output of your profiling.
 
 ## Debugging
+
 `packer.nvim` logs to `stdpath(cache)/packer.nvim.log`. Looking at this file is usually a good start
 if something isn't working as expected.
 
@@ -644,6 +671,7 @@ if something isn't working as expected.
 - **2020-09-04:** Due to changes to the Neovim `extmark` api (see: https://github.com/neovim/neovim/commit/3853276d9cacc99a2698117e904475dbf7033383), users will need to update to a version of Neovim **after** the aforementioned PR was merged. There are currently shims around the changed functions which should maintain support for earlier versions of Neovim, but these are intended to be temporary and will be removed by **2020-10-04**. Therefore Packer will not work with Neovim v0.4.4, which was released before the `extmark` change.
 
 ## Contributors
+
 Many thanks to those who have contributed to the project! PRs and issues are always welcome. This
 list is infrequently updated; please feel free to bug me if you're not listed here and you would
 like to be.
