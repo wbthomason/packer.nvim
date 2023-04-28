@@ -24,6 +24,9 @@ plugin_utils.guess_type = function(plugin)
     plugin.type = plugin_utils.local_plugin_type
   elseif
     string.sub(plugin.path, 1, 6) == 'git://'
+    or string.sub(plugin.path, 1, 6) == 'ssh://'
+    or string.sub(plugin.path, 1, 10) == 'git+ssh://'
+    or string.sub(plugin.path, 1, 10) == 'ssh+git://'
     or string.sub(plugin.path, 1, 4) == 'http'
     or string.match(plugin.path, '@')
   then
