@@ -282,12 +282,15 @@ specification code (e.g. by sourcing your plugin specification file with `luafil
 You may pass a table of configuration values to `packer.init()` to customize its operation. The
 default configuration values (and structure of the configuration table) are:
 ```lua
-{
-  ensure_dependencies   = true, -- Should packer install plugin dependencies?
+local packer = require('packer')
+packer.util = require('packer.util')
+
+packer.init({
+  ensure_dependencies = true, -- Should packer install plugin dependencies?
   snapshot = nil, -- Name of the snapshot you would like to load at startup
-  snapshot_path = join_paths(stdpath 'cache', 'packer.nvim'), -- Default save directory for snapshots
-  package_root   = util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
-  compile_path = util.join_paths(vim.fn.stdpath('config'), 'plugin', 'packer_compiled.lua'),
+  snapshot_path = packer.util.join_paths(vim.fn.stdpath 'cache', 'packer.nvim'), -- Default save directory for snapshots
+  package_root = packer.util.join_paths(vim.fn.stdpath('data'), 'site', 'pack'),
+  compile_path = packer.util.join_paths(vim.fn.stdpath('config'), 'plugin', 'packer_compiled.lua'),
   plugin_package = 'packer', -- The default package for plugins
   max_jobs = nil, -- Limit the number of simultaneous jobs. nil means no limit
   auto_clean = true, -- During sync(), remove unused plugins
@@ -348,7 +351,7 @@ default configuration values (and structure of the configuration table) are:
     threshold = 1, -- integer in milliseconds, plugins which load faster than this won't be shown in profile output
   },
   autoremove = false, -- Remove disabled or unused plugins without prompting the user
-}
+})
 ```
 
 ### Specifying plugins
