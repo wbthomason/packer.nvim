@@ -295,7 +295,7 @@ manage = function(plugin_data)
       local req_name = req_name_segments[#req_name_segments]
       -- this flag marks a plugin as being from a require which we use to allow
       -- multiple requires for a plugin without triggering a duplicate warning *IF*
-      -- the plugin is from a `requires` field and the full specificaiton has not been called yet.
+      -- the plugin is from a `requires` field and the full specification has not been called yet.
       -- @see: https://github.com/wbthomason/packer.nvim/issues/258#issuecomment-876568439
       req.from_requires = true
       if not plugins[req_name] then
