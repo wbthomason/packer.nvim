@@ -219,7 +219,15 @@ local ensure_packer = function()
   local install_path = fn.stdpath('data')..'/site/pack/packer/start/packer.nvim'
   if fn.empty(fn.glob(install_path)) > 0 then
     fn.system({'git', 'clone', '--depth', '1', 'https://github.com/wbthomason/packer.nvim', install_path})
-    vim.cmd [[packadd packer.nvim]]
+    vim.cmd.packadd 'packer.nvim'
+    -- This autocmd sources init.lua once again after plugins are installed
+    vim.api.nvim_create_autocmd('User', {
+      pattern = 'PackerComplete',
+      callback = function()
+        local packer_win = vim.api.nvim_get_current_win()
+        vim.cmd.windo('if win_getid() != '..packer_win..' | source $MYVIMRC | endif')
+        vim.api.nvim_set_current_win(packer_win)
+      end
     return true
   end
   return false
@@ -232,13 +240,16 @@ return require('packer').startup(function(use)
   -- My plugins here
   -- use 'foo1/bar1.nvim'
   -- use 'foo2/bar2.nvim'
-
-  -- Automatically set up your configuration after cloning packer.nvim
-  -- Put this at the end after all plugins
-  if packer_bootstrap then
-    require('packer').sync()
-  end
 end)
+
+-- Automatically set up your configuration after cloning packer.nvim
+-- Put this right after packer.startup() 
+if packer_bootstrap then
+  require('packer').sync()
+  -- Stop sourcing init.lua further until all plugins are installed,
+  -- then the autocmd will re-source it again
+  return
+end
 ```
 
 You can also use the following command (with `packer` bootstrapped) to have `packer` setup your
