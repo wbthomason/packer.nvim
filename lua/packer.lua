@@ -899,7 +899,7 @@ packer.snapshot = function(snapshot_name, ...)
     )
   end
 
-  async(function()
+  return async(function()
     if write_snapshot then
       await(snapshot.create(snapshot_path, target_plugins))
         :map_ok(function(ok)
