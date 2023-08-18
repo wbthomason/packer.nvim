@@ -211,7 +211,11 @@ plugin_utils.load_plugin = function(plugin)
   end
 end
 
-plugin_utils.post_update_hook = function(plugin, disp)
+local run_hook = function(plugin, disp, opts)
+  opts = vim.tbl_deep_extend('keep', opts or {}, {
+    hook_name = '',
+  })
+
   local plugin_name = util.get_plugin_full_name(plugin)
   return a.sync(function()
     if plugin.run or not plugin.opt then
@@ -223,14 +227,14 @@ plugin_utils.post_update_hook = function(plugin, disp)
       if type(plugin.run) ~= 'table' then
         plugin.run = { plugin.run }
       end
-      disp:task_update(plugin_name, 'running post update hooks...')
+      disp:task_update(plugin_name, 'running ' .. opts.hook_name .. ' hooks...')
       local hook_result = result.ok()
       for _, task in ipairs(plugin.run) do
         if type(task) == 'function' then
-          local success, err = pcall(task, plugin, disp)
+          local success, err = pcall(task, plugin, disp, opts.hook_name)
           if not success then
             return result.err {
-              msg = 'Error running post update hook: ' .. vim.inspect(err),
+              msg = 'Error running ' .. opts.hook_name .. ' hook: ' .. vim.inspect(err),
             }
           end
         elseif type(task) == 'string' then
@@ -253,7 +257,10 @@ plugin_utils.post_update_hook = function(plugin, disp)
             hook_result = await(jobs.run(cmd, { capture_output = hook_callbacks, cwd = plugin.install_path })):map_err(
               function(err)
                 return {
-                  msg = string.format('Error running post update hook: %s', table.concat(hook_output.output, '\n')),
+                  msg = string.format(
+                    'Error running ' .. opts.hook_name .. ' hook: %s',
+                    table.concat(hook_output.output, '\n')
+                  ),
                   data = err,
                 }
               end
@@ -269,7 +276,7 @@ plugin_utils.post_update_hook = function(plugin, disp)
 
           hook_result = await(jobs.run(task)):map_err(function(err)
             return {
-              msg = string.format('Error running post update hook: %s', vim.inspect(err)),
+              msg = string.format('Error running ' .. opts.hook_name .. ' hook: %s', vim.inspect(err)),
               data = err,
             }
           end)
@@ -285,6 +292,14 @@ plugin_utils.post_update_hook = function(plugin, disp)
       return result.ok()
     end
   end)
+end
+
+plugin_utils.post_install_hook = function(plugin, disp)
+  return run_hook(plugin, disp, { hook_name = 'post_install' })
+end
+
+plugin_utils.post_update_hook = function(plugin, disp)
+  return run_hook(plugin, disp, { hook_name = 'post_update' })
 end
 
 return plugin_utils
