@@ -156,7 +156,18 @@ packer.make_commands = function()
   vim.cmd [[command! -nargs=* PackerCompile  lua require('packer').compile(<q-args>)]]
   vim.cmd [[command! PackerStatus            lua require('packer').status()]]
   vim.cmd [[command! PackerProfile           lua require('packer').profile_output()]]
-  vim.cmd [[command! -bang -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad lua require('packer').loader(<f-args>, '<bang>' == '!')]]
+  if vim.api.nvim_create_user_command then
+    vim.api.nvim_create_user_command('PackerLoad', function(opts)
+      packer.load({plugin_names = opts.fargs, force = opts.bang})
+    end,
+    {
+      bang = true,
+      complete = packer.loader_complete,
+      nargs = '*',
+    })
+  else
+    vim.cmd [[command! -bang -nargs=+ -complete=customlist,v:lua.require'packer'.loader_complete PackerLoad lua require('packer').loader(<f-args>, '<bang>' == '!')]]
+  end
 end
 
 packer.reset = function()
@@ -808,6 +819,25 @@ packer.loader = function(...)
   if type(plugin_names[#plugin_names]) == 'boolean' then
     plugin_names[#plugin_names] = nil
   end
+  packer.load({plugin_names = plugin_names, force = force})
+end
+
+packer.load = function(opts)
+  local plugin_names = opts.plugin_names
+  local force = opts.force
+  if #plugin_names == 0 then
+    vim.ui.select(packer.loader_complete(), {
+      'Pick plugin to load',
+    }, function(choice)
+      if not choice then
+        return
+      end
+      packer.load({
+        plugin_names = {choice},
+        force = opts.force,
+      })
+    end)
+  end
 
   -- We make a new table here because it's more convenient than expanding a space-separated string
   -- into the existing plugin_names
@@ -828,6 +858,7 @@ end
 -- Intended to provide completion for PackerLoad command
 packer.loader_complete = function(lead, _, _)
   local completion_list = {}
+  lead = lead or ''
   for name, plugin in pairs(_G.packer_plugins) do
     if vim.startswith(name, lead) and not plugin.loaded then
       table.insert(completion_list, name)
