@@ -172,6 +172,7 @@ local function prompt_user(headline, body, callback)
     }, body)
   )
   api.nvim_buf_set_option(buf, 'modifiable', false)
+  api.nvim_buf_set_option(buf, 'bufhidden', 'wipe')
   local opts = {
     relative = 'editor',
     width = width,
