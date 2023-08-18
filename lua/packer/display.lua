@@ -995,7 +995,10 @@ display.status = { running = false, disp = nil }
 --- Close a display window and signal that any running operations should terminate
 display.quit = function()
   display.status.running = false
-  vim.fn.execute('q!', 'silent')
+  local _, err = pcall(api.nvim_win_close, 0, true)
+  if err then
+    print(err)
+  end
 end
 
 display.toggle_info = function()
