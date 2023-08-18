@@ -1,3 +1,10 @@
+**NOTICE:**
+
+This repository is currently unmaintained. It is recommended to use one of the following plugin managers instead:
+
+- [lazy.nvim](https://github.com/folke/lazy.nvim): Most stable and maintained plugin manager for Nvim.
+- [pckr.nvim](https://github.com/lewis6991/pckr.nvim): Spiritual successor of packer.nvim. Functional but not as stable as lazy.nvim.
+
 # packer.nvim
 
 [![Gitter](https://badges.gitter.im/packer-nvim/community.svg)](https://gitter.im/packer-nvim/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
