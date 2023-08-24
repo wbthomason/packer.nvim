@@ -1,6 +1,6 @@
 **NOTICE:**
 
-This repository is currently unmaintained. It is recommended to use one of the following plugin managers instead:
+This repository is currently unmaintained. For the time being (as of August, 2023), it is recommended to use one of the following plugin managers instead:
 
 - [lazy.nvim](https://github.com/folke/lazy.nvim): Most stable and maintained plugin manager for Nvim.
 - [pckr.nvim](https://github.com/lewis6991/pckr.nvim): Spiritual successor of packer.nvim. Functional but not as stable as lazy.nvim.
