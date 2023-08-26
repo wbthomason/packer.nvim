@@ -97,6 +97,7 @@ end
 local status_keys = {
   'path',
   'url',
+  'branch',
   'commands',
   'keys',
   'module',

@@ -358,6 +358,7 @@ local function make_loaders(_, plugins, output_lua, should_profile)
 
       -- Add the git URL for displaying in PackerStatus and PackerSync. https://github.com/wbthomason/packer.nvim/issues/542
       loaders[name].url = plugin.url
+      loaders[name].branch = plugin.branch
 
       if plugin.ft then
         plugin.simple_load = false
