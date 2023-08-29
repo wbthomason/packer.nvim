@@ -30,6 +30,14 @@ local function verify_conditions(conds, name)
   return true
 end
 
+local function no_remaining_preloads(plugin)
+  return plugin.load_after == nil or next(plugin.load_after) == nil
+end
+
+local function skip_lazy(plugin, cause)
+  return (plugin.commands ~= nil or plugin.keys ~= nil) and next(cause) == nil
+end
+
 local function loader_clear_loaders(plugin)
   if plugin.commands then
     for _, del_cmd in ipairs(plugin.commands) do
@@ -135,7 +143,7 @@ packer_load = function(names, cause, plugins, force)
       error(err_message)
     end
 
-    if not plugin.loaded then
+    if not plugin.loaded and no_remaining_preloads(plugin) and not skip_lazy(plugin, cause) then
       loader_clear_loaders(plugin)
       if force or verify_conditions(plugin.cond, names[i]) then
         -- Set the plugin as loaded before config is run in case something in the config tries to load
