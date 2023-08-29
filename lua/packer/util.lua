@@ -165,4 +165,8 @@ util.float = function(opts)
   return true, win, buf
 end
 
+function util.ensure_table(obj)
+  return (type(obj) == 'table' and obj) or { obj }
+end
+
 return util
