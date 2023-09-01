@@ -422,7 +422,24 @@ local function make_loaders(_, plugins, output_lua, should_profile)
           plugin.keys = { plugin.keys }
         end
         loaders[name].keys = {}
-        for _, keymap in ipairs(plugin.keys) do
+
+        local keys
+        if vim.tbl_islist(plugin.keys) then
+          keys = plugin.keys
+        else
+          keys = {}
+          for mode, keymap in pairs(plugin.keys) do
+            if type(keymap) == 'string' then
+              table.insert(keys, { mode, keymap })
+            else
+              for _, k in ipairs(keymap) do
+                table.insert(keys, { mode, k })
+              end
+            end
+          end
+        end
+
+        for _, keymap in ipairs(keys) do
           if type(keymap) == 'string' then
             keymap = { '', keymap }
           end
