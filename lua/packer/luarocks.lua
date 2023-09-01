@@ -1,3 +1,5 @@
+-- luacheck: globals vim
+
 -- Add support for installing and cleaning Luarocks dependencies
 -- Based off of plenary/neorocks/init.lua in https://github.com/nvim-lua/plenary.nvim
 local a = require 'packer.async'
@@ -10,15 +12,12 @@ local fmt = string.format
 local async = a.sync
 local await = a.wait
 
-local config = nil
-local function cfg(_config)
-  config = _config.luarocks
-end
 local function warn_need_luajit()
   log.error 'LuaJIT is required for Luarocks functionality!'
 end
 
-local lua_version = nil
+local lua_version
+
 if jit then
   local jit_version = string.gsub(jit.version, 'LuaJIT ', '')
   lua_version = { lua = string.gsub(_VERSION, 'Lua ', ''), jit = jit_version, dir = jit_version }
@@ -36,21 +35,45 @@ else
     generate_path_setup = function()
       return ''
     end,
-    cfg = cfg,
+    cfg = function() return end, -- as we anyway return unusable other values
   }
 end
 
-local cache_path = vim.fn.stdpath 'cache'
-local rocks_path = util.join_paths(cache_path, 'packer_hererocks')
-local hererocks_file = util.join_paths(rocks_path, 'hererocks.py')
-local hererocks_install_dir = util.join_paths(rocks_path, lua_version.dir)
-local shell_hererocks_dir = vim.fn.shellescape(hererocks_install_dir)
+local config = {}
+local package_paths, shell_hererocks_dir
+
+local function package_patterns(dir)
+  local sep = util.get_separator()
+  return fmt('%s%s?.lua;%s%s?%sinit.lua', dir, sep, dir, sep, sep)
+end
+
+local function cfg(_config)
+  local def = {}
+  local _c = _config.luarocks or {}
+  def.cache_path = _c.cache_path or vim.fn.stdpath 'cache'
+  def.rocks_path = _c.rocks_path or util.join_paths(def.cache_path, 'packer_hererocks')
+  def.hererocks_file = _c.hererocks_file or util.join_paths(def.rocks_path, 'hererocks.py')
+  def.hererocks_install_dir = _c.hererocks_install_dir or util.join_paths(def.rocks_path, lua_version.dir)
+  shell_hererocks_dir = vim.fn.shellescape(def.hererocks_install_dir)
+  package_paths = (function()
+    local install_path = util.join_paths(
+      def.hererocks_install_dir, 'lib', 'luarocks', fmt('rocks-%s', lua_version.lua)
+    )
+    local share_path = util.join_paths(def.hererocks_install_dir, 'share', 'lua', lua_version.lua)
+    return package_patterns(share_path) .. ';' .. package_patterns(install_path)
+  end)()
+
+  _config.luarocks = vim.tbl_deep_extend("keep", _c, def)
+  config = _config
+end
+
 local _hererocks_setup_done = false
 local function hererocks_is_setup()
   if _hererocks_setup_done then
     return true
   end
-  local path_info = vim.loop.fs_stat(util.join_paths(hererocks_install_dir, 'lib'))
+
+  local path_info = vim.loop.fs_stat(util.join_paths(config.luarocks.hererocks_install_dir, 'lib'))
   _hererocks_setup_done = (path_info ~= nil) and (path_info['type'] == 'directory')
   return _hererocks_setup_done
 end
@@ -60,11 +83,12 @@ local function hererocks_installer(disp)
     local hererocks_url = 'https://raw.githubusercontent.com/luarocks/hererocks/master/hererocks.py'
     local hererocks_cmd
     await(a.main)
-    vim.fn.mkdir(rocks_path, 'p')
+
+    vim.fn.mkdir(config.luarocks.rocks_path, 'p')
     if vim.fn.executable 'curl' > 0 then
-      hererocks_cmd = 'curl ' .. hererocks_url .. ' -o ' .. hererocks_file
+      hererocks_cmd = 'curl ' .. hererocks_url .. ' -o ' .. config.luarocks.hererocks_file
     elseif vim.fn.executable 'wget' > 0 then
-      hererocks_cmd = 'wget ' .. hererocks_url .. ' -O ' .. hererocks_file .. ' --verbose'
+      hererocks_cmd = 'wget ' .. hererocks_url .. ' -O ' .. config.luarocks.hererocks_file .. ' --verbose'
     else
       return result.err '"curl" or "wget" is required to install hererocks'
     end
@@ -83,13 +107,13 @@ local function hererocks_installer(disp)
       return { msg = 'Error installing hererocks', data = err, output = output }
     end)
 
-    local luarocks_cmd = config.python_cmd
+    local luarocks_cmd = config.luarocks.python_cmd
       .. ' '
-      .. hererocks_file
+      .. config.luarocks.hererocks_file
       .. ' --verbose -j '
       .. lua_version.jit
       .. ' -r latest '
-      .. hererocks_install_dir
+      .. config.luarocks.hererocks_install_dir
     r:and_then(await, jobs.run(luarocks_cmd, opts))
       :map_ok(function()
         if disp then
@@ -107,17 +131,6 @@ local function hererocks_installer(disp)
   end)
 end
 
-local function package_patterns(dir)
-  local sep = util.get_separator()
-  return fmt('%s%s?.lua;%s%s?%sinit.lua', dir, sep, dir, sep, sep)
-end
-
-local package_paths = (function()
-  local install_path = util.join_paths(hererocks_install_dir, 'lib', 'luarocks', fmt('rocks-%s', lua_version.lua))
-  local share_path = util.join_paths(hererocks_install_dir, 'share', 'lua', lua_version.lua)
-  return package_patterns(share_path) .. ';' .. package_patterns(install_path)
-end)()
-
 local nvim_paths_are_setup = false
 local function setup_nvim_paths()
   if not hererocks_is_setup() then
@@ -134,7 +147,7 @@ local function setup_nvim_paths()
     package.path = package.path .. ';' .. package_paths
   end
 
-  local install_cpath = util.join_paths(hererocks_install_dir, 'lib', 'lua', lua_version.lua)
+  local install_cpath = util.join_paths(config.luarocks.hererocks_install_dir, 'lib', 'lua', lua_version.lua)
   local install_cpath_pattern = fmt('%s%s?.so', install_cpath, util.get_separator())
   if not string.find(package.cpath, install_cpath_pattern, 1, true) then
     package.cpath = package.cpath .. ';' .. install_cpath_pattern
@@ -145,7 +158,7 @@ end
 
 local function generate_path_setup_code()
   local package_path_str = vim.inspect(package_paths)
-  local install_cpath = util.join_paths(hererocks_install_dir, 'lib', 'lua', lua_version.lua)
+  local install_cpath = util.join_paths(config.luarocks.hererocks_install_dir, 'lib', 'lua', lua_version.lua)
   local install_cpath_pattern = fmt('"%s%s?.so"', install_cpath, util.get_separator())
   install_cpath_pattern = vim.fn.escape(install_cpath_pattern, [[\]])
   return [[
@@ -177,10 +190,13 @@ local function activate_hererocks_cmd(install_path)
 end
 
 local function run_luarocks(args, disp, operation_name)
+  local d = config.luarocks.hererocks_install_dir
+  local d_e = shell_hererocks_dir
+
   local cmd = {
     os.getenv 'SHELL',
     '-c',
-    fmt('%s && luarocks --tree=%s %s', activate_hererocks_cmd(hererocks_install_dir), shell_hererocks_dir, args),
+    fmt('%s && luarocks --tree=%q %s', activate_hererocks_cmd(d), d_e, args),
   }
   return async(function()
     local output = jobs.output_table()
