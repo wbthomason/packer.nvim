@@ -215,6 +215,17 @@ vim.cmd([[
 ]])
 ```
 
+Since neovim 0.7.0 you can do this in lua too
+
+```lua
+vim.api.nvim_create_augroup('packer_user_config', { clear = true })
+vim.api.nvim_create_autocmd('BufWritePost', {
+    group = 'packer_user_config',
+    pattern = 'plugins.lua',
+    command = 'source <afile> | PackerCompile'
+})
+```
+
 ## Bootstrapping
 
 If you want to automatically install and set up `packer.nvim` on any machine you clone your configuration to,
