@@ -398,6 +398,7 @@ use {
   requires = string or list,   -- Specifies plugin dependencies. See "dependencies".
   rocks = string or list,      -- Specifies Luarocks dependencies for the plugin
   config = string or function, -- Specifies code to run after this plugin is loaded.
+  override = boolean,          -- Specifies if a plugin using a names the same should be overriden by this one
   -- The setup key implies opt = true
   setup = string or function,  -- Specifies code to run before this plugin is loaded. The code is ran even if
                                -- the plugin is waiting for other conditions (ft, cond...) to be met.

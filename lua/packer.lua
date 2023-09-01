@@ -342,6 +342,8 @@ end
 local function manage_all_plugins()
   local log = require_and_configure 'log'
   log.debug 'Processing plugin specs'
+  local plugin_utils = require_and_configure 'plugin_utils'
+  plugin_specifications = plugin_utils.replace_overrides(plugin_specifications)
   if plugins == nil or next(plugins) == nil then
     for _, spec in ipairs(plugin_specifications) do
       manage(spec)

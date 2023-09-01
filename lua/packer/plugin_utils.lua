@@ -287,4 +287,25 @@ plugin_utils.post_update_hook = function(plugin, disp)
   end)
 end
 
+plugin_utils.replace_overrides = function(plugins_specifications)
+  local installed_plugins_indexes = {}
+  local new_plugins_specifications = {}
+  for plugins_specifications_index, specified_plugins in ipairs(plugins_specifications) do
+    local new_specification = {}
+    for specification_index, plugin in ipairs(specified_plugins.spec) do
+      local plugin_short_name = util.get_plugin_short_name(plugin)
+      if not installed_plugins_indexes[plugin_short_name] then
+        installed_plugins_indexes[plugin_short_name] = specification_index
+        new_specification[#new_specification + 1] = plugin
+      elseif true == plugin.override then
+        local plugin_index = installed_plugins_indexes[plugin_short_name]
+        new_specification[plugin_index] = plugin
+      end
+    end
+    new_plugins_specifications[plugins_specifications_index] =
+      { line = specified_plugins.line, spec = new_specification }
+  end
+  return new_plugins_specifications
+end
+
 return plugin_utils
