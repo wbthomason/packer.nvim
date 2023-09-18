@@ -197,6 +197,9 @@ end
 local function make_try_loadstring(item, chunk, name)
   local bytecode = string.dump(item, true)
   local executable_string = 'try_loadstring(' .. vim.inspect(bytecode) .. ', "' .. chunk .. '", "' .. name .. '")'
+  if chunk == 'config' then
+    executable_string = ('try_loadstring(_G.packer_plugins["%s"].%s[1], "%s", "%s")'):format(name, chunk, chunk, name)
+  end
   return executable_string, bytecode
 end
 
