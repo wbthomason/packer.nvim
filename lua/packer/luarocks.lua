@@ -20,7 +20,7 @@ end
 
 local lua_version = nil
 if jit then
-  local jit_version = string.gsub(jit.version, 'LuaJIT ', '')
+  local jit_version = '2.1.0-beta3'
   lua_version = { lua = string.gsub(_VERSION, 'Lua ', ''), jit = jit_version, dir = jit_version }
 else
   return {
