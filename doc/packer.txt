@@ -321,22 +321,34 @@ executed.
 directory of the plugin via `$SHELL -c '<run>'`.
 
 DEPENDENCIES                                   *packer-plugin-dependencies*
-Plugins may specify dependencies via the `requires` key in their specification
-table. This key can be a string or a list (table).
+Plugins may specify dependencies in 2 ways:
 
-If `requires` is a string, it is treated as specifying a single plugin. If a
-plugin with the name given in `requires` is already known in the managed set,
-nothing happens. Otherwise, the string is treated as a plugin location string
-and the corresponding plugin is added to the managed set.
+1. via the `requires` key in their specification table. This key can be a
+   string or a list (table).
 
-If `requires` is a list, it is treated as a list of plugin specifications
-following the format given above.
+   If `requires` is a string, it is treated as specifying a single plugin. If a
+   plugin with the name given in `requires` is already known in the managed set,
+   nothing happens. Otherwise, the string is treated as a plugin location string
+   and the corresponding plugin is added to the managed set.
 
-If `ensure_dependencies` is true, the plugins specified in `requires` will be
-installed.
+   If `requires` is a list, it is treated as a list of plugin specifications
+   following the format given above.
 
-Plugins specified in `requires` are removed when no active plugins require
-them.
+   If `ensure_dependencies` is true, the plugins specified in `requires` will be
+   installed.
+
+   Plugins specified in `requires` are removed when no active plugins require
+   them.
+
+2. via the `wants` key in their specificaiton table. This key must be a list
+   of strings.
+
+   The effect is that each wanted plugin is loaded before the plugin that
+   wants it.
+
+The main difference between `requires` and `wants` is that the former is used
+for adding dependencies to the managet set while the latter -- for the actual
+loading of dependencies.
 
 LUAROCKS                                       *packer-plugin-luarocks*
 
