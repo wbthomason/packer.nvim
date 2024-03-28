@@ -197,23 +197,15 @@ You can configure Neovim to automatically run `:PackerCompile` whenever `plugins
 [an autocommand](https://neovim.io/doc/user/autocmd.html#:autocmd):
 
 ```
-augroup packer_user_config
-  autocmd!
-  autocmd BufWritePost plugins.lua source <afile> | PackerCompile
-augroup end
+local group = vim.api.nvim_create_augroup("packer_user_config", { clear = true })
+vim.api.nvim_create_autocmd("BufWritePost", {
+  command = "PackerCompile",
+  pattern = "plugins.lua",
+  group = group,
+})
 ```
 
-This autocommand can be placed in your `init.vim`, or any other startup file as per your setup.
-Placing this in `plugins.lua` could look like this:
-
-```lua
-vim.cmd([[
-  augroup packer_user_config
-    autocmd!
-    autocmd BufWritePost plugins.lua source <afile> | PackerCompile
-  augroup end
-]])
-```
+This autocommand can be placed in your `plugins.lua`, or any other Lua startup file as per your setup.
 
 ## Bootstrapping
 
